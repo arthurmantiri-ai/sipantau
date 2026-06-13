@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard & Pencarian - Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #004d40;
+            --primary-mid: #00695c;
+            --primary-light: #00897b;
+            --accent: #ff6d00;
+            --accent-soft: #fff3e0;
+            --bg: #f0f4f3;
+            --surface: #ffffff;
+            --surface2: #f7faf9;
+            --border: #d8e8e4;
+            --text: #1a2e2a;
+            --text-mid: #4a6560;
+            --text-soft: #7a9e98;
+            --danger: #c62828;
+            --danger-soft: #ffebee;
+            --success: #2e7d32;
+            --success-soft: #e8f5e9;
+            --warn: #e65100;
+            --warn-soft: #fff3e0;
+            --info: #1565c0;
+            --info-soft: #e3f2fd;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 2px 12px rgba(0,77,64,0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── TOPBAR ── */
+        .topbar { background: var(--primary); color: white; padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .topbar-brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; }
+        .topbar-brand i { color: #80cbc4; font-size: 1.3rem; }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .topbar-date { font-size: 0.85rem; color: #b2dfdb; font-family: 'DM Mono', monospace; }
+        .btn-home { background: rgba(255,255,255,0.15); color: white; padding: 7px 16px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 7px; text-decoration: none; transition: 0.2s; }
+        .btn-home:hover { background: rgba(255,255,255,0.25); }
+        .mobile-menu-btn { display: none; background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+
+        /* ── LAYOUT & SIDEBAR ── */
+        .layout { display: flex; min-height: calc(100vh - 60px); position: relative; }
+        .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; flex-shrink: 0; position: sticky; top: 60px; height: calc(100vh - 60px); overflow-y: auto; transition: transform 0.3s ease; }
+        .sidebar-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-soft); text-transform: uppercase; padding: 8px 12px 4px; }
+        .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; font-size: 0.9rem; color: var(--text-mid); font-weight: 500; transition: 0.15s; position: relative; }
+        .sidebar-item:hover { background: var(--surface2); color: var(--primary); }
+        .sidebar-item.active { background: #e0f2f1; color: var(--primary); font-weight: 600; }
+        .sidebar-item.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--primary-light); border-radius: 0 3px 3px 0; }
+        .sidebar-item i { width: 18px; text-align: center; }
+        .badge-today { margin-left: auto; background: var(--accent); color: white; font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+
+        /* ── MAIN CONTENT ── */
+        .main { flex: 1; padding: 24px; overflow-x: hidden; }
+        .panel { display: none; animation: fadeIn 0.3s ease; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── HEADER & CARDS ── */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        .section-title { display: flex; align-items: center; gap: 10px; }
+        .section-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .section-title h2 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+        .section-title p { font-size: 0.85rem; color: var(--text-mid); margin-top: 1px; }
+
+        .overview-grid, .stats-grid, .keuangan-summary { display: grid; gap: 14px; margin-bottom: 20px; }
+        .overview-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+        .stats-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        .keuangan-summary { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        
+        .stat-card, .overview-card, .keuangan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; transition: box-shadow 0.2s; }
+        .overview-card { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+        .overview-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+        .overview-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+        .val, .stat-value, .amount { font-size: 1.8rem; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; margin-top: 4px; color: var(--primary); }
+        .lbl, .stat-label, .keuangan-card .label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-soft); letter-spacing: 0.04em; }
+        .sub, .stat-sub { font-size: 0.75rem; color: var(--text-mid); margin-top: 4px; }
+
+        /* ── CHARTS GRID ── */
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; height: 320px; display: flex; flex-direction: column; }
+        .chart-title { font-size: 0.85rem; font-weight: 700; color: var(--text-mid); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .chart-canvas-wrapper { flex: 1; position: relative; }
+
+        /* ── FILTERS ── */
+        .filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; min-width: 160px; flex: 1; }
+        .filter-group label { font-size: 0.78rem; font-weight: 600; color: var(--text-mid); text-transform: uppercase; }
+        .filter-control { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem; background: var(--surface2); transition: 0.2s; }
+        .filter-control:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
+        
+        .date-presets { display: flex; gap: 4px; margin-bottom: -2px; }
+        .preset-btn { background: var(--surface2); border: 1px solid var(--border); padding: 2px 6px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; color: var(--text-mid); transition: 0.2s; }
+        .preset-btn:hover { background: var(--primary-light); color: white; }
+
+        .btn-search, .btn-export { color: white; border: none; padding: 9px 20px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-search { background: var(--primary); }
+        .btn-search:hover { background: var(--primary-mid); }
+        .btn-export { background: var(--success); }
+        .btn-reset { background: var(--surface2); color: var(--text-mid); border: 1px solid var(--border); padding: 9px 14px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s; }
+
+        /* ── TABLES ── */
+        .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .table-scroll { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; white-space: nowrap; }
+        th { background: var(--surface2); color: var(--text-mid); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+        th:hover { color: var(--primary); background: #e0f2f1; }
+        th.sort-asc::after { content: " ▲"; font-size: 0.7em; }
+        th.sort-desc::after { content: " ▼"; font-size: 0.7em; }
+        td { padding: 10px 14px; color: var(--text); border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        tbody tr:hover { background: #f7faf9; }
+        
+        .td-name { font-weight: 600; color: var(--primary); }
+        .td-mono, .td-date { font-family: 'DM Mono', monospace; font-size: 0.82rem; }
+        .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: var(--success-soft); color: var(--success); }
+        .badge-red { background: var(--danger-soft); color: var(--danger); }
+        .badge-blue { background: var(--info-soft); color: var(--info); }
+        .badge-orange { background: var(--warn-soft); color: var(--warn); }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+        .badge-teal { background: #e0f2f1; color: var(--primary); }
+
+        /* ── PAGINATION ── */
+        .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--surface2); border-top: 1px solid var(--border); }
+        .pagination-info { font-size: 0.85rem; color: var(--text-mid); font-weight: 500; }
+        .pagination-btn { background: var(--surface); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-mid); transition: 0.2s; font-size: 0.85rem; font-weight: 600; }
+        .pagination-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── SKELETON & EMPTY STATES ── */
+        .skeleton { background: #e0e0e0; border-radius: 4px; animation: pulse 1.5s infinite ease-in-out; }
+        .skeleton-text { height: 16px; margin-bottom: 8px; width: 80%; }
+        .skeleton-title { height: 24px; margin-bottom: 12px; width: 40%; }
+        .skeleton-card { height: 100px; width: 100%; border-radius: var(--radius); }
+        .skeleton-chart { height: 320px; width: 100%; border-radius: var(--radius); }
+        .skeleton-table-row { height: 40px; margin-bottom: 8px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 0.3; } 100% { opacity: 0.6; } }
+
+        .empty { text-align: center; padding: 48px 20px; color: var(--text-soft); }
+        .empty i { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+
+        /* ── FOLLOWUP SPECIFIC ── */
+        .followup-card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; transition: box-shadow 0.2s; }
+        .followup-card:hover { box-shadow: var(--shadow); }
+        .followup-info { flex: 1; }
+        .followup-name { font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+        .wa-btn { background: #25d366; color: white; border: none; padding: 9px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; transition: background 0.2s; white-space: nowrap; flex-shrink: 0; }
+
+        /* ── TOMBOL HAPUS & MODAL KONFIRMASI ── */
+        .btn-hapus { background: transparent; color: var(--text-soft); border: 1px solid transparent; padding: 5px 9px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; font-size: 0.8rem; line-height: 1; }
+        .btn-hapus:hover { background: var(--danger-soft); color: var(--danger); border-color: #ef9a9a; }
+        th.th-aksi, td.td-aksi { text-align: center; width: 48px; }
+
+        .modal-konfirmasi { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 20px; }
+        .modal-konfirmasi.show { display: flex; animation: fadeIn 0.2s ease; }
+        .modal-konfirmasi-box { background: var(--surface); border-radius: var(--radius); padding: 28px 30px; width: 100%; max-width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); text-align: center; }
+        .modal-konfirmasi-icon { width: 52px; height: 52px; background: var(--danger-soft); color: var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin: 0 auto 16px; }
+        .modal-konfirmasi-box h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+        .modal-konfirmasi-box p { font-size: 0.88rem; color: var(--text-mid); margin-bottom: 22px; line-height: 1.5; }
+        .modal-konfirmasi-actions { display: flex; gap: 10px; justify-content: center; }
+        .btn-konfirmasi-batal { background: var(--surface2); color: var(--text-mid); border: 1px solid var(--border); padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-konfirmasi-batal:hover { background: var(--border); }
+        .btn-konfirmasi-hapus { background: var(--danger); color: white; border: none; padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 7px; }
+        .btn-konfirmasi-hapus:hover { background: #b71c1c; }
+        .btn-konfirmasi-hapus:disabled { background: #ef9a9a; cursor: not-allowed; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .mobile-menu-btn { display: block; }
+            .sidebar { position: fixed; left: -240px; z-index: 999; height: 100vh; top: 0; padding-top: 70px; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
+            .sidebar.open { transform: translateX(240px); }
+            .main { padding: 16px; }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .btn-search, .btn-export, .btn-reset { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="modal-konfirmasi" id="modalHapus">
+    <div class="modal-konfirmasi-box">
+        <div class="modal-konfirmasi-icon"><i class="fa-solid fa-trash-can"></i></div>
+        <h3>Hapus Data Ini?</h3>
+        <p id="modalHapusPesan">Data yang dihapus tidak dapat dipulihkan. Pastikan ini adalah data yang salah diinput.</p>
+        <div class="modal-konfirmasi-actions">
+            <button class="btn-konfirmasi-batal" onclick="tutupModalHapus()">Batal</button>
+            <button class="btn-konfirmasi-hapus" id="btnKonfirmasiHapus" onclick="eksekusiHapus()">
+                <i class="fa-solid fa-trash-can"></i> Ya, Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="topbar">
+    <div class="topbar-brand">
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()"><i class="fa-solid fa-bars"></i></button>
+        <i class="fa-solid fa-chart-line"></i> Dashboard Klinik Imanuel
+    </div>
+    <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+        <a href="index.html" class="btn-home"><i class="fa-solid fa-house"></i> Beranda</a>
+    </div>
+</div>
+
+<div class="layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-label">Pantauan Harian</div>
+        <div class="sidebar-item active" onclick="showPanel('overview')"><i class="fa-solid fa-gauge-high"></i> Overview</div>
+        <div class="sidebar-item" onclick="showPanel('followup')"><i class="fa-solid fa-bell"></i> Follow-up Hari Ini <span class="badge-today" id="badgeFollowup">0</span></div>
+
+        <div class="sidebar-label">Pencarian Data</div>
+        <div class="sidebar-item" onclick="showPanel('obat_kronis')"><i class="fa-solid fa-capsules"></i> Obat Kronis</div>
+        <div class="sidebar-item" onclick="showPanel('rujukan')"><i class="fa-solid fa-file-medical"></i> Rujukan</div>
+        <div class="sidebar-item" onclick="showPanel('pasien_kontrol')"><i class="fa-solid fa-calendar-check"></i> Pasien Kontrol</div>
+
+        <div class="sidebar-label">Register Poli</div>
+        <div class="sidebar-item" onclick="showPanel('poli_umum')"><i class="fa-solid fa-stethoscope"></i> Poli Umum</div>
+        <div class="sidebar-item" onclick="showPanel('poli_gigi')"><i class="fa-solid fa-tooth"></i> Poli Gigi</div>
+
+        <div class="sidebar-label">Laporan</div>
+        <div class="sidebar-item" onclick="showPanel('keuangan')"><i class="fa-solid fa-file-invoice-dollar"></i> Keuangan</div>
+        <div class="sidebar-item" onclick="showPanel('laporan_puskesmas')"><i class="fa-solid fa-hospital"></i> Lap. Puskesmas</div>
+        <div class="sidebar-item" onclick="showPanel('laporan_admin')"><i class="fa-solid fa-clipboard-list"></i> Lap. Admin</div>
+    </aside>
+
+    <main class="main" onclick="closeMobileMenuOnBodyClick(event)">
+
+        <div class="panel active" id="panel-overview">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e0f2f1;color:var(--primary)"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div><h2>Overview Klinik</h2><p>Ringkasan aktivitas dan metrik performa</p></div>
+                </div>
+            </div>
+            <div id="overviewContent"></div>
+        </div>
+
+        <div class="panel" id="panel-followup">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#fff3e0;color:#e65100"><i class="fa-solid fa-bell"></i></div>
+                    <div><h2>Follow-up Hari Ini</h2><p>Pasien yang harus dihubungi hari ini (H-1 sebelum kontrol)</p></div>
+                </div>
+                <button class="btn-export" onclick="exportFollowup()"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+            </div>
+            <div id="followupContent"></div>
+        </div>
+
+        <div class="panel" id="panel-obat_kronis">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e8f5e9;color:#2e7d32"><i class="fa-solid fa-capsules"></i></div>
+                    <div><h2>Data Obat Kronis</h2><p>Pencarian berdasarkan nama, BPJS, atau rentang waktu</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="ok_nama" placeholder="Cari nama..." data-target="searchObatKronis"></div>
+                <div class="filter-group"><label>No. BPJS</label><input type="text" class="filter-control debounce-input" id="ok_bpjs" placeholder="Cari nomor..." data-target="searchObatKronis"></div>
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('ok', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('ok', 'month')">Bulan Ini</button></div>
+                    <label>Dari Tgl</label><input type="date" class="filter-control date-trigger" id="ok_dari" data-target="searchObatKronis">
+                </div>
+                <div class="filter-group"><label>Sampai Tgl</label><input type="date" class="filter-control date-trigger" id="ok_sampai" data-target="searchObatKronis"></div>
+                <button class="btn-search" onclick="searchObatKronis(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('obat_kronis','obat_kronis')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('ok');searchObatKronis(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="obatKronisContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-rujukan">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e3f2fd;color:#1565c0"><i class="fa-solid fa-file-medical"></i></div>
+                    <div><h2>Data Rujukan</h2><p>Pencarian data rujukan pasien</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="ruj_nama" placeholder="Cari nama..." data-target="searchRujukan"></div>
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('ruj', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('ruj', 'month')">Bulan Ini</button></div>
+                    <label>Dari Tgl</label><input type="date" class="filter-control date-trigger" id="ruj_dari" data-target="searchRujukan">
+                </div>
+                <div class="filter-group"><label>Sampai Tgl</label><input type="date" class="filter-control date-trigger" id="ruj_sampai" data-target="searchRujukan"></div>
+                <button class="btn-search" onclick="searchRujukan(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('rujukan','rujukan')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('ruj');searchRujukan(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="rujukanContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-pasien_kontrol">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#f3e5f5;color:#6a1b9a"><i class="fa-solid fa-calendar-check"></i></div>
+                    <div><h2>Jadwal Pasien Kontrol</h2><p>Cari dan pantau jadwal kontrol pasien</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="pk_nama" placeholder="Cari nama..." data-target="searchPasienKontrol"></div>
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('pk', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('pk', 'month')">Bulan Ini</button></div>
+                    <label>Tgl Kontrol Dari</label><input type="date" class="filter-control date-trigger" id="pk_dari" data-target="searchPasienKontrol">
+                </div>
+                <div class="filter-group"><label>Tgl Kontrol Sampai</label><input type="date" class="filter-control date-trigger" id="pk_sampai" data-target="searchPasienKontrol"></div>
+                <button class="btn-search" onclick="searchPasienKontrol(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('pasien_kontrol','pasien_kontrol')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('pk');searchPasienKontrol(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="pasienKontrolContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-poli_umum">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e3f2fd;color:#0d47a1"><i class="fa-solid fa-stethoscope"></i></div>
+                    <div><h2>Register Poli Umum</h2><p>Data kunjungan harian poli umum</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="pu_nama" placeholder="Cari nama..." data-target="searchPoliUmum"></div>
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('pu', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('pu', 'month')">Bulan Ini</button></div>
+                    <label>Dari Tanggal</label><input type="date" class="filter-control date-trigger" id="pu_dari" data-target="searchPoliUmum">
+                </div>
+                <div class="filter-group"><label>Sampai Tanggal</label><input type="date" class="filter-control date-trigger" id="pu_sampai" data-target="searchPoliUmum"></div>
+                <button class="btn-search" onclick="searchPoliUmum(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('poli_umum','poli_umum')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('pu');searchPoliUmum(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="poliUmumContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-poli_gigi">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#fce4ec;color:#880e4f"><i class="fa-solid fa-tooth"></i></div>
+                    <div><h2>Register Poli Gigi</h2><p>Data kunjungan dan tindakan poli gigi</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="pg_nama" placeholder="Cari nama..." data-target="searchPoliGigi"></div>
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('pg', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('pg', 'month')">Bulan Ini</button></div>
+                    <label>Dari Tanggal</label><input type="date" class="filter-control date-trigger" id="pg_dari" data-target="searchPoliGigi">
+                </div>
+                <div class="filter-group"><label>Sampai Tanggal</label><input type="date" class="filter-control date-trigger" id="pg_sampai" data-target="searchPoliGigi"></div>
+                <button class="btn-search" onclick="searchPoliGigi(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('poli_gigi','poli_gigi')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('pg');searchPoliGigi(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="poliGigiContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-keuangan">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e8f5e9;color:#1b5e20"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <div><h2>Laporan Keuangan</h2><p>Rekapitulasi pendapatan harian klinik</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <div class="date-presets"><button class="preset-btn" onclick="setPresetDate('keu', 'today')">Hari Ini</button><button class="preset-btn" onclick="setPresetDate('keu', 'month')">Bulan Ini</button></div>
+                    <label>Dari Tanggal</label><input type="date" class="filter-control date-trigger" id="keu_dari" data-target="searchKeuangan">
+                </div>
+                <div class="filter-group"><label>Sampai Tanggal</label><input type="date" class="filter-control date-trigger" id="keu_sampai" data-target="searchKeuangan"></div>
+                <button class="btn-search" onclick="searchKeuangan(true)"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+                <button class="btn-export" onclick="exportFullData('laporan_keuangan','keuangan')"><i class="fa-solid fa-file-excel"></i></button>
+                <button class="btn-reset" onclick="resetFilter('keu');searchKeuangan(true)"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+            <div id="keuanganSummary"></div>
+            <div id="keuanganContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Pilih rentang tanggal.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-laporan_puskesmas">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#e8eaf6;color:#283593"><i class="fa-solid fa-hospital"></i></div>
+                    <div><h2>Laporan Puskesmas</h2><p>Rekap diagnosis untuk laporan bulanan</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Dari Tanggal</label><input type="date" class="filter-control date-trigger" id="pusk_dari" data-target="searchPuskesmas">
+                </div>
+                <div class="filter-group">
+                    <label>Sampai Tanggal</label><input type="date" class="filter-control date-trigger" id="pusk_sampai" data-target="searchPuskesmas">
+                </div>
+                <button class="btn-search" onclick="searchPuskesmas(true)"><i class="fa-solid fa-magnifying-glass"></i> Tampilkan</button>
+                <button class="btn-export" onclick="exportFullData('laporan_puskesmas','laporan_puskesmas')"><i class="fa-solid fa-file-excel"></i></button>
+            </div>
+            <div id="puskesmasContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Pilih rentang tanggal.</p></div></div>
+        </div>
+
+        <div class="panel" id="panel-laporan_admin">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon" style="background:#f3e5f5;color:#4a148c"><i class="fa-solid fa-clipboard-list"></i></div>
+                    <div><h2>Laporan Admin</h2><p>Rekap capaian indikator harian</p></div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Dari Tanggal</label><input type="date" class="filter-control date-trigger" id="adm_dari" data-target="searchAdmin">
+                </div>
+                <div class="filter-group">
+                    <label>Sampai Tanggal</label><input type="date" class="filter-control date-trigger" id="adm_sampai" data-target="searchAdmin">
+                </div>
+                <button class="btn-search" onclick="searchAdmin(true)"><i class="fa-solid fa-magnifying-glass"></i> Tampilkan</button>
+                <button class="btn-export" onclick="exportFullData('laporan_admin','laporan_admin')"><i class="fa-solid fa-file-excel"></i></button>
+            </div>
+            <div id="adminContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Pilih rentang tanggal.</p></div></div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ═══ INIT & GLOBALS ═══
+const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const TODAY = new Date().toISOString().split('T')[0];
+
+document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+let chartInstances = [];
+let followupData = [];
+let tableDataState = {}; 
+let sortState = { col: null, asc: true };
+
+// Paginasi
+const PAGE_SIZE = 25;
+let pageState = {
+    obat_kronis: 1, rujukan: 1, pasien_kontrol: 1, 
+    poli_umum: 1, poli_gigi: 1, keuangan: 1, 
+    laporan_puskesmas: 1, laporan_admin: 1
+};
+
+// ═══ UTILS & UX ═══
+function fmtRp(n) { if (!n && n !== 0) return 'Rp 0'; return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n); }
+function fmtDate(d) { if(!d) return '-'; return new Date(d).toLocaleDateString('id-ID'); }
+
+function toggleMobileMenu() { document.getElementById('sidebar').classList.toggle('open'); }
+function closeMobileMenuOnBodyClick(e) { if(window.innerWidth <= 768 && !e.target.closest('.sidebar') && !e.target.closest('.mobile-menu-btn')) { document.getElementById('sidebar').classList.remove('open'); } }
+
+function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    
+    const activeItem = Array.from(document.querySelectorAll('.sidebar-item')).find(el => el.getAttribute('onclick').includes(name));
+    if(activeItem) activeItem.classList.add('active');
+    if(window.innerWidth <= 768) toggleMobileMenu();
+
+    if (name === 'overview') loadOverview();
+    if (name === 'followup') loadFollowup();
+}
+
+function showSkeleton(containerId, type = 'table') {
+    const container = document.getElementById(containerId);
+    if(type === 'overview') {
+        container.innerHTML = `
+            <div class="overview-grid">${Array(8).fill('<div class="skeleton skeleton-card"></div>').join('')}</div>
+            <div class="charts-grid">${Array(3).fill('<div class="skeleton skeleton-chart"></div>').join('')}</div>
+        `;
+    } else if(type === 'cards') {
+        container.innerHTML = `<div class="overview-grid">${Array(4).fill('<div class="skeleton skeleton-card"></div>').join('')}</div>`;
+    } else {
+        container.innerHTML = `<div style="padding: 20px;"><div class="skeleton skeleton-title"></div>${Array(5).fill('<div class="skeleton skeleton-table-row"></div>').join('')}</div>`;
+    }
+}
+
+function empty(id, msg='Tidak ada data ditemukan.') { document.getElementById(id).innerHTML = `<div class="empty"><i class="fa-solid fa-inbox"></i><p>${msg}</p></div>`; }
+
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), wait); };
+}
+
+document.querySelectorAll('.debounce-input').forEach(input => {
+    const fnName = input.getAttribute('data-target');
+    input.addEventListener('input', debounce(() => window[fnName](true), 400));
+});
+document.querySelectorAll('.date-trigger').forEach(input => {
+    const fnName = input.getAttribute('data-target');
+    input.addEventListener('change', () => window[fnName](true));
+});
+
+function setPresetDate(prefix, presetType) {
+    const dIn = document.getElementById(`${prefix}_dari`), sIn = document.getElementById(`${prefix}_sampai`);
+    const now = new Date();
+    if (presetType === 'today') { dIn.value = TODAY; sIn.value = TODAY; } 
+    else if (presetType === 'month') { dIn.value = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]; sIn.value = TODAY; }
+    const target = dIn.getAttribute('data-target'); if(target) window[target](true);
+}
+
+function resetFilter(prefix) { document.querySelectorAll(`[id^="${prefix}_"]`).forEach(el => el.value = ''); }
+
+// ═══ PAGINATION UI ═══
+function renderPagination(panel, totalCount) {
+    const page = pageState[panel];
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end = Math.min(page * PAGE_SIZE, totalCount);
+    
+    return `
+    <div class="pagination">
+        <div class="pagination-info">Menampilkan ${totalCount === 0 ? 0 : start}-${end} dari ${totalCount} data</div>
+        <div style="display:flex;gap:8px">
+            <button class="pagination-btn" onclick="changePage('${panel}', -1)" ${page <= 1 ? 'disabled' : ''}>Sebelumnya</button>
+            <button class="pagination-btn" onclick="changePage('${panel}', 1)" ${page >= totalPages ? 'disabled' : ''}>Selanjutnya</button>
+        </div>
+    </div>`;
+}
+
+function changePage(panel, delta) {
+    pageState[panel] += delta;
+    if(panel === 'obat_kronis') searchObatKronis(false);
+    if(panel === 'rujukan') searchRujukan(false);
+    if(panel === 'pasien_kontrol') searchPasienKontrol(false);
+    if(panel === 'poli_umum') searchPoliUmum(false);
+    if(panel === 'poli_gigi') searchPoliGigi(false);
+    if(panel === 'keuangan') searchKeuangan(false);
+    if(panel === 'laporan_puskesmas') searchPuskesmas(false);
+    if(panel === 'laporan_admin') searchAdmin(false);
+}
+
+// ═══ FUNGSI HAPUS DATA ═══
+let hapusState = { tabel: null, id: null, namaPasien: null, refreshFn: null };
+
+function konfirmasiHapus(tabel, id, namaPasien, refreshFn) {
+    hapusState = { tabel, id, namaPasien, refreshFn };
+    document.getElementById('modalHapusPesan').textContent =
+        `Anda akan menghapus data "${namaPasien}" dari tabel ${tabel}. Tindakan ini tidak dapat dibatalkan.`;
+    document.getElementById('modalHapus').classList.add('show');
+}
+
+function tutupModalHapus() {
+    document.getElementById('modalHapus').classList.remove('show');
+    hapusState = { tabel: null, id: null, namaPasien: null, refreshFn: null };
+}
+
+async function eksekusiHapus() {
+    const btn = document.getElementById('btnKonfirmasiHapus');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+
+    const { error } = await db.from(hapusState.tabel).delete().eq('id', hapusState.id);
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Hapus';
+    tutupModalHapus();
+
+    if (error) {
+        alert('Gagal menghapus data: ' + error.message);
+    } else {
+        if (hapusState.refreshFn) hapusState.refreshFn(false); // Mempertahankan state halaman
+    }
+}
+
+document.getElementById('modalHapus').addEventListener('click', function(e) {
+    if (e.target === this) tutupModalHapus();
+});
+
+// ═══ CLIENT-SIDE SORTING ═══
+function sortTableData(panel, columnKey, type) {
+    if(sortState.col === columnKey) { sortState.asc = !sortState.asc; } 
+    else { sortState.col = columnKey; sortState.asc = true; }
+
+    tableDataState[panel].sort((a, b) => {
+        let valA = a[columnKey] || ''; let valB = b[columnKey] || '';
+        if (type === 'date') { valA = new Date(valA).getTime(); valB = new Date(valB).getTime(); } 
+        else if (type === 'number') { valA = Number(valA); valB = Number(valB); } 
+        else { valA = valA.toString().toLowerCase(); valB = valB.toString().toLowerCase(); }
+        if (valA < valB) return sortState.asc ? -1 : 1;
+        if (valA > valB) return sortState.asc ? 1 : -1;
+        return 0;
+    });
+
+    // Panggil ulang render sesuai panel (totalCount diteruskan fiktif atau tak diperlukan untuk sekadar re-render table data)
+    // Client-side sort ini hanya akan menyortir data pada "halaman aktif" (25 data tsb).
+    if(panel === 'poli_umum') {
+        const table = document.getElementById('tblPoliUmum');
+        searchPoliUmum(false); // Melakukan fetching ulang agar aman dengan paginasi
+    }
+    if(panel === 'poli_gigi') {
+        searchPoliGigi(false);
+    }
+}
+function getSortClass(colKey) { return sortState.col === colKey ? (sortState.asc ? 'sort-asc' : 'sort-desc') : ''; }
+
+// ═══ EXPORT UTILS ═══
+function exportToXlsx(rows, filename) {
+    const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data'); XLSX.writeFile(wb, filename + '.xlsx');
+}
+
+// FUNGSI EXPORT DATA PENUH DARI FILTER AKTIF
+async function exportFullData(panel, filename) {
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    let q = db.from(panel).select('*');
+
+    // Menerapkan filter sesuai jenis tabel
+    if(panel === 'obat_kronis') {
+        const n = document.getElementById('ok_nama').value.trim(), b = document.getElementById('ok_bpjs').value.trim(), d = document.getElementById('ok_dari').value, s = document.getElementById('ok_sampai').value;
+        if (n) q = q.ilike('nama_pasien', `%${n}%`); if (b) q = q.ilike('no_bpjs', `%${b}%`); if (d) q = q.gte('tanggal_ambil', d); if (s) q = q.lte('tanggal_ambil', s);
+    }
+    else if(panel === 'rujukan') {
+        const n = document.getElementById('ruj_nama').value.trim(), d = document.getElementById('ruj_dari').value, s = document.getElementById('ruj_sampai').value;
+        if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+    else if(panel === 'pasien_kontrol') {
+        const n = document.getElementById('pk_nama').value.trim(), d = document.getElementById('pk_dari').value, s = document.getElementById('pk_sampai').value;
+        if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal_kontrol', d); if (s) q = q.lte('tanggal_kontrol', s);
+    }
+    else if(panel === 'poli_umum') {
+        const n = document.getElementById('pu_nama').value.trim(), d = document.getElementById('pu_dari').value, s = document.getElementById('pu_sampai').value;
+        if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+    else if(panel === 'poli_gigi') {
+        const n = document.getElementById('pg_nama').value.trim(), d = document.getElementById('pg_dari').value, s = document.getElementById('pg_sampai').value;
+        if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+    else if(panel === 'laporan_keuangan') {
+        const d = document.getElementById('keu_dari').value, s = document.getElementById('keu_sampai').value;
+        if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+    else if(panel === 'laporan_puskesmas') {
+        const d = document.getElementById('pusk_dari').value, s = document.getElementById('pusk_sampai').value;
+        if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+    else if(panel === 'laporan_admin') {
+        const d = document.getElementById('adm_dari').value, s = document.getElementById('adm_sampai').value;
+        if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    }
+
+    const { data, error } = await q;
+    
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+
+    if (error || !data || data.length === 0) { 
+        alert('Tidak ada data untuk diekspor atau terjadi kesalahan.'); 
+        return; 
+    }
+
+    exportToXlsx(data, filename + '_' + TODAY);
+}
+
+// ═══ PANELS DATA FETCHING ═══
+
+// 1. OVERVIEW (Real-time Charts)
+async function loadOverview() {
+    showSkeleton('overviewContent', 'overview');
+
+    // Prepare Date Range for Charts (Last 7 Days)
+    const dates = [];
+    const chartLabels = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        dates.push(dateStr);
+        chartLabels.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
+    }
+    const startDate = dates[0];
+
+    // Fetch Today's single stats + 7-Day History concurrently
+    const [
+        puToday, pgToday, okToday, rujToday, followupToday, kontrolToday, keuToday,
+        puHistory, pgHistory, keuHistory
+    ] = await Promise.all([
+        db.from('poli_umum').select('id',{count:'exact',head:true}).eq('tanggal', TODAY),
+        db.from('poli_gigi').select('id',{count:'exact',head:true}).eq('tanggal', TODAY),
+        db.from('obat_kronis').select('id',{count:'exact',head:true}).eq('tanggal_berikutnya', TODAY),
+        db.from('rujukan').select('id',{count:'exact',head:true}).eq('tanggal', TODAY),
+        db.from('pasien_kontrol').select('id',{count:'exact',head:true}).eq('tanggal_followup', TODAY),
+        db.from('pasien_kontrol').select('id',{count:'exact',head:true}).eq('tanggal_kontrol', TODAY),
+        db.from('laporan_keuangan').select('total_pemasukan').eq('tanggal', TODAY),
+        db.from('poli_umum').select('tanggal, pembayaran').gte('tanggal', startDate).lte('tanggal', TODAY),
+        db.from('poli_gigi').select('tanggal, pembayaran').gte('tanggal', startDate).lte('tanggal', TODAY),
+        db.from('laporan_keuangan').select('tanggal, total_pemasukan').gte('tanggal', startDate).lte('tanggal', TODAY)
+    ]);
+
+    const totalPendapatan = keuToday.data && keuToday.data.length > 0 ? keuToday.data[0].total_pemasukan : 0;
+    const totalKunjungan = (puToday.count || 0) + (pgToday.count || 0);
+
+    document.getElementById('badgeFollowup').textContent = followupToday.count || 0;
+
+    // Process Chart Data
+    const visitData = dates.map(d => {
+        const puCount = (puHistory.data || []).filter(x => x.tanggal === d).length;
+        const pgCount = (pgHistory.data || []).filter(x => x.tanggal === d).length;
+        return puCount + pgCount;
+    });
+
+    const revenueData = dates.map(d => {
+        const rec = (keuHistory.data || []).find(x => x.tanggal === d);
+        return rec ? rec.total_pemasukan : 0;
+    });
+
+    let bpjsCount = 0;
+    let umumCount = 0;
+    const allVisits = [...(puHistory.data || []), ...(pgHistory.data || [])];
+    allVisits.forEach(x => {
+        if(x.pembayaran === 'BPJS') bpjsCount++;
+        else if(x.pembayaran === 'Umum') umumCount++;
+    });
+
+    // Render HTML
+    document.getElementById('overviewContent').innerHTML = `
+    <div class="overview-grid">
+        <div class="overview-card" onclick="showPanel('poli_umum')"><div class="overview-card-icon" style="background:#e3f2fd;color:#0d47a1"><i class="fa-solid fa-stethoscope"></i></div><div><div class="val">${puToday.count||0}</div><div class="lbl">Poli Umum Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('poli_gigi')"><div class="overview-card-icon" style="background:#fce4ec;color:#880e4f"><i class="fa-solid fa-tooth"></i></div><div><div class="val">${pgToday.count||0}</div><div class="lbl">Poli Gigi Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('followup')"><div class="overview-card-icon" style="background:#fff3e0;color:#e65100"><i class="fa-solid fa-bell"></i></div><div><div class="val">${followupToday.count||0}</div><div class="lbl">Follow-up Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('pasien_kontrol')"><div class="overview-card-icon" style="background:#f3e5f5;color:#6a1b9a"><i class="fa-solid fa-calendar-check"></i></div><div><div class="val">${kontrolToday.count||0}</div><div class="lbl">Kontrol Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('obat_kronis')"><div class="overview-card-icon" style="background:#e8f5e9;color:#2e7d32"><i class="fa-solid fa-capsules"></i></div><div><div class="val">${okToday.count||0}</div><div class="lbl">Ambil Obat Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('rujukan')"><div class="overview-card-icon" style="background:#e3f2fd;color:#1565c0"><i class="fa-solid fa-file-medical"></i></div><div><div class="val">${rujToday.count||0}</div><div class="lbl">Rujukan Hari Ini</div></div></div>
+        <div class="overview-card" onclick="showPanel('keuangan')"><div class="overview-card-icon" style="background:#e8f5e9;color:#1b5e20"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="val" style="font-size:1.4rem">${fmtRp(totalPendapatan)}</div><div class="lbl">Pendapatan Hari Ini</div></div></div>
+        <div class="overview-card"><div class="overview-card-icon" style="background:#e8eaf6;color:#283593"><i class="fa-solid fa-users"></i></div><div><div class="val">${totalKunjungan}</div><div class="lbl">Total Kunjungan</div></div></div>
+    </div>
+    <div class="charts-grid">
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Tren Kunjungan (7 Hari)</div>
+            <div class="chart-canvas-wrapper"><canvas id="visitChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-chart-column"></i> Pendapatan Klinik (7 Hari)</div>
+            <div class="chart-canvas-wrapper"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Proporsi Pembayaran (7 Hari)</div>
+            <div class="chart-canvas-wrapper"><canvas id="paymentChart"></canvas></div>
+        </div>
+    </div>`;
+
+    renderCharts(visitData, revenueData, bpjsCount, umumCount, chartLabels);
+}
+
+function renderCharts(visitData, revenueData, bpjsCount, umumCount, labels) {
+    chartInstances.forEach(chart => chart.destroy());
+    chartInstances = [];
+
+    const ctx1 = document.getElementById('visitChart').getContext('2d');
+    const visitChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Kunjungan',
+                data: visitData,
+                borderColor: '#00897b',
+                backgroundColor: 'rgba(0, 137, 123, 0.1)',
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    const ctx2 = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Pendapatan (Rp)',
+                data: revenueData,
+                backgroundColor: '#2e7d32',
+                borderRadius: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + (value/1000) + 'k'; } } } } }
+    });
+
+    const ctx3 = document.getElementById('paymentChart').getContext('2d');
+    const hasPaymentData = bpjsCount > 0 || umumCount > 0;
+    
+    const paymentChart = new Chart(ctx3, {
+        type: 'doughnut',
+        data: {
+            labels: hasPaymentData ? ['BPJS', 'Umum'] : ['Belum ada data'],
+            datasets: [{
+                data: hasPaymentData ? [bpjsCount, umumCount] : [1],
+                backgroundColor: hasPaymentData ? ['#1565c0', '#e65100'] : ['#e0e0e0'],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
+    });
+
+    chartInstances.push(visitChart, revenueChart, paymentChart);
+}
+
+// 2. FOLLOW UP
+async function loadFollowup() {
+    showSkeleton('followupContent', 'cards');
+    const { data, error } = await db.from('pasien_kontrol').select('*').eq('tanggal_followup', TODAY);
+    if (error || !data) { empty('followupContent'); return; }
+    followupData = data;
+    document.getElementById('badgeFollowup').textContent = data.length;
+
+    if(!data.length) { empty('followupContent', 'Tidak ada follow-up hari ini.'); return; }
+
+    const cards = data.map(p => {
+        const noWa = p.no_wa ? p.no_wa.replace(/^0/, '62').replace(/\D/g,'') : null;
+        return `<div class="followup-card">
+            <div class="followup-info">
+                <div class="followup-name">${p.nama_pasien}</div>
+                <div style="font-size:0.85rem;color:var(--text-mid)">Kontrol: <strong>${fmtDate(p.tanggal_kontrol)}</strong> di ${p.poli_asal}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                ${noWa ? `<a class="wa-btn" href="https://wa.me/${noWa}" target="_blank"><i class="fa-brands fa-whatsapp"></i> WA</a>` : ''}
+                <button class="btn-hapus" onclick="konfirmasiHapus('pasien_kontrol','${p.id}','${(p.nama_pasien||'').replace(/'/g,"\\'")}',loadFollowup)" title="Hapus data ini" style="padding:9px 11px;font-size:0.9rem;"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('followupContent').innerHTML = cards;
+}
+function exportFollowup() { exportToXlsx(followupData, `followup_${TODAY}`); }
+
+// 3. POLI UMUM
+async function searchPoliUmum(resetPage = true) {
+    if(resetPage) pageState['poli_umum'] = 1;
+    showSkeleton('poliUmumContent');
+    const page = pageState['poli_umum'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('poli_umum').select('*', { count: 'exact' }).order('tanggal', {ascending: false});
+    const n = document.getElementById('pu_nama').value.trim(), d = document.getElementById('pu_dari').value, s = document.getElementById('pu_sampai').value;
+    if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('poliUmumContent'); return; }
+    tableDataState['poli_umum'] = data; 
+
+    const rows = data.map(r => `<tr>
+        <td class="td-date">${fmtDate(r.tanggal)}</td>
+        <td>${r.jam_kedatangan||'-'}</td>
+        <td class="td-name">${r.nama_pasien}</td>
+        <td>${r.usia||'-'}</td>
+        <td>${r.jenis_kelamin||'-'}</td>
+        <td class="td-mono">${r.no_bpjs||'-'}</td>
+        <td>${r.no_telp||'-'}</td>
+        <td>${r.status_pasien||'-'}</td>
+        <td><span class="badge ${r.pembayaran==='BPJS'?'badge-blue':'badge-orange'}">${r.pembayaran||'-'}</span></td>
+        <td>${r.nama_dokter||'-'}</td>
+        <td style="white-space:normal;min-width:150px">${r.diagnosis||'-'}</td>
+        <td style="white-space:normal;min-width:150px">${r.tindakan||'-'}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('poli_umum','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliUmum)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+    
+    document.getElementById('poliUmumContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblPoliUmum">
+                <thead><tr>
+                    <th>Tanggal</th><th>Jam</th><th>Nama Pasien</th><th>Usia</th><th>L/P</th>
+                    <th>No BPJS</th><th>No Telp</th><th>Status</th><th>Bayar</th>
+                    <th>Dokter</th><th>Diagnosis</th><th>Tindakan</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('poli_umum', count)}
+    </div>`;
+}
+
+// 4. POLI GIGI
+async function searchPoliGigi(resetPage = true) {
+    if(resetPage) pageState['poli_gigi'] = 1;
+    showSkeleton('poliGigiContent');
+    const page = pageState['poli_gigi'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('poli_gigi').select('*', { count: 'exact' }).order('tanggal', {ascending: false});
+    const n = document.getElementById('pg_nama').value.trim(), d = document.getElementById('pg_dari').value, s = document.getElementById('pg_sampai').value;
+    if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('poliGigiContent'); return; }
+    tableDataState['poli_gigi'] = data; 
+
+    const rows = data.map(r => {
+        const diag = [r.diagnosa1, r.diagnosa2, r.diagnosa3, r.diagnosa4, r.diagnosa5].filter(Boolean).join(', ');
+        const tindBiaya = [1,2,3,4].map(i => r['tindakan'+i] ? `${r['tindakan'+i]} (${fmtRp(r['biaya'+i])})` : null).filter(Boolean).join('<br>');
+        const tot = (r.biaya1||0)+(r.biaya2||0)+(r.biaya3||0)+(r.biaya4||0);
+
+        return `<tr>
+            <td class="td-date">${fmtDate(r.tanggal)}</td>
+            <td class="td-name">${r.nama_pasien}</td>
+            <td>${r.usia||'-'}</td>
+            <td>${r.jenis_kelamin||'-'}</td>
+            <td class="td-mono">${r.no_bpjs||'-'}</td>
+            <td>${r.no_telp||'-'}</td>
+            <td>${r.status_pasien||'-'}</td>
+            <td><span class="badge ${r.pembayaran==='BPJS'?'badge-blue':'badge-orange'}">${r.pembayaran||'-'}</span></td>
+            <td>${r.nama_dokter_gigi||'-'}</td>
+            <td style="white-space:normal;min-width:150px">${diag||'-'}</td>
+            <td style="white-space:normal;min-width:180px">${tindBiaya||'-'} <br><strong style="color:var(--success)">Tot: ${fmtRp(tot)}</strong></td>
+            <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('poli_gigi','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliGigi)"><i class="fa-solid fa-trash-can"></i></button></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('poliGigiContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblPoliGigi">
+                <thead><tr>
+                    <th>Tanggal</th><th>Nama Pasien</th><th>Usia</th><th>L/P</th>
+                    <th>No BPJS</th><th>No Telp</th><th>Status</th><th>Bayar</th>
+                    <th>Dokter Gigi</th><th>Diagnosis</th><th>Tindakan & Biaya</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('poli_gigi', count)}
+    </div>`;
+}
+
+// 5. OBAT KRONIS
+async function searchObatKronis(resetPage = true) {
+    if(resetPage) pageState['obat_kronis'] = 1;
+    showSkeleton('obatKronisContent');
+    const page = pageState['obat_kronis'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('obat_kronis').select('*', { count: 'exact' }).order('tanggal_ambil', {ascending: false});
+    const n = document.getElementById('ok_nama').value.trim(), b = document.getElementById('ok_bpjs').value.trim(), d = document.getElementById('ok_dari').value, s = document.getElementById('ok_sampai').value;
+    if (n) q = q.ilike('nama_pasien', `%${n}%`); if (b) q = q.ilike('no_bpjs', `%${b}%`); if (d) q = q.gte('tanggal_ambil', d); if (s) q = q.lte('tanggal_ambil', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('obatKronisContent'); return; }
+    
+    const rows = data.map(r => `<tr>
+        <td class="td-date">${fmtDate(r.tanggal_ambil)}</td>
+        <td class="td-name">${r.nama_pasien}</td>
+        <td class="td-mono">${r.no_bpjs||'-'}</td>
+        <td>${r.no_telp||'-'}</td>
+        <td><span class="badge badge-teal">${r.diagnosis||'-'}</span></td>
+        <td style="white-space:normal;min-width:200px">${r.resep_obat||'-'}</td>
+        <td class="td-date">${fmtDate(r.tanggal_berikutnya)}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('obat_kronis','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchObatKronis)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+    
+    document.getElementById('obatKronisContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblObatKronis">
+                <thead><tr>
+                    <th>Tgl Ambil</th><th>Nama Pasien</th><th>No BPJS</th><th>No. Telp</th>
+                    <th>Diagnosis</th><th>Resep Obat</th><th>Tgl Berikutnya</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('obat_kronis', count)}
+    </div>`;
+}
+
+// 6. RUJUKAN
+async function searchRujukan(resetPage = true) {
+    if(resetPage) pageState['rujukan'] = 1;
+    showSkeleton('rujukanContent');
+    const page = pageState['rujukan'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('rujukan').select('*', { count: 'exact' }).order('tanggal', {ascending: false});
+    const n = document.getElementById('ruj_nama').value.trim(), d = document.getElementById('ruj_dari').value, s = document.getElementById('ruj_sampai').value;
+    if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('rujukanContent'); return; }
+    
+    const rows = data.map(r => {
+        const diag = [r.diagnosa1, r.diagnosa2, r.diagnosa3, r.diagnosa4, r.diagnosa5].filter(Boolean).join(', ');
+        return `<tr>
+            <td class="td-date">${fmtDate(r.tanggal)}</td>
+            <td class="td-name">${r.nama_pasien}</td>
+            <td>${r.no_hp||'-'}</td>
+            <td class="td-mono">${r.no_bpjs||'-'}</td>
+            <td>${r.faskes_tujuan||'-'}</td>
+            <td>${r.poli_tujuan||'-'}</td>
+            <td style="white-space:normal;min-width:150px">${diag||'-'}</td>
+            <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('rujukan','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchRujukan)"><i class="fa-solid fa-trash-can"></i></button></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('rujukanContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblRujukan">
+                <thead><tr>
+                    <th>Tanggal</th><th>Nama Pasien</th><th>No. Telp</th><th>No BPJS</th>
+                    <th>Faskes Tujuan</th><th>Poli Tujuan</th><th>Diagnosis</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('rujukan', count)}
+    </div>`;
+}
+
+// 7. PASIEN KONTROL
+async function searchPasienKontrol(resetPage = true) {
+    if(resetPage) pageState['pasien_kontrol'] = 1;
+    showSkeleton('pasienKontrolContent');
+    const page = pageState['pasien_kontrol'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('pasien_kontrol').select('*', { count: 'exact' }).order('tanggal_kontrol', {ascending: true});
+    const n = document.getElementById('pk_nama').value.trim(), d = document.getElementById('pk_dari').value, s = document.getElementById('pk_sampai').value;
+    if (n) q = q.ilike('nama_pasien', `%${n}%`); if (d) q = q.gte('tanggal_kontrol', d); if (s) q = q.lte('tanggal_kontrol', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('pasienKontrolContent'); return; }
+    
+    const rows = data.map(r => `<tr>
+        <td class="td-date">${fmtDate(r.tanggal_kontrol)}</td>
+        <td class="td-name">${r.nama_pasien}</td>
+        <td>${r.poli_asal||'-'}</td>
+        <td>${r.nama_dokter||'-'}</td>
+        <td class="td-date">${fmtDate(r.tanggal_followup)}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('pasien_kontrol','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPasienKontrol)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+
+    document.getElementById('pasienKontrolContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblPasienKontrol">
+                <thead><tr>
+                    <th>Tgl Kontrol</th><th>Nama Pasien</th><th>Poli</th><th>Dokter</th>
+                    <th>Tgl Follow-up</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('pasien_kontrol', count)}
+    </div>`;
+}
+
+// 8. KEUANGAN
+async function searchKeuangan(resetPage = true) {
+    if(resetPage) pageState['keuangan'] = 1;
+    showSkeleton('keuanganContent'); 
+    document.getElementById('keuanganSummary').innerHTML = '';
+    const page = pageState['keuangan'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('laporan_keuangan').select('*', { count: 'exact' }).order('tanggal', {ascending: true});
+    const d = document.getElementById('keu_dari').value, s = document.getElementById('keu_sampai').value;
+    if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('keuanganContent'); return; }
+    
+    // Perhitungan ringkasan (hanya pada data per halaman)
+    const totUmum = data.reduce((sum,r)=>sum+(r.pendapatan_umum||0),0);
+    const totGigi = data.reduce((sum,r)=>sum+(r.pendapatan_gigi||0),0);
+    const totAll = data.reduce((sum,r)=>sum+(r.total_pemasukan||0),0);
+    
+    document.getElementById('keuanganSummary').innerHTML = `
+    <div class="keuangan-summary">
+        <div class="keuangan-card" style="border-left:4px solid var(--info)">
+            <div class="label">Total Poli Umum (Halaman Ini)</div>
+            <div class="amount" style="color:var(--info)">${fmtRp(totUmum)}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid #880e4f">
+            <div class="label">Total Poli Gigi (Halaman Ini)</div>
+            <div class="amount" style="color:#880e4f">${fmtRp(totGigi)}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid var(--success)">
+            <div class="label">Total Pendapatan (Halaman Ini)</div>
+            <div class="amount">${fmtRp(totAll)}</div>
+        </div>
+    </div>`;
+    
+    const rows = data.map(r => `<tr>
+        <td class="td-date">${fmtDate(r.tanggal)}</td>
+        <td style="text-align:right">${fmtRp(r.pendapatan_umum)}</td>
+        <td style="text-align:right">${fmtRp(r.pendapatan_gigi)}</td>
+        <td style="text-align:right;font-weight:700;color:var(--success)">${fmtRp(r.total_pemasukan)}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('laporan_keuangan','${r.id}','${fmtDate(r.tanggal)}',searchKeuangan)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+    
+    document.getElementById('keuanganContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblKeuangan">
+                <thead><tr>
+                    <th>Tanggal</th><th style="text-align:right">Poli Umum</th>
+                    <th style="text-align:right">Poli Gigi</th><th style="text-align:right">Total</th>
+                    <th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('keuangan', count)}
+    </div>`;
+}
+
+// 9. LAPORAN PUSKESMAS & ADMIN
+async function searchPuskesmas(resetPage = true) {
+    if(resetPage) pageState['laporan_puskesmas'] = 1;
+    showSkeleton('puskesmasContent');
+    const page = pageState['laporan_puskesmas'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('laporan_puskesmas').select('*', { count: 'exact' }).order('tanggal', {ascending: true});
+    const d = document.getElementById('pusk_dari').value, s = document.getElementById('pusk_sampai').value;
+    if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('puskesmasContent'); return; }
+    
+    const rows = data.map(r => `<tr>
+        <td>${fmtDate(r.tanggal)}</td>
+        <td class="td-name">${r.diagnosis||'-'}</td>
+        <td>${r.kategori_usia||'-'}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('laporan_puskesmas','${r.id}','${(r.diagnosis||'').replace(/'/g,"\\'")}',searchPuskesmas)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+
+    document.getElementById('puskesmasContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblPuskesmas">
+                <thead><tr>
+                    <th>Tanggal</th><th>Diagnosis</th><th>Kategori Usia</th><th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('laporan_puskesmas', count)}
+    </div>`;
+}
+
+async function searchAdmin(resetPage = true) {
+    if(resetPage) pageState['laporan_admin'] = 1;
+    showSkeleton('adminContent');
+    const page = pageState['laporan_admin'];
+    const from = (page - 1) * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    let q = db.from('laporan_admin').select('*', { count: 'exact' }).order('tanggal', {ascending: true});
+    const d = document.getElementById('adm_dari').value, s = document.getElementById('adm_sampai').value;
+    if (d) q = q.gte('tanggal', d); if (s) q = q.lte('tanggal', s);
+    
+    const { data, count } = await q.range(from, to); 
+    if (!data || !data.length) { empty('adminContent'); return; }
+    
+    const rows = data.map(r => `<tr>
+        <td>${fmtDate(r.tanggal)}</td>
+        <td style="text-align:center">${r.jumlah_pcare||0}</td>
+        <td style="text-align:center">${r.angka_sakit||0}</td>
+        <td style="text-align:center">${r.angka_sehat||0}</td>
+        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('laporan_admin','${r.id}','laporan tgl ${fmtDate(r.tanggal)}',searchAdmin)"><i class="fa-solid fa-trash-can"></i></button></td>
+    </tr>`).join('');
+
+    document.getElementById('adminContent').innerHTML = `
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblAdmin">
+                <thead><tr>
+                    <th>Tanggal</th><th style="text-align:center">Jumlah Pcare</th>
+                    <th style="text-align:center">Angka Sakit</th><th style="text-align:center">Angka Sehat</th>
+                    <th class="th-aksi">Aksi</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+        ${renderPagination('laporan_admin', count)}
+    </div>`;
+}
+
+// INIT
+loadOverview();
+
+</script>
+</body>
+</html>

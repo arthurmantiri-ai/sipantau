@@ -1,0 +1,12 @@
+# Secrets - never commit these
+api_keys.txt
+*.env
+.env*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Netlify local folder
+.netlify/

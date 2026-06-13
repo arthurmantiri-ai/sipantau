@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Obat Kronis - Sistem Informasi Klinik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 700px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover { color: var(--primary-color); }
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label.main-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-control[readonly] {
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 120px;
+            line-height: 1.5;
+        }
+
+        /* Desain Chips untuk Multiple Checkbox */
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            display: none; /* Sembunyikan checkbox bawaan browser */
+        }
+
+        .checkbox-item label {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        /* Efek ketika checkbox terpilih */
+        .checkbox-item input[type="checkbox"]:checked + label {
+            background-color: #eff6ff;
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px var(--primary-color);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover { background-color: var(--primary-hover); }
+
+        @media (max-width: 600px) {
+            .form-container { padding: 25px 20px; }
+            .form-row { grid-template-columns: 1fr; gap: 0; }
+        }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Input Obat Kronis</h2>
+        </div>
+
+        <form action="#" method="POST" id="formObatKronis">
+            
+            <div class="form-group">
+                <label for="nama_pasien" class="main-label">Nama Pasien</label>
+                <input type="text" id="nama_pasien" name="nama_pasien" class="form-control" placeholder="Nama lengkap pasien" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="no_bpjs" class="main-label">Nomor BPJS / NIK</label>
+                    <input type="text" id="no_bpjs" name="no_bpjs" class="form-control" placeholder="Masukkan nomor BPJS/NIK" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="no_telp" class="main-label">Nomor Telepon / HP</label>
+                    <input type="tel" id="no_telp" name="no_telp" class="form-control" placeholder="08xxxxxxxxxx" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tanggal_ambil" class="main-label">Tanggal Ambil Obat</label>
+                    <input type="date" id="tanggal_ambil" name="tanggal_ambil" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="tanggal_berikutnya" class="main-label">Jadwal Ambil Berikutnya</label>
+                    <input type="date" id="tanggal_berikutnya" name="tanggal_berikutnya" class="form-control" readonly title="Otomatis terisi 30 hari ke depan">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="main-label">Diagnosis (Bisa pilih lebih dari satu)</label>
+                <div class="checkbox-grid">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_hipertensi" name="diagnosis" value="Hipertensi">
+                        <label for="diag_hipertensi">Hipertensi</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_dm" name="diagnosis" value="Diabetes Melitus">
+                        <label for="diag_dm">Diabetes Melitus</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_asma" name="diagnosis" value="Asma">
+                        <label for="diag_asma">Asma</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_ppok" name="diagnosis" value="PPOK">
+                        <label for="diag_ppok">PPOK</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_jantung" name="diagnosis" value="Jantung">
+                        <label for="diag_jantung">Jantung</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_skizofrenia" name="diagnosis" value="Skizofrenia">
+                        <label for="diag_skizofrenia">Skizofrenia</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_epilepsi" name="diagnosis" value="Epilepsi">
+                        <label for="diag_epilepsi">Epilepsi</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_stroke" name="diagnosis" value="Stroke">
+                        <label for="diag_stroke">Stroke</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_ckd" name="diagnosis" value="CKD">
+                        <label for="diag_ckd">CKD</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag_sle" name="diagnosis" value="SLE">
+                        <label for="diag_sle">SLE</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="resep_obat" class="main-label">Resep Obat</label>
+                <textarea id="resep_obat" name="resep_obat" class="form-control" placeholder="Tulis rincian resep obat di sini (Contoh: Amlodipine 10mg 1x1, Metformin 500mg 2x1...)" required></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">Simpan Data Obat Kronis</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // Otomatis isi tanggal berikutnya (+30 hari)
+        const inputTglAmbil = document.getElementById('tanggal_ambil')
+        const inputTglBerikutnya = document.getElementById('tanggal_berikutnya')
+        inputTglAmbil.addEventListener('change', function() {
+            if (this.value) {
+                const date = new Date(this.value)
+                date.setDate(date.getDate() + 30)
+                inputTglBerikutnya.value = date.toISOString().split('T')[0]
+            } else {
+                inputTglBerikutnya.value = ''
+            }
+        })
+
+        // Kirim data ke Supabase saat form disubmit
+        document.getElementById('formObatKronis').addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const diagChecked = [...document.querySelectorAll('input[name="diagnosis"]:checked')]
+                                .map(el => el.value).join(', ')
+            const data = {
+                nama_pasien:        document.getElementById('nama_pasien').value,
+                no_bpjs:            document.getElementById('no_bpjs').value,
+                no_telp:            document.getElementById('no_telp').value,
+                tanggal_ambil:      document.getElementById('tanggal_ambil').value,
+                tanggal_berikutnya: document.getElementById('tanggal_berikutnya').value,
+                diagnosis:          diagChecked,
+                resep_obat:         document.getElementById('resep_obat').value,
+            }
+            const { error } = await db.from('obat_kronis').insert([data])
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message)
+            } else {
+                alert('✓ Data obat kronis berhasil disimpan!')
+                e.target.reset()
+            }
+        })
+    </script>
+</body>
+</html>

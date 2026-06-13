@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Harian Admin - Sistem Informasi Klinik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 550px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover { color: var(--primary-color); }
+
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background-color: #fff;
+            color: var(--text-main);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .info-box {
+            background-color: #eff6ff;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+
+        .btn-submit:hover { background-color: var(--primary-hover); }
+
+        @media (max-width: 480px) {
+            .form-container { padding: 25px 20px; }
+        }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Laporan Harian Admin</h2>
+        </div>
+
+        <div class="info-box">
+            <i class="fa-solid fa-chart-line fa-lg"></i>
+            <p>Masukkan rekapitulasi data capaian indikator harian Anda di bawah ini. Pastikan hanya memasukkan angka.</p>
+        </div>
+
+        <form action="#" method="POST" id="formLaporanAdmin">
+            
+            <div class="form-group">
+                <label for="tanggal">Tanggal Laporan</label>
+                <input type="date" id="tanggal" name="tanggal" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="jumlah_pcare">Jumlah Pcare Hari Ini</label>
+                <input type="number" id="jumlah_pcare" name="jumlah_pcare" class="form-control" placeholder="0" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="angka_kontak">Jumlah Angka Kontak (Sampai Hari Ini)</label>
+                <input type="number" id="angka_kontak" name="angka_kontak" class="form-control" placeholder="0" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="angka_sakit">Jumlah Angka Sakit (Sampai Hari Ini)</label>
+                <input type="number" id="angka_sakit" name="angka_sakit" class="form-control" placeholder="0" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="angka_sehat">Jumlah Angka Sehat (Sampai Hari Ini)</label>
+                <input type="number" id="angka_sehat" name="angka_sehat" class="form-control" placeholder="0" min="0" required>
+            </div>
+
+            <button type="submit" class="btn-submit">Simpan Laporan Admin</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // Otomatis isi tanggal hari ini
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('tanggal').value = new Date().toISOString().split('T')[0]
+        })
+
+        // Kirim data ke Supabase saat form disubmit
+        document.getElementById('formLaporanAdmin').addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const data = {
+                tanggal:      document.getElementById('tanggal').value,
+                jumlah_pcare: parseInt(document.getElementById('jumlah_pcare').value),
+                angka_kontak: parseInt(document.getElementById('angka_kontak').value),
+                angka_sakit:  parseInt(document.getElementById('angka_sakit').value),
+                angka_sehat:  parseInt(document.getElementById('angka_sehat').value),
+            }
+            const { error } = await db.from('laporan_admin').insert([data])
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message)
+            } else {
+                alert('✓ Laporan admin berhasil disimpan!')
+                e.target.reset()
+                document.getElementById('tanggal').value = new Date().toISOString().split('T')[0]
+            }
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Palette Konsep 4: Trust & Faith */
+            --primary-color: #004d40; /* Hijau Gelap Elegan */
+            --secondary-color: #00796b; /* Hijau Medium */
+            --accent-light: #b2dfdb; /* Hijau Sangat Muda untuk Border */
+            --bg-gradient: linear-gradient(135deg, #e0f2f1 0%, #ffffff 100%);
+            --card-bg: rgba(255, 255, 255, 0.85); /* Putih Semi-Transparan */
+            --text-main: #004d40;
+            --text-muted: #475569;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Header Section */
+        .header {
+            text-align: center;
+            padding: 60px 20px 40px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-img {
+            width: 200px;
+            height: auto;
+            margin-bottom: 5px;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 400;
+        }
+
+        /* Grid Layout untuk Menu Input */
+        .dashboard-container {
+            width: 90%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 25px;
+            padding-bottom: 60px;
+        }
+
+        /* Desain Card Menu Biasa */
+        .menu-card {
+            background-color: var(--card-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 77, 64, 0.05);
+            border: 1px solid var(--accent-light);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .menu-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 77, 64, 0.12);
+            border-color: var(--secondary-color);
+            background-color: #ffffff;
+        }
+
+        .icon-wrapper {
+            width: 70px;
+            height: 70px;
+            background-color: #e0f2f1;
+            color: var(--secondary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-card:hover .icon-wrapper {
+            background-color: var(--secondary-color);
+            color: #ffffff;
+            transform: scale(1.1);
+        }
+
+        .menu-card h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .menu-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: auto;
+            padding: 20px;
+            text-align: center;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.5);
+            border-top: 1px solid var(--accent-light);
+        }
+
+        /* ── Banners Container ── */
+        .banners-container {
+            width: 90%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* ── Dashboard Feature Card (Hijau) ── */
+        .dashboard-card {
+            background: linear-gradient(135deg, #004d40 0%, #00695c 55%, #00897b 100%);
+            border-radius: 20px;
+            padding: 28px 36px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            box-shadow: 0 8px 32px rgba(0, 77, 64, 0.25);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* ── Farmasi Feature Card (Biru - Berbeda dari modul lain) ── */
+        .farmasi-card {
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #3b82f6 100%);
+            border-radius: 20px;
+            padding: 28px 36px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            box-shadow: 0 8px 32px rgba(30, 58, 138, 0.25);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Decorative blobs for banners */
+        .dashboard-card::before, .farmasi-card::before {
+            content: ''; position: absolute; top: -40px; right: -40px;
+            width: 160px; height: 160px; background: rgba(255,255,255,0.06);
+            border-radius: 50%; pointer-events: none;
+        }
+        .dashboard-card::after, .farmasi-card::after {
+            content: ''; position: absolute; bottom: -50px; right: 120px;
+            width: 200px; height: 200px; background: rgba(255,255,255,0.04);
+            border-radius: 50%; pointer-events: none;
+        }
+
+        .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 16px 48px rgba(0, 77, 64, 0.35); }
+        .farmasi-card:hover { transform: translateY(-5px); box-shadow: 0 16px 48px rgba(30, 58, 138, 0.35); }
+
+        .banner-card-left {
+            display: flex; align-items: center; gap: 22px; z-index: 1;
+        }
+
+        .banner-card-icon {
+            width: 64px; height: 64px;
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px; display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; color: #ffffff; flex-shrink: 0; backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover .banner-card-icon, .farmasi-card:hover .banner-card-icon {
+            background: rgba(255,255,255,0.25); transform: scale(1.08) rotate(-3deg);
+        }
+
+        .banner-card-text h3 {
+            font-size: 1.25rem; font-weight: 700; color: #ffffff;
+            margin-bottom: 5px; letter-spacing: -0.3px;
+        }
+
+        .banner-card-text p {
+            font-size: 0.88rem; color: rgba(255,255,255,0.85);
+            line-height: 1.5; max-width: 500px;
+        }
+
+        .banner-card-pills {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+        }
+
+        .banner-pill {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+            color: #ffffff; font-size: 0.72rem; font-weight: 600;
+            padding: 4px 12px; border-radius: 20px;
+        }
+
+        .banner-card-right { z-index: 1; flex-shrink: 0; }
+
+        .banner-cta {
+            background: #ffffff; color: var(--primary-color);
+            font-weight: 700; font-size: 0.9rem; padding: 12px 24px; border-radius: 10px;
+            display: flex; align-items: center; gap: 8px; white-space: nowrap;
+            transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .farmasi-card .banner-cta { color: #1d4ed8; } /* Teks biru untuk cta farmasi */
+
+        .dashboard-card:hover .banner-cta { background: #e0f2f1; transform: scale(1.04); }
+        .farmasi-card:hover .banner-cta { background: #eff6ff; transform: scale(1.04); }
+
+        /* Divider Label */
+        .section-divider {
+            width: 90%; max-width: 1200px; display: flex; align-items: center;
+            gap: 12px; margin-bottom: 20px; margin-top: 10px;
+        }
+        .section-divider-line { flex: 1; height: 1px; background: var(--accent-light); }
+        .section-divider-label {
+            font-size: 0.78rem; font-weight: 700; color: var(--secondary-color);
+            text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2rem; }
+            .dashboard-container { grid-template-columns: 1fr; }
+            .banners-container { width: 90%; }
+            .dashboard-card, .farmasi-card { flex-direction: column; align-items: flex-start; padding: 24px 22px; }
+            .banner-card-right { width: 100%; }
+            .banner-cta { width: 100%; justify-content: center; }
+            .banner-card-text p { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="logo-img">
+        
+        <h1>Klinik Imanuel</h1>
+        <p>Portal Sistem Pencatatan & Pantauan Klinik</p>
+    </header>
+
+    <div class="banners-container">
+        
+        <a href="dashboard.html" class="dashboard-card">
+            <div class="banner-card-left">
+                <div class="banner-card-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <div class="banner-card-text">
+                    <h3>Dashboard &amp; Pencarian Data</h3>
+                    <p>Lihat ringkasan aktivitas hari ini, cari data pasien, pantau follow-up, dan ekspor laporan ke Excel — semuanya dalam satu tempat.</p>
+                    <div class="banner-card-pills">
+                        <span class="banner-pill"><i class="fa-solid fa-bell" style="margin-right:4px"></i>Follow-up Hari Ini</span>
+                        <span class="banner-pill"><i class="fa-solid fa-magnifying-glass" style="margin-right:4px"></i>Pencarian Pasien</span>
+                        <span class="banner-pill"><i class="fa-solid fa-file-excel" style="margin-right:4px"></i>Export Excel</span>
+                    </div>
+                </div>
+            </div>
+            <div class="banner-card-right">
+                <div class="banner-cta">Buka Dashboard <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="stok_obat.html" class="farmasi-card">
+            <div class="banner-card-left">
+                <div class="banner-card-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div class="banner-card-text">
+                    <h3>Manajemen Stok Obat (Apotek)</h3>
+                    <p>Sistem inventaris obat pintar dengan pengaturan FEFO (First Expired First Out), transaksi masuk/keluar, dan analitik stok apotek.</p>
+                    <div class="banner-card-pills">
+                        <span class="banner-pill" style="background: rgba(220, 38, 38, 0.8); border:none;"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Akses Terkunci</span>
+                        <span class="banner-pill"><i class="fa-solid fa-truck-ramp-box" style="margin-right:4px"></i>Sistem Batch</span>
+                        <span class="banner-pill"><i class="fa-solid fa-chart-pie" style="margin-right:4px"></i>Analitik Obat</span>
+                    </div>
+                </div>
+            </div>
+            <div class="banner-card-right">
+                <div class="banner-cta">Buka Modul Farmasi <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+    </div>
+
+    <div class="section-divider">
+        <div class="section-divider-line"></div>
+        <span class="section-divider-label"><i class="fa-solid fa-pencil" style="margin-right:6px"></i>Form Input Data Harian</span>
+        <div class="section-divider-line"></div>
+    </div>
+
+    <main class="dashboard-container">
+        
+        <a href="rujukan.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-file-medical"></i></div>
+            <h3>Input Rujukan</h3>
+            <p>Form rekap data rujukan pasien ke fasilitas kesehatan lanjutan yang diisi oleh admin.</p>
+        </a>
+
+        <a href="obat_kronis.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-capsules"></i></div>
+            <h3>Input Obat Kronis</h3>
+            <p>Manajemen dan pendataan resep obat untuk pasien PRB/PROLANIS oleh apoteker.</p>
+        </a>
+
+        <a href="pasien_kontrol.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
+            <h3>Input Pasien Kontrol</h3>
+            <p>Penjadwalan pasien rencana kontrol kembali ke klinik yang diisi oleh dokter.</p>
+        </a>
+
+        <a href="poli_umum.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-stethoscope"></i></div>
+            <h3>Register Poli Umum</h3>
+            <p>Pencatatan data kunjungan dan tindakan harian di Poli Umum oleh perawat.</p>
+        </a>
+
+        <a href="poli_gigi.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-tooth"></i></div>
+            <h3>Register Poli Gigi</h3>
+            <p>Pencatatan kunjungan, dokter pemeriksa, dan tindakan Poli Gigi oleh perawat gigi.</p>
+        </a>
+
+        <a href="laporan_puskesmas.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-hospital"></i></div>
+            <h3>Laporan Puskesmas</h3>
+            <p>Input data laporan berkala ke puskesmas oleh perawat.</p>
+        </a>
+
+        <a href="laporan_keuangan.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <h3>Laporan Keuangan</h3>
+            <p>Pembukuan dan rekapitulasi penerimaan operasional harian klinik oleh kasir.</p>
+        </a>
+
+        <a href="laporan_admin.html" class="menu-card">
+            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list"></i></div>
+            <h3>Laporan Harian Admin</h3>
+            <p>Rekapitulasi administrasi capaian indikator kesehatan harian.</p>
+        </a>
+
+    </main>
+
+    <footer class="footer">
+        &copy; 2026 Klinik Imanuel. Melayani dengan Kasih.
+    </footer>
+
+</body>
+</html>

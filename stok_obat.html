@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Stok Obat - Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="stok_obat.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-card">
+            <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="auth-logo">
+            <h2>Akses Apoteker</h2>
+            <p>Masukkan kata sandi farmasi untuk mengakses sistem stok batch.</p>
+            <input type="password" id="farmasiPassword" placeholder="Kata Sandi..." class="form-control" autocomplete="off">
+            <div id="authError" class="error-text">Kata sandi salah!</div>
+            <button id="btnMasuk" class="btn btn-primary">Masuk <i class="fa-solid fa-arrow-right"></i></button>
+            <a href="index.html" class="btn-back-auth">Kembali ke Beranda</a>
+        </div>
+    </div>
+
+    <main id="mainApp" class="app-container" style="display: none;">
+        <header class="app-header">
+            <div class="header-left">
+                <a href="index.html" class="btn-back" title="Kembali ke Beranda"><i class="fa-solid fa-arrow-left"></i></a>
+                <img src="logo klinik imanuel.png" alt="Logo" class="header-logo">
+                <div>
+                    <h1>Farmasi Imanuel</h1>
+                    <p>Manajemen Stok Batch & Analitik</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="time-badge" id="currentTime"></div>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #e0f2f1; color: #00695c;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div class="stat-info">
+                    <h3 id="totalBatch">0</h3>
+                    <p>Total Batch Aktif</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fff3e0; color: #e65100;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="stat-info">
+                    <h3 id="stokMenipis" style="color: #e65100;">0</h3>
+                    <p>Batch Menipis (< 10)</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fee2e2; color: #dc2626;"><i class="fa-solid fa-calendar-xmark"></i></div>
+                <div class="stat-info">
+                    <h3 id="obatExpired" style="color: #dc2626;">0</h3>
+                    <p>Batch Kadaluarsa</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom: 30px;">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #f1f5f9; color: #64748b;"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="stat-info">
+                    <h3 id="asetBulanLaluRp" style="color: #475569; font-size: 1.3rem;">Rp 0</h3>
+                    <p>Sisa Aset Bulan Lalu</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fa-solid fa-cart-arrow-down"></i></div>
+                <div class="stat-info">
+                    <h3 id="pembelianBulanIniRp" style="color: #3b82f6; font-size: 1.3rem;">Rp 0</h3>
+                    <p>Pembelian Bulan Ini</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #fef2f2; color: #ef4444;"><i class="fa-solid fa-cash-register"></i></div>
+                <div class="stat-info">
+                    <h3 id="penjualanBulanIniRp" style="color: #ef4444; font-size: 1.3rem;">Rp 0</h3>
+                    <p>Keluar/Jual Bulan Ini</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: #ecfdf5; color: #10b981;"><i class="fa-solid fa-vault"></i></div>
+                <div class="stat-info">
+                    <h3 id="totalTersediaRp" style="color: #10b981; font-size: 1.3rem;">Rp 0</h3>
+                    <p>Total Tersedia (Aset Lalu + Beli)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="analytics-grid">
+            <div class="analytics-card">
+                <h3><i class="fa-solid fa-chart-pie"></i> Top 10 Stok Obat Terbanyak</h3>
+                <ul id="topObatList" class="analytics-list">
+                    <li>Memuat data...</li>
+                </ul>
+            </div>
+            <div class="analytics-card">
+                <h3><i class="fa-solid fa-truck-moving"></i> Statistik Distributor</h3>
+                <ul id="distributorStatList" class="analytics-list">
+                    <li>Memuat data...</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="export-bar">
+            <div>
+                <strong style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Export Data Batch (Berdasarkan Tgl Dibuat)</strong>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" id="exportMulai" class="form-control" style="width: auto; margin-bottom: 0;">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">s/d</span>
+                    <input type="date" id="exportSelesai" class="form-control" style="width: auto; margin-bottom: 0;">
+                    <button onclick="exportToExcel()" class="btn btn-primary"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Cari nama obat atau distributor...">
+            </div>
+            <div class="action-buttons">
+                <button id="btnObatMasuk" class="btn btn-success"><i class="fa-solid fa-truck-ramp-box"></i> Obat Masuk</button>
+                <button id="btnObatKeluar" class="btn btn-danger"><i class="fa-solid fa-hand-holding-medical"></i> Obat Keluar</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="tabelObat">
+                <thead>
+                    <tr>
+                        <th>Nama Obat & Satuan</th>
+                        <th>Harga Beli</th>
+                        <th>Distributor</th>
+                        <th>Tgl Expired</th>
+                        <th>Sisa Stok</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelObatBody">
+                    <tr><td colspan="7" class="text-center">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div id="modalMasuk" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-truck-ramp-box" style="color: var(--success);"></i> Input Obat Masuk</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="formMasuk" class="modal-body">
+                <p class="modal-info">Sistem akan mencatat nilai rupiah ini sebagai "Pembelian Obat Masuk" secara otomatis ke dalam riwayat.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nama Obat</label>
+                        <input type="text" id="in_nama" class="form-control" list="namaObatList" placeholder="Misal: Parasetamol 500mg" required>
+                        <datalist id="namaObatList"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>Satuan (Mis: Tablet, Botol)</label>
+                        <input type="text" id="in_satuan" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Harga Beli (Per Satuan)</label>
+                        <input type="number" id="in_harga" class="form-control" step="any" min="0" placeholder="Rp 0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Distributor</label>
+                        <input type="text" id="in_distributor" class="form-control" list="distributorList" placeholder="Nama PBF / Suplier" required>
+                        <datalist id="distributorList"></datalist>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal Kadaluarsa (Exp Date)</label>
+                        <input type="date" id="in_expired" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jumlah Stok Masuk</label>
+                        <input type="number" id="in_jumlah" class="form-control" min="1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Keterangan Tambahan / No Faktur</label>
+                    <input type="text" id="in_keterangan" class="form-control">
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">Simpan Obat Masuk</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalKeluar" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-hand-holding-medical" style="color: var(--danger);"></i> Input Obat Keluar</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="formKeluar" class="modal-body">
+                <p class="modal-info" style="background:#fee2e2; border-color:#ef4444; color:#b91c1c;">Pilih spesifik batch obat yang akan dikeluarkan berdasarkan Tanggal Expired (FEFO).</p>
+                
+                <div class="form-group">
+                    <label>Pilih Obat (Batch Terdekat Expired)</label>
+                    <select id="out_obat_id" class="form-control" required>
+                        <option value="" disabled selected>Memuat daftar obat...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Jumlah Keluar</label>
+                    <input type="number" id="out_jumlah" class="form-control" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Keterangan (Nama Pasien / No Resep)</label>
+                    <input type="text" id="out_keterangan" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn btn-danger w-100">Keluarkan Obat</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="stok_obat.js"></script>
+</body>
+</html>

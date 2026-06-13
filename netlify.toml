@@ -1,0 +1,12 @@
+# Netlify configuration for Klinik Imanuel
+# Static site - no build step needed, publish from repo root
+
+[build]
+  publish = "."
+
+# Optional: security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Puskesmas - Sistem Informasi Klinik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 650px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover { color: var(--primary-color); }
+
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background-color: #fff;
+            color: var(--text-main);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        select.form-control {
+            cursor: pointer;
+            /* Memastikan text panjang di dropdown terpotong rapi dengan elipsis jika di layar kecil */
+            text-overflow: ellipsis; 
+            padding-right: 30px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+
+        .btn-submit:hover { background-color: var(--primary-hover); }
+
+        @media (max-width: 480px) {
+            .form-container { padding: 25px 20px; }
+        }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Laporan Puskesmas</h2>
+        </div>
+
+        <form action="#" method="POST" id="formLaporanPuskesmas">
+            
+            <div class="form-group">
+                <label for="tanggal">Tanggal Laporan</label>
+                <input type="date" id="tanggal" name="tanggal" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="diagnosis">Diagnosis</label>
+                <select id="diagnosis" name="diagnosis" class="form-control" required>
+                    <option value="" disabled selected>Pilih Diagnosis...</option>
+                    <option value="Diare (termasuk tersangka kolera) / GEA">1. Diare (termasuk tersangka kolera) / GEA</option>
+                    <option value="Infeksi Penyakit Usus Yang lain / GERD">2. Infeksi Penyakit Usus Yang lain / GERD</option>
+                    <option value="TB Paru / KP">3. TB Paru / KP</option>
+                    <option value="TB Selain Paru">4. TB Selain Paru</option>
+                    <option value="Campak / Morbili">5. Campak / Morbili</option>
+                    <option value="Radang Hati Menular / Hepatitis">6. Radang Hati Menular / Hepatitis</option>
+                    <option value="Rabies / Lyssa">7. Rabies / Lyssa</option>
+                    <option value="DHF">8. DHF</option>
+                    <option value="Cacar Air / Varicella">9. Cacar Air / Varicella</option>
+                    <option value="Infeksi Gonokok / GO">10. Infeksi Gonokok / GO</option>
+                    <option value="Non Gonokok">11. Non Gonokok</option>
+                    <option value="Penyakit Kelamin Lainnya / Fluor Albus">12. Penyakit Kelamin Lainnya / Fluor Albus</option>
+                    <option value="Penyakit Kecacingan">13. Penyakit Kecacingan</option>
+                    <option value="Scabies">14. Scabies</option>
+                    <option value="Gangguan Psikopat">15. Gangguan Psikopat</option>
+                    <option value="Gangguan Neurotik">16. Gangguan Neurotik</option>
+                    <option value="Penyakit Jiwa Lainnya">17. Penyakit Jiwa Lainnya</option>
+                    <option value="Epilepsi">18. Epilepsi</option>
+                    <option value="Penyakit & Kelainan Susunan Saraf Lainnya">19. Penyakit & Kelainan Susunan Saraf Lainnya</option>
+                    <option value="Glaukoma">20. Glaukoma</option>
+                    <option value="Katarak">21. Katarak</option>
+                    <option value="Kelainan Refraksi">22. Kelainan Refraksi</option>
+                    <option value="Kelainan Kornea">23. Kelainan Kornea</option>
+                    <option value="Penyakit Mata lain-lain / Konjungtivitis">24. Penyakit Mata lain-lain / Konjungtivitis</option>
+                    <option value="Infeksi Telinga Tengah / OMA">25. Infeksi Telinga Tengah / OMA</option>
+                    <option value="Infeksi Mastoid (Mastoiditis)">26. Infeksi Mastoid (Mastoiditis)</option>
+                    <option value="Tonsilitis">27. Tonsilitis</option>
+                    <option value="Infeksi akut pd saluran pernafasan bag. Atas / ISPA">28. Infeksi akut pd saluran pernafasan bag. Atas / ISPA</option>
+                    <option value="Penyakit lain pd saluran pernafasan bag. Atas">29. Penyakit lain pd saluran pernafasan bag. Atas</option>
+                    <option value="Pneumonis">30. Pneumonis</option>
+                    <option value="Bronkitis">31. Bronkitis</option>
+                    <option value="Asma">32. Asma</option>
+                    <option value="Caries Gigi">33. Caries Gigi</option>
+                    <option value="Penyakit Pulpa & Jaringan Penapikal">34. Penyakit Pulpa & Jaringan Penapikal</option>
+                    <option value="Gingitis &Penyakit Penodental">35. Gingitis &Penyakit Penodental</option>
+                    <option value="Gangguan Gigi & jaringan Penyangga lainnya">36. Gangguan Gigi & jaringan Penyangga lainnya</option>
+                    <option value="Penyakit pada saluran kencing / ISK">37. Penyakit pada saluran kencing / ISK</option>
+                    <option value="Keguguran / Abortus">38. Keguguran / Abortus</option>
+                    <option value="Pendarahan pada kelamin pesalinan & nifas">39. Pendarahan pada kelamin pesalinan & nifas</option>
+                    <option value="Keracunan Kehamilan ( Eklamsia )">40. Keracunan Kehamilan ( Eklamsia )</option>
+                    <option value="Hyperemesis">41. Hyperemesis</option>
+                    <option value="Kecelakaan & ruda paksa">42. Kecelakaan & ruda paksa</option>
+                    <option value="Keracunan makanan">43. Keracunan makanan</option>
+                    <option value="Penyakit Kulit Infeksi ( Dermatitis )">44. Penyakit Kulit Infeksi ( Dermatitis )</option>
+                    <option value="Penyakit Kulit Alergi">45. Penyakit Kulit Alergi</option>
+                    <option value="Penyakit Kulit karena Jamur / Tinea">46. Penyakit Kulit karena Jamur / Tinea</option>
+                    <option value="Neoplasma Ganas / Ca / Kanker">47. Neoplasma Ganas / Ca / Kanker</option>
+                    <option value="Diabetes Mellitus">48. Diabetes Mellitus</option>
+                    <option value="Gangguan Fungsi Hati / Ictrus">49. Gangguan Fungsi Hati / Ictrus</option>
+                    <option value="Gangguan Ginjal / CKD">50. Gangguan Ginjal / CKD</option>
+                    <option value="Gangguan Prostat / BPH">51. Gangguan Prostat / BPH</option>
+                    <option value="Gastritis">52. Gastritis</option>
+                    <option value="Penyakit Jantung / CHF / HHD">53. Penyakit Jantung / CHF / HHD</option>
+                    <option value="Hipertensi">54. Hipertensi</option>
+                    <option value="KIPI">55. KIPI</option>
+                    <option value="Gigitan Anjing">56. Gigitan Anjing</option>
+                    <option value="Susp Cov-19">57. Susp Cov-19</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="kategori_usia">Kategori Usia</label>
+                <select id="kategori_usia" name="kategori_usia" class="form-control" required>
+                    <option value="" disabled selected>Pilih Kategori Usia...</option>
+                    <option value="0-7 HR">1. 0-7 HR</option>
+                    <option value="2-28 HR">2. 2-28 HR</option>
+                    <option value="1 Bln-1 Thn">3. 1 Bln-1 Thn</option>
+                    <option value="1-4Thn">4. 1-4 Thn</option>
+                    <option value="5-9Thn">5. 5-9 Thn</option>
+                    <option value="10-14Thn">6. 10-14 Thn</option>
+                    <option value="15-19Thn">7. 15-19 Thn</option>
+                    <option value="20-44Thn">8. 20-44 Thn</option>
+                    <option value="45-54Thn">9. 45-54 Thn</option>
+                    <option value="55-59Thn">10. 55-59 Thn</option>
+                    <option value="60-69Thn">11. 60-69 Thn</option>
+                    <option value="> 70 Tahun">12. Lebih dari 70 tahun</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-submit">Simpan Laporan Puskesmas</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // Otomatis isi tanggal hari ini
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('tanggal').value = new Date().toISOString().split('T')[0]
+        })
+
+        // Kirim data ke Supabase saat form disubmit
+        document.getElementById('formLaporanPuskesmas').addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const data = {
+                tanggal:       document.getElementById('tanggal').value,
+                diagnosis:     document.getElementById('diagnosis').value,
+                kategori_usia: document.getElementById('kategori_usia').value,
+            }
+            const { error } = await db.from('laporan_puskesmas').insert([data])
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message)
+            } else {
+                alert('✓ Laporan puskesmas berhasil disimpan!')
+                e.target.reset()
+                document.getElementById('tanggal').value = new Date().toISOString().split('T')[0]
+            }
+        })
+    </script>
+</body>
+</html>

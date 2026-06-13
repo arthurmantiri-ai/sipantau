@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Rujukan - Sistem Informasi Klinik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --danger-color: #ef4444;
+            --danger-hover: #dc2626;
+            --success-color: #10b981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 650px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover { color: var(--primary-color); }
+
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+
+        /* Form Row untuk layout 2 kolom (opsional agar ringkas) */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Gaya Khusus Bagian Diagnosa */
+        .diagnosa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .diagnosa-wrapper {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-add {
+            background-color: #eff6ff;
+            color: var(--primary-color);
+            border: 1px dashed var(--primary-color);
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add:hover {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-remove {
+            background-color: #fef2f2;
+            color: var(--danger-color);
+            border: 1px solid #fee2e2;
+            padding: 0 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-remove:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+
+        .btn-submit:hover { background-color: var(--primary-hover); }
+
+        /* Responsif untuk HP */
+        @media (max-width: 600px) {
+            .form-container { padding: 25px 20px; }
+            .form-row { grid-template-columns: 1fr; gap: 0; }
+        }
+    </style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Input Data Rujukan</h2>
+        </div>
+
+        <form action="#" method="POST" id="formRujukan">
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tanggal">Tanggal Rujukan</label>
+                    <input type="date" id="tanggal" name="tanggal" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="no_hp">No. HP Pasien</label>
+                    <input type="tel" id="no_hp" name="no_hp" class="form-control" placeholder="08xxxxxxxxxx" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nama_pasien">Nama Pasien</label>
+                    <input type="text" id="nama_pasien" name="nama_pasien" class="form-control" placeholder="Nama lengkap" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="no_bpjs">Nomor BPJS / NIK</label>
+                    <input type="text" id="no_bpjs" name="no_bpjs" class="form-control" placeholder="Masukkan nomor">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="faskes_tujuan">Fasilitas Kesehatan Tujuan</label>
+                    <input type="text" id="faskes_tujuan" name="faskes_tujuan" class="form-control" placeholder="Contoh: RSUD Kota" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="poli_tujuan">Poli Yang Dituju</label>
+                    <input type="text" id="poli_tujuan" name="poli_tujuan" class="form-control" placeholder="Contoh: Poli Jantung / Dalam" required>
+                </div>
+            </div>
+
+<div class="form-group">
+    <div class="diagnosa-header">
+        <label>Diagnosa Pasien (Maksimal 5)</label>
+        <button type="button" id="btnAddDiagnosa" class="btn-add" onclick="showNextDiagnosa()">
+            <i class="fa-solid fa-plus"></i> Tambah Diagnosa
+        </button>
+    </div>
+
+    <div class="diagnosa-wrapper" id="box_diagnosa1">
+        <input type="text" id="diagnosa1" name="diagnosa1" class="form-control" placeholder="Diagnosa 1 (Utama)" required>
+    </div>
+
+    <div class="diagnosa-wrapper" id="box_diagnosa2" style="display: none;">
+        <input type="text" id="diagnosa2" name="diagnosa2" class="form-control" placeholder="Diagnosa 2">
+        <button type="button" class="btn-remove" onclick="hideDiagnosa(2)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+
+    <div class="diagnosa-wrapper" id="box_diagnosa3" style="display: none;">
+        <input type="text" id="diagnosa3" name="diagnosa3" class="form-control" placeholder="Diagnosa 3">
+        <button type="button" class="btn-remove" onclick="hideDiagnosa(3)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+
+    <div class="diagnosa-wrapper" id="box_diagnosa4" style="display: none;">
+        <input type="text" id="diagnosa4" name="diagnosa4" class="form-control" placeholder="Diagnosa 4">
+        <button type="button" class="btn-remove" onclick="hideDiagnosa(4)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+
+    <div class="diagnosa-wrapper" id="box_diagnosa5" style="display: none;">
+        <input type="text" id="diagnosa5" name="diagnosa5" class="form-control" placeholder="Diagnosa 5">
+        <button type="button" class="btn-remove" onclick="hideDiagnosa(5)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+</div>
+
+<button type="submit" class="btn-submit">Simpan Data Rujukan</button>
+
+<script>
+    function showNextDiagnosa() {
+        // Melakukan pengecekan dari box 2 sampai 5
+        for (let i = 2; i <= 5; i++) {
+            let box = document.getElementById('box_diagnosa' + i);
+            // Jika menemukan box yang tersembunyi, langsung tampilkan dan hentikan proses
+            if (box.style.display === 'none') {
+                box.style.display = 'block'; 
+                // Opsional: jika menggunakan flexbox di CSS Anda, ubah 'block' menjadi 'flex'
+                return; 
+            }
+        }
+        // Jika loop selesai (semua box sudah tampil), munculkan peringatan
+        alert('Batas maksimal 5 diagnosa telah tercapai!');
+    }
+
+    function hideDiagnosa(nomor) {
+        // Sembunyikan box diagnosa sesuai nomor yang diklik
+        document.getElementById('box_diagnosa' + nomor).style.display = 'none';
+        // Kosongkan isi inputannya agar bersih jika ditampilkan lagi nanti
+        document.getElementById('diagnosa' + nomor).value = '';
+    }
+</script>
+        </form>
+    </div>
+
+    <script>
+       // ═══ BLOK B: INISIALISASI SUPABASE ═══
+// Ganti dua baris di bawah dengan URL dan KEY milik Anda
+const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0' // anon/public key Anda
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+// ═══ BLOK C: KIRIM DATA SAAT FORM DISUBMIT ═══
+document.getElementById('formRujukan').addEventListener('submit', async (e) => {
+  e.preventDefault() // Cegah reload halaman
+
+  // Ambil nilai dari setiap field form
+  const data = {
+    tanggal:       document.getElementById('tanggal').value,
+    nama_pasien:   document.getElementById('nama_pasien').value,
+    no_hp:         document.getElementById('no_hp').value,
+    no_bpjs:       document.getElementById('no_bpjs').value,
+    faskes_tujuan: document.getElementById('faskes_tujuan').value,
+    poli_tujuan:   document.getElementById('poli_tujuan').value,
+    diagnosa1:     document.getElementById('diagnosa1').value,
+    diagnosa2:     document.getElementById('diagnosa2').value || null,
+    diagnosa3:     document.getElementById('diagnosa3').value || null,
+    diagnosa4:     document.getElementById('diagnosa4').value || null,
+    diagnosa5:     document.getElementById('diagnosa5').value || null,
+  }
+
+  // Kirim ke tabel 'rujukan' di Supabase
+  const { error } = await db.from('rujukan').insert([data])
+
+  // Tampilkan hasil ke pengguna
+  if (error) {
+    alert('Gagal menyimpan: ' + error.message)
+  } else {
+    alert('✓ Data rujukan berhasil disimpan!')
+    document.getElementById('formRujukan').reset()
+  }
+})
+    </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Poli Gigi - Sistem Informasi Klinik</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --danger-color: #ef4444;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 750px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-right: 20px;
+            transition: color 0.3s;
+        }
+
+        .btn-back:hover { color: var(--primary-color); }
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        
+        .form-group label.main-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background-color: #fff;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Desain Input Diagnosa Dinamis */
+        .diagnosa-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+        }
+        .diagnosa-wrapper {
+            display: flex; gap: 10px; margin-bottom: 12px; animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .btn-add {
+            background-color: #eff6ff; color: var(--primary-color); border: 1px dashed var(--primary-color);
+            padding: 6px 12px; font-size: 0.85rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-add:hover { background-color: var(--primary-color); color: white; }
+        
+        .btn-remove {
+            background-color: #fef2f2; color: var(--danger-color); border: 1px solid #fee2e2;
+            padding: 0 15px; border-radius: 8px; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-remove:hover { background-color: var(--danger-color); color: white; }
+
+        /* Layout Tindakan & Biaya */
+        /* Layout Tindakan & Biaya */
+.tindakan-biaya-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto; /* Tambahkan 'auto' di belakangnya */
+    gap: 15px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease; /* Tambahkan efek animasi muncul */
+}
+
+        .input-rp {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .input-rp:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .rp-text {
+            padding: 12px;
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .rp-input {
+            border: none;
+            border-radius: 0;
+            outline: none;
+            box-shadow: none;
+            width: 100%;
+        }
+
+        .rp-input:focus { border-color: transparent; box-shadow: none; }
+
+        .btn-submit {
+            width: 100%; background-color: var(--primary-color); color: white; border: none;
+            padding: 14px; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer;
+            transition: background-color 0.3s; margin-top: 20px;
+        }
+        .btn-submit:hover { background-color: var(--primary-hover); }
+
+        #container_dokter_lain {
+            margin-top: 12px;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .form-container { padding: 25px 20px; }
+            .form-row, .tindakan-biaya-row { grid-template-columns: 1fr; gap: 10px; }
+        }
+    </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h2>Register Harian Poli Gigi</h2>
+        </div>
+
+        <form action="#" method="POST" id="formPoliGigi">
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tanggal" class="main-label">Tanggal Kunjungan</label>
+                    <input type="date" id="tanggal" name="tanggal" class="form-control" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="nama_pasien" class="main-label">Nama Pasien</label>
+                    <input type="text" id="nama_pasien" name="nama_pasien" class="form-control" placeholder="Nama lengkap" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="usia" class="main-label">Usia</label>
+                        <input type="number" id="usia" name="usia" class="form-control" placeholder="Tahun" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="jenis_kelamin" class="main-label">Jenis Kelamin</label>
+                        <select id="jenis_kelamin" name="jenis_kelamin" class="form-control" required>
+                            <option value="" disabled selected>Pilih...</option>
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="no_bpjs" class="main-label">Nomor BPJS / NIK</label>
+                    <input type="text" id="no_bpjs" name="no_bpjs" class="form-control" placeholder="Nomor identitas">
+                </div>
+                <div class="form-group">
+                    <label for="no_telp" class="main-label">Nomor Telepon / HP</label>
+                    <input type="tel" id="no_telp" name="no_telp" class="form-control" placeholder="08xxxxxxxxxx" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="status_pasien" class="main-label">Status Pasien</label>
+                    <select id="status_pasien" name="status_pasien" class="form-control" required>
+                        <option value="" disabled selected>Pilih Status...</option>
+                        <option value="Pasien Baru">Pasien Baru</option>
+                        <option value="Pasien Lama">Pasien Lama</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pembayaran" class="main-label">Jenis Pembayaran</label>
+                    <select id="pembayaran" name="pembayaran" class="form-control" required>
+                        <option value="" disabled selected>Pilih Pembayaran...</option>
+                        <option value="BPJS">BPJS</option>
+                        <option value="Umum">Umum</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+            <div class="form-group">
+                <label for="dokter_praktek" class="main-label">Dokter Praktek</label>
+                <select id="dokter_praktek" name="dokter_praktek" class="form-control" required>
+                    <option value="" disabled selected>Pilih Dokter...</option>
+                    <option value="Drg. Vesta Napitupulu">Drg. Vesta Napitupulu</option>
+                    <option value="Drg. Fara Losu">Drg. Fara Losu</option>
+                    <option value="Drg. Meske Octavianus">Drg. Meske Octavianus</option>
+                    <option value="Lainnya">Dokter Lain...</option>
+                </select>
+
+                <div id="container_dokter_lain">
+                    <input type="text" id="input_dokter_lain" name="dokter_lain_detail" class="form-control" placeholder="Masukkan nama dokter pemeriksa...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="diagnosa-header">
+                    <label class="main-label" style="margin-bottom:0;">Diagnosis (Maksimal 5)</label>
+                    <button type="button" id="btnAddDiagnosa" class="btn-add">
+                        <i class="fa-solid fa-plus"></i> Tambah Diagnosis
+                    </button>
+                </div>
+                
+                <div class="diagnosa-wrapper" id="box_diagnosa1">
+                    <input type="text" id="diagnosa1" name="diagnosa1" class="form-control" placeholder="Diagnosis 1 (Utama)" required>
+                </div>
+                <div class="diagnosa-wrapper" id="box_diagnosa2" style="display: none;">
+                    <input type="text" id="diagnosa2" name="diagnosa2" class="form-control" placeholder="Diagnosis 2">
+                    <button type="button" class="btn-remove" onclick="hideDiagnosa(2)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="diagnosa-wrapper" id="box_diagnosa3" style="display: none;">
+                    <input type="text" id="diagnosa3" name="diagnosa3" class="form-control" placeholder="Diagnosis 3">
+                    <button type="button" class="btn-remove" onclick="hideDiagnosa(3)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="diagnosa-wrapper" id="box_diagnosa4" style="display: none;">
+                    <input type="text" id="diagnosa4" name="diagnosa4" class="form-control" placeholder="Diagnosis 4">
+                    <button type="button" class="btn-remove" onclick="hideDiagnosa(4)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="diagnosa-wrapper" id="box_diagnosa5" style="display: none;">
+                    <input type="text" id="diagnosa5" name="diagnosa5" class="form-control" placeholder="Diagnosis 5">
+                    <button type="button" class="btn-remove" onclick="hideDiagnosa(5)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="diagnosa-header">
+                    <label class="main-label" style="margin-bottom:0;">Tindakan Medis & Biaya (Maksimal 4)</label>
+                    <button type="button" id="btnAddTindakan" class="btn-add">
+                        <i class="fa-solid fa-plus"></i> Tambah Tindakan
+                    </button>
+                </div>
+                
+                <div class="tindakan-biaya-row" id="box_tindakan1">
+                    <input type="text" id="tindakan1" name="tindakan1" class="form-control" placeholder="Tindakan 1">
+                    <div class="input-rp">
+                        <span class="rp-text">Rp</span>
+                        <input type="number" id="biaya1" name="biaya1" class="form-control rp-input" placeholder="0" min="0">
+                    </div>
+                    </div>
+
+                <div class="tindakan-biaya-row" id="box_tindakan2" style="display: none;">
+                    <input type="text" id="tindakan2" name="tindakan2" class="form-control" placeholder="Tindakan 2">
+                    <div class="input-rp">
+                        <span class="rp-text">Rp</span>
+                        <input type="number" id="biaya2" name="biaya2" class="form-control rp-input" placeholder="0" min="0">
+                    </div>
+                    <button type="button" class="btn-remove" onclick="hideTindakan(2)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+
+                <div class="tindakan-biaya-row" id="box_tindakan3" style="display: none;">
+                    <input type="text" id="tindakan3" name="tindakan3" class="form-control" placeholder="Tindakan 3">
+                    <div class="input-rp">
+                        <span class="rp-text">Rp</span>
+                        <input type="number" id="biaya3" name="biaya3" class="form-control rp-input" placeholder="0" min="0">
+                    </div>
+                    <button type="button" class="btn-remove" onclick="hideTindakan(3)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+
+                <div class="tindakan-biaya-row" id="box_tindakan4" style="display: none;">
+                    <input type="text" id="tindakan4" name="tindakan4" class="form-control" placeholder="Tindakan 4">
+                    <div class="input-rp">
+                        <span class="rp-text">Rp</span>
+                        <input type="number" id="biaya4" name="biaya4" class="form-control rp-input" placeholder="0" min="0">
+                    </div>
+                    <button type="button" class="btn-remove" onclick="hideTindakan(4)"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Simpan Data Poli Gigi</button>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // Logika Dynamic Input untuk Dokter Lain
+        const selectDokter = document.getElementById('dokter_praktek')
+        const containerDokterLain = document.getElementById('container_dokter_lain')
+        const inputDokterLain = document.getElementById('input_dokter_lain')
+        selectDokter.addEventListener('change', function() {
+            if (this.value === 'Lainnya') {
+                containerDokterLain.style.display = 'block'
+                inputDokterLain.required = true
+            } else {
+                containerDokterLain.style.display = 'none'
+                inputDokterLain.required = false
+                inputDokterLain.value = ''
+            }
+        })
+
+        // Logika Dinamis Diagnosis
+        const btnAddDiagnosa = document.getElementById('btnAddDiagnosa')
+        let statusDiagnosa = { 2: false, 3: false, 4: false, 5: false }
+        btnAddDiagnosa.addEventListener('click', () => {
+            for (let i = 2; i <= 5; i++) {
+                if (!statusDiagnosa[i]) {
+                    document.getElementById(`box_diagnosa${i}`).style.display = 'flex'
+                    document.getElementById(`diagnosa${i}`).required = true
+                    statusDiagnosa[i] = true
+                    if (i === 5) btnAddDiagnosa.style.visibility = 'hidden'
+                    break
+                }
+            }
+        })
+        function hideDiagnosa(index) {
+            document.getElementById(`box_diagnosa${index}`).style.display = 'none'
+            const input = document.getElementById(`diagnosa${index}`)
+            input.value = ''
+            input.required = false
+            statusDiagnosa[index] = false
+            btnAddDiagnosa.style.visibility = 'visible'
+        }
+// Logika Dinamis Tindakan
+        const btnAddTindakan = document.getElementById('btnAddTindakan')
+        let statusTindakan = { 2: false, 3: false, 4: false }
+        
+        btnAddTindakan.addEventListener('click', () => {
+            for (let i = 2; i <= 4; i++) {
+                if (!statusTindakan[i]) {
+                    document.getElementById(`box_tindakan${i}`).style.display = 'grid' // pakai grid agar sejajar
+                    statusTindakan[i] = true
+                    if (i === 4) btnAddTindakan.style.visibility = 'hidden'
+                    break
+                }
+            }
+        })
+
+        function hideTindakan(index) {
+            document.getElementById(`box_tindakan${index}`).style.display = 'none'
+            // Kosongkan nilainya agar saat dihapus, data yang terkirim ke supabase adalah null
+            document.getElementById(`tindakan${index}`).value = ''
+            document.getElementById(`biaya${index}`).value = ''
+            
+            statusTindakan[index] = false
+            btnAddTindakan.style.visibility = 'visible'
+        }
+
+        // Kirim data ke Supabase saat form disubmit
+        document.getElementById('formPoliGigi').addEventListener('submit', async (e) => {
+            e.preventDefault()
+            
+            const namaDokter = selectDokter.value === 'Lainnya'
+                               ? inputDokterLain.value
+                               : selectDokter.value
+            
+            // Pengumpulan data terpetakan rapi ke masing-masing kolom database
+            const data = {
+                tanggal:          document.getElementById('tanggal').value,
+                nama_pasien:      document.getElementById('nama_pasien').value,
+                usia:             parseInt(document.getElementById('usia').value) || null,
+                jenis_kelamin:    document.getElementById('jenis_kelamin').value,
+                no_bpjs:          document.getElementById('no_bpjs').value || null,
+                no_telp:          document.getElementById('no_telp').value || null,
+                status_pasien:    document.getElementById('status_pasien').value,
+                pembayaran:       document.getElementById('pembayaran').value,
+                nama_dokter_gigi: namaDokter,
+
+                // 1. Kolom Diagnosa Terpisah Mandiri
+                diagnosa1:        document.getElementById('diagnosa1').value || null,
+                diagnosa2:        document.getElementById('diagnosa2').value || null,
+                diagnosa3:        document.getElementById('diagnosa3').value || null,
+                diagnosa4:        document.getElementById('diagnosa4').value || null,
+                diagnosa5:        document.getElementById('diagnosa5').value || null,
+
+                // 2. Kolom Tindakan & Biaya Terpisah Mandiri
+                tindakan1:        document.getElementById('tindakan1').value || null,
+                biaya1:           document.getElementById('biaya1').value ? parseInt(document.getElementById('biaya1').value) : null,
+                
+                tindakan2:        document.getElementById('tindakan2').value || null,
+                biaya2:           document.getElementById('biaya2').value ? parseInt(document.getElementById('biaya2').value) : null,
+                
+                tindakan3:        document.getElementById('tindakan3').value || null,
+                biaya3:           document.getElementById('biaya3').value ? parseInt(document.getElementById('biaya3').value) : null,
+                
+                tindakan4:        document.getElementById('tindakan4').value || null,
+                biaya4:           document.getElementById('biaya4').value ? parseInt(document.getElementById('biaya4').value) : null,
+            }
+
+            const { error } = await db.from('poli_gigi').insert([data])
+            if (error) {
+                alert('Gagal menyimpan: ' + error.message)
+            } else {
+                alert('✓ Data Poli Gigi berhasil disimpan!')
+                e.target.reset()
+            }
+        })
+    </script>
+</body>
+</html>
