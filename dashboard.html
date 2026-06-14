@@ -161,7 +161,9 @@
         /* ── TOMBOL HAPUS & MODAL KONFIRMASI ── */
         .btn-hapus { background: transparent; color: var(--text-soft); border: 1px solid transparent; padding: 5px 9px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; font-size: 0.8rem; line-height: 1; }
         .btn-hapus:hover { background: var(--danger-soft); color: var(--danger); border-color: #ef9a9a; }
-        th.th-aksi, td.td-aksi { text-align: center; width: 48px; }
+        .btn-edit { background: transparent; color: var(--text-soft); border: 1px solid transparent; padding: 5px 9px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; font-size: 0.8rem; line-height: 1; }
+        .btn-edit:hover { background: var(--info-soft); color: var(--info); border-color: #90caf9; }
+        th.th-aksi, td.td-aksi { text-align: center; min-width: 48px; white-space: nowrap; }
 
         .modal-konfirmasi { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 20px; }
         .modal-konfirmasi.show { display: flex; animation: fadeIn 0.2s ease; }
@@ -175,6 +177,28 @@
         .btn-konfirmasi-hapus { background: var(--danger); color: white; border: none; padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 7px; }
         .btn-konfirmasi-hapus:hover { background: #b71c1c; }
         .btn-konfirmasi-hapus:disabled { background: #ef9a9a; cursor: not-allowed; }
+
+        /* ── MODAL EDIT DATA ── */
+        .modal-edit-box { background: var(--surface); border-radius: var(--radius); width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.25); overflow: hidden; }
+        .modal-edit-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+        .modal-edit-head h3 { font-size: 1.05rem; font-weight: 700; color: var(--text); }
+        .modal-edit-close { background: transparent; border: none; color: var(--text-soft); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-sm); }
+        .modal-edit-close:hover { background: var(--surface2); color: var(--danger); }
+        .modal-edit-body { padding: 20px 24px; overflow-y: auto; }
+        .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .edit-field { display: flex; flex-direction: column; gap: 5px; }
+        .edit-field.full { grid-column: 1 / -1; }
+        .edit-field label { font-size: 0.78rem; font-weight: 600; color: var(--text-mid); }
+        .edit-input { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem; background: var(--surface2); width: 100%; color: var(--text); }
+        .edit-input:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
+        textarea.edit-input { resize: vertical; min-height: 60px; }
+        .modal-edit-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 24px; border-top: 1px solid var(--border); }
+        .btn-simpan-edit { background: var(--primary); color: #fff; border: none; padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: 0.2s; }
+        .btn-simpan-edit:hover { background: var(--primary-mid); }
+        .btn-simpan-edit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-batal-edit { background: var(--surface2); color: var(--text-mid); border: 1px solid var(--border); padding: 10px 22px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-batal-edit:hover { background: var(--border); }
+        @media (max-width: 600px) { .edit-grid { grid-template-columns: 1fr; } }
 
         /* ── RESPONSIVE ── */
         @media (max-width: 768px) {
@@ -199,6 +223,22 @@
             <button class="btn-konfirmasi-hapus" id="btnKonfirmasiHapus" onclick="eksekusiHapus()">
                 <i class="fa-solid fa-trash-can"></i> Ya, Hapus
             </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-konfirmasi" id="modalEdit">
+    <div class="modal-edit-box" onclick="event.stopPropagation()">
+        <div class="modal-edit-head">
+            <h3 id="modalEditTitle">Edit Data</h3>
+            <button class="modal-edit-close" onclick="tutupModalEdit()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-edit-body">
+            <div class="edit-grid" id="editFormFields"></div>
+        </div>
+        <div class="modal-edit-foot">
+            <button class="btn-batal-edit" onclick="tutupModalEdit()">Batal</button>
+            <button class="btn-simpan-edit" id="btnSimpanEdit" onclick="simpanEdit()"><i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan</button>
         </div>
     </div>
 </div>
@@ -576,6 +616,130 @@ document.getElementById('modalHapus').addEventListener('click', function(e) {
     if (e.target === this) tutupModalHapus();
 });
 
+// ═══ FUNGSI EDIT DATA (POLI UMUM & POLI GIGI) ═══
+function escAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const EDIT_CONFIG = {
+    poli_umum: {
+        title: 'Edit Data Poli Umum',
+        refreshFn: 'searchPoliUmum',
+        fields: [
+            {key:'tanggal', label:'Tanggal Kunjungan', type:'date'},
+            {key:'jam_kedatangan', label:'Jam Kedatangan', type:'time'},
+            {key:'nama_pasien', label:'Nama Pasien', type:'text'},
+            {key:'usia', label:'Usia', type:'number'},
+            {key:'jenis_kelamin', label:'Jenis Kelamin', type:'select', options:['Laki-laki','Perempuan']},
+            {key:'no_bpjs', label:'No. BPJS / NIK', type:'text'},
+            {key:'no_telp', label:'No. Telepon / HP', type:'text'},
+            {key:'status_pasien', label:'Status Pasien', type:'select', options:['Pasien Baru','Pasien Lama']},
+            {key:'pembayaran', label:'Jenis Pembayaran', type:'select', options:['BPJS','Umum']},
+            {key:'nama_dokter', label:'Nama Dokter', type:'text'},
+            {key:'diagnosis', label:'Diagnosis (pisahkan dengan koma)', type:'textarea'},
+            {key:'tindakan', label:'Tindakan (pisahkan dengan koma)', type:'textarea'}
+        ]
+    },
+    poli_gigi: {
+        title: 'Edit Data Poli Gigi',
+        refreshFn: 'searchPoliGigi',
+        fields: [
+            {key:'tanggal', label:'Tanggal Kunjungan', type:'date'},
+            {key:'nama_pasien', label:'Nama Pasien', type:'text'},
+            {key:'usia', label:'Usia', type:'number'},
+            {key:'jenis_kelamin', label:'Jenis Kelamin', type:'select', options:['Laki-laki','Perempuan']},
+            {key:'no_bpjs', label:'No. BPJS / NIK', type:'text'},
+            {key:'no_telp', label:'No. Telepon / HP', type:'text'},
+            {key:'status_pasien', label:'Status Pasien', type:'select', options:['Pasien Baru','Pasien Lama']},
+            {key:'pembayaran', label:'Jenis Pembayaran', type:'select', options:['BPJS','Umum']},
+            {key:'nama_dokter_gigi', label:'Dokter Gigi', type:'text'},
+            {key:'diagnosa1', label:'Diagnosa 1', type:'text'},
+            {key:'diagnosa2', label:'Diagnosa 2', type:'text'},
+            {key:'diagnosa3', label:'Diagnosa 3', type:'text'},
+            {key:'diagnosa4', label:'Diagnosa 4', type:'text'},
+            {key:'diagnosa5', label:'Diagnosa 5', type:'text'},
+            {key:'tindakan1', label:'Tindakan 1', type:'text'},
+            {key:'biaya1', label:'Biaya 1 (Rp)', type:'number'},
+            {key:'tindakan2', label:'Tindakan 2', type:'text'},
+            {key:'biaya2', label:'Biaya 2 (Rp)', type:'number'},
+            {key:'tindakan3', label:'Tindakan 3', type:'text'},
+            {key:'biaya3', label:'Biaya 3 (Rp)', type:'number'},
+            {key:'tindakan4', label:'Tindakan 4', type:'text'},
+            {key:'biaya4', label:'Biaya 4 (Rp)', type:'number'}
+        ]
+    }
+};
+
+let editState = { tabel: null, id: null };
+
+function bukaEdit(tabel, id) {
+    const cfg = EDIT_CONFIG[tabel];
+    if (!cfg) return;
+    const rec = (tableDataState[tabel] || []).find(r => String(r.id) === String(id));
+    if (!rec) { alert('Data tidak ditemukan di halaman ini. Silakan cari / muat ulang lalu coba lagi.'); return; }
+    editState = { tabel, id };
+    document.getElementById('modalEditTitle').textContent = cfg.title;
+
+    const html = cfg.fields.map(f => {
+        let val = rec[f.key];
+        val = (val === null || val === undefined) ? '' : val;
+        if (f.type === 'time' && val) val = String(val).slice(0, 5);
+        let input;
+        if (f.type === 'select') {
+            input = `<select class="edit-input" id="edit_${f.key}">` +
+                f.options.map(o => `<option value="${escAttr(o)}" ${String(o) === String(val) ? 'selected' : ''}>${escHtml(o)}</option>`).join('') +
+                `</select>`;
+        } else if (f.type === 'textarea') {
+            input = `<textarea class="edit-input" id="edit_${f.key}">${escHtml(val)}</textarea>`;
+        } else {
+            input = `<input class="edit-input" type="${f.type}" id="edit_${f.key}" value="${escAttr(val)}">`;
+        }
+        const cls = (f.type === 'textarea') ? 'edit-field full' : 'edit-field';
+        return `<div class="${cls}"><label>${f.label}</label>${input}</div>`;
+    }).join('');
+
+    document.getElementById('editFormFields').innerHTML = html;
+    document.getElementById('modalEdit').classList.add('show');
+}
+
+function tutupModalEdit() {
+    document.getElementById('modalEdit').classList.remove('show');
+    editState = { tabel: null, id: null };
+}
+
+async function simpanEdit() {
+    if (!editState.tabel) return;
+    const cfg = EDIT_CONFIG[editState.tabel];
+    const btn = document.getElementById('btnSimpanEdit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+    const obj = {};
+    cfg.fields.forEach(f => {
+        const el = document.getElementById('edit_' + f.key);
+        let v = el.value;
+        if (f.type === 'number') { v = (v === '' ? null : parseInt(v)); }
+        else if (f.type === 'date' || f.type === 'time') { v = (v === '' ? null : v); }
+        obj[f.key] = v;
+    });
+
+    const { error } = await db.from(editState.tabel).update(obj).eq('id', editState.id);
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
+
+    if (error) {
+        alert('Gagal menyimpan perubahan: ' + error.message);
+        return;
+    }
+    const fn = cfg.refreshFn;
+    tutupModalEdit();
+    if (window[fn]) window[fn](false);
+}
+
+document.getElementById('modalEdit').addEventListener('click', function(e) {
+    if (e.target === this) tutupModalEdit();
+});
+
 // ═══ CLIENT-SIDE SORTING ═══
 function sortTableData(panel, columnKey, type) {
     if(sortState.col === columnKey) { sortState.asc = !sortState.asc; } 
@@ -667,26 +831,56 @@ async function exportFullData(panel, filename) {
 
 // ═══ PANELS DATA FETCHING ═══
 
-// 1. OVERVIEW (Real-time Charts)
+// 1. OVERVIEW (Real-time + Monthly Performance Metrics)
+function trendBadge(cur, prev) {
+    if ((prev === 0 || prev == null) && (cur === 0 || cur == null)) {
+        return `<span style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:700">— 0%</span>`;
+    }
+    if (prev === 0 || prev == null) {
+        return `<span style="background:var(--success-soft);color:var(--success);padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:700">▲ Baru</span>`;
+    }
+    const pct = ((cur - prev) / prev) * 100;
+    const up = pct >= 0;
+    const color = up ? 'var(--success)' : 'var(--danger)';
+    const bg = up ? 'var(--success-soft)' : 'var(--danger-soft)';
+    const arrow = up ? '▲' : '▼';
+    return `<span style="background:${bg};color:${color};padding:2px 8px;border-radius:20px;font-size:0.72rem;font-weight:700">${arrow} ${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
 async function loadOverview() {
     showSkeleton('overviewContent', 'overview');
 
-    // Prepare Date Range for Charts (Last 7 Days)
+    const now = new Date();
+    const fmtISO = d => d.toISOString().split('T')[0];
+    const dd = now.getDate();
+
+    // ── Rentang 7 hari (tren harian) ──
     const dates = [];
     const chartLabels = [];
     for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        dates.push(dateStr);
+        const d = new Date(); d.setDate(d.getDate() - i);
+        dates.push(fmtISO(d));
         chartLabels.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
     }
     const startDate = dates[0];
 
-    // Fetch Today's single stats + 7-Day History concurrently
+    // ── Rentang 6 bulan (metrik bulanan) ──
+    const monthKeys = [], monthLabels = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        monthKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+        monthLabels.push(d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }));
+    }
+    const sixMonthStart = fmtISO(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+    const monthOf = s => s ? s.slice(0,7) : null;
+    const dayOf = s => s ? parseInt(s.slice(8,10)) : 0;
+    const curKey = monthKeys[5], prevKey = monthKeys[4];
+
+    // Fetch: stats hari ini + histori 7 hari + histori 6 bulan
     const [
         puToday, pgToday, okToday, rujToday, followupToday, kontrolToday, keuToday,
-        puHistory, pgHistory, keuHistory
+        puHistory, pgHistory, keuHistory,
+        puMonthly, pgMonthly, keuMonthly
     ] = await Promise.all([
         db.from('poli_umum').select('id',{count:'exact',head:true}).eq('tanggal', TODAY),
         db.from('poli_gigi').select('id',{count:'exact',head:true}).eq('tanggal', TODAY),
@@ -697,36 +891,82 @@ async function loadOverview() {
         db.from('laporan_keuangan').select('total_pemasukan').eq('tanggal', TODAY),
         db.from('poli_umum').select('tanggal, pembayaran').gte('tanggal', startDate).lte('tanggal', TODAY),
         db.from('poli_gigi').select('tanggal, pembayaran').gte('tanggal', startDate).lte('tanggal', TODAY),
-        db.from('laporan_keuangan').select('tanggal, total_pemasukan').gte('tanggal', startDate).lte('tanggal', TODAY)
+        db.from('laporan_keuangan').select('tanggal, total_pemasukan').gte('tanggal', startDate).lte('tanggal', TODAY),
+        db.from('poli_umum').select('tanggal, pembayaran, status_pasien, diagnosis').gte('tanggal', sixMonthStart).lte('tanggal', TODAY),
+        db.from('poli_gigi').select('tanggal, pembayaran, status_pasien, diagnosa1, diagnosa2, diagnosa3, diagnosa4, diagnosa5').gte('tanggal', sixMonthStart).lte('tanggal', TODAY),
+        db.from('laporan_keuangan').select('tanggal, pendapatan_umum, pendapatan_gigi, total_pemasukan').gte('tanggal', sixMonthStart).lte('tanggal', TODAY)
     ]);
 
     const totalPendapatan = keuToday.data && keuToday.data.length > 0 ? keuToday.data[0].total_pemasukan : 0;
     const totalKunjungan = (puToday.count || 0) + (pgToday.count || 0);
-
     document.getElementById('badgeFollowup').textContent = followupToday.count || 0;
 
-    // Process Chart Data
-    const visitData = dates.map(d => {
-        const puCount = (puHistory.data || []).filter(x => x.tanggal === d).length;
-        const pgCount = (pgHistory.data || []).filter(x => x.tanggal === d).length;
-        return puCount + pgCount;
-    });
+    const puM = puMonthly.data || [], pgM = pgMonthly.data || [], keuM = keuMonthly.data || [];
 
-    const revenueData = dates.map(d => {
-        const rec = (keuHistory.data || []).find(x => x.tanggal === d);
-        return rec ? rec.total_pemasukan : 0;
-    });
+    // ── Tren harian 7 hari ──
+    const visitData = dates.map(d =>
+        (puHistory.data || []).filter(x => x.tanggal === d).length +
+        (pgHistory.data || []).filter(x => x.tanggal === d).length);
 
-    let bpjsCount = 0;
-    let umumCount = 0;
-    const allVisits = [...(puHistory.data || []), ...(pgHistory.data || [])];
-    allVisits.forEach(x => {
-        if(x.pembayaran === 'BPJS') bpjsCount++;
-        else if(x.pembayaran === 'Umum') umumCount++;
-    });
+    // ── Data per bulan ──
+    const puByMonth   = monthKeys.map(k => puM.filter(x => monthOf(x.tanggal) === k).length);
+    const pgByMonth   = monthKeys.map(k => pgM.filter(x => monthOf(x.tanggal) === k).length);
+    const revUmumByMonth = monthKeys.map(k => keuM.filter(x => monthOf(x.tanggal) === k).reduce((s,r)=>s+(r.pendapatan_umum||0),0));
+    const revGigiByMonth = monthKeys.map(k => keuM.filter(x => monthOf(x.tanggal) === k).reduce((s,r)=>s+(r.pendapatan_gigi||0),0));
+    const allM = [...puM, ...pgM];
+    const bpjsByMonth = monthKeys.map(k => allM.filter(x => monthOf(x.tanggal) === k && x.pembayaran === 'BPJS').length);
+    const umumByMonth = monthKeys.map(k => allM.filter(x => monthOf(x.tanggal) === k && x.pembayaran === 'Umum').length);
 
-    // Render HTML
+    // ── Perbandingan bulan ini vs bulan lalu (periode sama, s/d tgl yg sama) ──
+    const puCur  = puM.filter(x => monthOf(x.tanggal) === curKey).length;
+    const puPrev = puM.filter(x => monthOf(x.tanggal) === prevKey && dayOf(x.tanggal) <= dd).length;
+    const pgCur  = pgM.filter(x => monthOf(x.tanggal) === curKey).length;
+    const pgPrev = pgM.filter(x => monthOf(x.tanggal) === prevKey && dayOf(x.tanggal) <= dd).length;
+    const kunjCur = puCur + pgCur, kunjPrev = puPrev + pgPrev;
+    const revCur  = keuM.filter(x => monthOf(x.tanggal) === curKey).reduce((s,r)=>s+(r.total_pemasukan||0),0);
+    const revPrev = keuM.filter(x => monthOf(x.tanggal) === prevKey && dayOf(x.tanggal) <= dd).reduce((s,r)=>s+(r.total_pemasukan||0),0);
+
+    // ── Proporsi bulan ini ──
+    const curVisits = allM.filter(x => monthOf(x.tanggal) === curKey);
+    const bpjsCur = curVisits.filter(x => x.pembayaran === 'BPJS').length;
+    const umumCur = curVisits.filter(x => x.pembayaran === 'Umum').length;
+    const baruCur = curVisits.filter(x => x.status_pasien === 'Pasien Baru').length;
+    const lamaCur = curVisits.filter(x => x.status_pasien === 'Pasien Lama').length;
+
+    // ── Metrik turunan ──
+    const rataKunjungan = (kunjCur / dd).toFixed(1);
+    const rataPendapatan = revCur / dd;
+    const persenBpjs = (bpjsCur + umumCur) > 0 ? Math.round(bpjsCur / (bpjsCur + umumCur) * 100) : 0;
+
+    // ── Diagnosis terbanyak (6 bulan terakhir, gabungan poli umum & gigi) ──
+    const diagTally = {};
+    const tambahDiag = raw => {
+        if (!raw) return;
+        const nama = String(raw).trim();
+        if (!nama) return;
+        const key = nama.toLowerCase();
+        if (!diagTally[key]) diagTally[key] = { nama, jml: 0 };
+        diagTally[key].jml++;
+    };
+    puM.forEach(r => (r.diagnosis || '').split(',').forEach(tambahDiag));
+    pgM.forEach(r => [r.diagnosa1, r.diagnosa2, r.diagnosa3, r.diagnosa4, r.diagnosa5].forEach(tambahDiag));
+    const topDiag = Object.values(diagTally).sort((a, b) => b.jml - a.jml).slice(0, 10);
+    const maxDiag = topDiag.length ? topDiag[0].jml : 1;
+    const topDiagHtml = topDiag.length
+        ? topDiag.map((t, i) => `
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid #f0f0f0">
+                <div style="width:26px;height:26px;flex-shrink:0;border-radius:50%;background:${i<3?'var(--primary)':'#e0f2f1'};color:${i<3?'#fff':'var(--primary)'};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem">${i+1}</div>
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:0.9rem;color:var(--text)">${escHtml(t.nama)}</div>
+                    <div style="height:6px;background:#eef2f1;border-radius:3px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${(t.jml/maxDiag*100).toFixed(1)}%;background:var(--primary-light);border-radius:3px"></div></div>
+                </div>
+                <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--primary);flex-shrink:0;font-size:0.95rem">${t.jml}</div>
+            </div>`).join('')
+        : `<div class="empty" style="padding:30px"><i class="fa-solid fa-notes-medical"></i><p>Belum ada data diagnosis.</p></div>`;
+
+    // ── RENDER ──
     document.getElementById('overviewContent').innerHTML = `
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px"><i class="fa-solid fa-calendar-day"></i> Snapshot Hari Ini</div>
     <div class="overview-grid">
         <div class="overview-card" onclick="showPanel('poli_umum')"><div class="overview-card-icon" style="background:#e3f2fd;color:#0d47a1"><i class="fa-solid fa-stethoscope"></i></div><div><div class="val">${puToday.count||0}</div><div class="lbl">Poli Umum Hari Ini</div></div></div>
         <div class="overview-card" onclick="showPanel('poli_gigi')"><div class="overview-card-icon" style="background:#fce4ec;color:#880e4f"><i class="fa-solid fa-tooth"></i></div><div><div class="val">${pgToday.count||0}</div><div class="lbl">Poli Gigi Hari Ini</div></div></div>
@@ -737,80 +977,152 @@ async function loadOverview() {
         <div class="overview-card" onclick="showPanel('keuangan')"><div class="overview-card-icon" style="background:#e8f5e9;color:#1b5e20"><i class="fa-solid fa-file-invoice-dollar"></i></div><div><div class="val" style="font-size:1.4rem">${fmtRp(totalPendapatan)}</div><div class="lbl">Pendapatan Hari Ini</div></div></div>
         <div class="overview-card"><div class="overview-card-icon" style="background:#e8eaf6;color:#283593"><i class="fa-solid fa-users"></i></div><div><div class="val">${totalKunjungan}</div><div class="lbl">Total Kunjungan</div></div></div>
     </div>
+
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.05em;margin:24px 0 10px"><i class="fa-solid fa-arrow-trend-up"></i> Perbandingan Bulan Ini vs Bulan Lalu <span style="font-weight:500;text-transform:none;letter-spacing:0">(periode sama, s/d tanggal ${dd})</span></div>
+    <div class="keuangan-summary">
+        <div class="keuangan-card" style="border-left:4px solid #0d47a1">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div class="label">Pasien Poli Umum</div>${trendBadge(puCur, puPrev)}</div>
+            <div class="amount" style="color:#0d47a1">${puCur}</div>
+            <div class="sub">Bulan lalu: ${puPrev}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid #880e4f">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div class="label">Pasien Poli Gigi</div>${trendBadge(pgCur, pgPrev)}</div>
+            <div class="amount" style="color:#880e4f">${pgCur}</div>
+            <div class="sub">Bulan lalu: ${pgPrev}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid var(--primary)">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div class="label">Total Kunjungan</div>${trendBadge(kunjCur, kunjPrev)}</div>
+            <div class="amount">${kunjCur}</div>
+            <div class="sub">Bulan lalu: ${kunjPrev}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid var(--success)">
+            <div style="display:flex;justify-content:space-between;align-items:center"><div class="label">Total Pendapatan</div>${trendBadge(revCur, revPrev)}</div>
+            <div class="amount" style="font-size:1.4rem">${fmtRp(revCur)}</div>
+            <div class="sub">Bulan lalu: ${fmtRp(revPrev)}</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid #00897b">
+            <div class="label">Rata-rata / Hari (Bulan Ini)</div>
+            <div class="amount" style="font-size:1.3rem;color:#00897b">${rataKunjungan} <span style="font-size:0.8rem;color:var(--text-mid)">kunjungan</span></div>
+            <div class="sub">${fmtRp(rataPendapatan)} / hari</div>
+        </div>
+        <div class="keuangan-card" style="border-left:4px solid #1565c0">
+            <div class="label">Pasien BPJS (Bulan Ini)</div>
+            <div class="amount" style="font-size:1.5rem;color:#1565c0">${persenBpjs}%</div>
+            <div class="sub">${bpjsCur} BPJS · ${umumCur} Umum</div>
+        </div>
+    </div>
+
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.05em;margin:24px 0 10px"><i class="fa-solid fa-chart-simple"></i> Grafik Performa</div>
     <div class="charts-grid">
         <div class="chart-box">
             <div class="chart-title"><i class="fa-solid fa-chart-line"></i> Tren Kunjungan (7 Hari)</div>
             <div class="chart-canvas-wrapper"><canvas id="visitChart"></canvas></div>
         </div>
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-column"></i> Pendapatan Klinik (7 Hari)</div>
-            <div class="chart-canvas-wrapper"><canvas id="revenueChart"></canvas></div>
+            <div class="chart-title"><i class="fa-solid fa-chart-column"></i> Kunjungan per Bulan (Umum vs Gigi)</div>
+            <div class="chart-canvas-wrapper"><canvas id="visitsMonthChart"></canvas></div>
         </div>
         <div class="chart-box">
-            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Proporsi Pembayaran (7 Hari)</div>
+            <div class="chart-title"><i class="fa-solid fa-money-bill-trend-up"></i> Pendapatan per Bulan (Umum vs Gigi)</div>
+            <div class="chart-canvas-wrapper"><canvas id="revenueMonthChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-chart-pie"></i> Proporsi Pembayaran (Bulan Ini)</div>
             <div class="chart-canvas-wrapper"><canvas id="paymentChart"></canvas></div>
         </div>
-    </div>`;
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-chart-column"></i> Pembayaran per Bulan (BPJS vs Umum)</div>
+            <div class="chart-canvas-wrapper"><canvas id="paymentMonthChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <div class="chart-title"><i class="fa-solid fa-user-plus"></i> Pasien Baru vs Lama (Bulan Ini)</div>
+            <div class="chart-canvas-wrapper"><canvas id="statusChart"></canvas></div>
+        </div>
+    </div>
 
-    renderCharts(visitData, revenueData, bpjsCount, umumCount, chartLabels);
+    <div style="font-size:0.8rem;font-weight:700;color:var(--text-soft);text-transform:uppercase;letter-spacing:0.05em;margin:24px 0 10px"><i class="fa-solid fa-ranking-star"></i> Diagnosis Terbanyak <span style="font-weight:500;text-transform:none;letter-spacing:0">(6 bulan terakhir · gabungan poli umum & gigi)</span></div>
+    <div class="table-wrap" style="padding:4px 0">${topDiagHtml}</div>`;
+
+    renderCharts({
+        visitLabels: chartLabels, visitData,
+        monthLabels,
+        puByMonth, pgByMonth,
+        revUmumByMonth, revGigiByMonth,
+        bpjsByMonth, umumByMonth,
+        bpjsCur, umumCur, baruCur, lamaCur
+    });
 }
 
-function renderCharts(visitData, revenueData, bpjsCount, umumCount, labels) {
+function compactRp(v) {
+    if (v >= 1e9) return (v/1e9).toFixed(1) + 'M';
+    if (v >= 1e6) return (v/1e6).toFixed(1) + 'jt';
+    if (v >= 1e3) return Math.round(v/1e3) + 'k';
+    return v;
+}
+
+function renderCharts(d) {
     chartInstances.forEach(chart => chart.destroy());
     chartInstances = [];
 
-    const ctx1 = document.getElementById('visitChart').getContext('2d');
-    const visitChart = new Chart(ctx1, {
+    const baseBar = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }, scales: { y: { beginAtZero: true } } };
+
+    // 1. Tren kunjungan 7 hari (line)
+    const visitChart = new Chart(document.getElementById('visitChart'), {
         type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Total Kunjungan',
-                data: visitData,
-                borderColor: '#00897b',
-                backgroundColor: 'rgba(0, 137, 123, 0.1)',
-                borderWidth: 3,
-                tension: 0.3,
-                fill: true,
-                pointRadius: 4
-            }]
-        },
+        data: { labels: d.visitLabels, datasets: [{ label: 'Total Kunjungan', data: d.visitData, borderColor: '#00897b', backgroundColor: 'rgba(0,137,123,0.1)', borderWidth: 3, tension: 0.3, fill: true, pointRadius: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 
-    const ctx2 = document.getElementById('revenueChart').getContext('2d');
-    const revenueChart = new Chart(ctx2, {
+    // 2. Kunjungan per bulan (grouped bar)
+    const visitsMonthChart = new Chart(document.getElementById('visitsMonthChart'), {
         type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Pendapatan (Rp)',
-                data: revenueData,
-                backgroundColor: '#2e7d32',
-                borderRadius: 4
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return 'Rp ' + (value/1000) + 'k'; } } } } }
+        data: { labels: d.monthLabels, datasets: [
+            { label: 'Poli Umum', data: d.puByMonth, backgroundColor: '#1565c0', borderRadius: 4 },
+            { label: 'Poli Gigi', data: d.pgByMonth, backgroundColor: '#880e4f', borderRadius: 4 }
+        ] },
+        options: baseBar
     });
 
-    const ctx3 = document.getElementById('paymentChart').getContext('2d');
-    const hasPaymentData = bpjsCount > 0 || umumCount > 0;
-    
-    const paymentChart = new Chart(ctx3, {
+    // 3. Pendapatan per bulan (grouped bar)
+    const revenueMonthChart = new Chart(document.getElementById('revenueMonthChart'), {
+        type: 'bar',
+        data: { labels: d.monthLabels, datasets: [
+            { label: 'Poli Umum', data: d.revUmumByMonth, backgroundColor: '#2e7d32', borderRadius: 4 },
+            { label: 'Poli Gigi', data: d.revGigiByMonth, backgroundColor: '#ff6d00', borderRadius: 4 }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtRp(ctx.parsed.y) } } },
+            scales: { y: { beginAtZero: true, ticks: { callback: v => 'Rp ' + compactRp(v) } } }
+        }
+    });
+
+    // 4. Proporsi pembayaran bulan ini (doughnut)
+    const hasPay = d.bpjsCur > 0 || d.umumCur > 0;
+    const paymentChart = new Chart(document.getElementById('paymentChart'), {
         type: 'doughnut',
-        data: {
-            labels: hasPaymentData ? ['BPJS', 'Umum'] : ['Belum ada data'],
-            datasets: [{
-                data: hasPaymentData ? [bpjsCount, umumCount] : [1],
-                backgroundColor: hasPaymentData ? ['#1565c0', '#e65100'] : ['#e0e0e0'],
-                borderWidth: 0,
-                hoverOffset: 4
-            }]
-        },
+        data: { labels: hasPay ? ['BPJS', 'Umum'] : ['Belum ada data'], datasets: [{ data: hasPay ? [d.bpjsCur, d.umumCur] : [1], backgroundColor: hasPay ? ['#1565c0', '#e65100'] : ['#e0e0e0'], borderWidth: 0, hoverOffset: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
     });
 
-    chartInstances.push(visitChart, revenueChart, paymentChart);
+    // 5. Pembayaran per bulan (stacked bar)
+    const paymentMonthChart = new Chart(document.getElementById('paymentMonthChart'), {
+        type: 'bar',
+        data: { labels: d.monthLabels, datasets: [
+            { label: 'BPJS', data: d.bpjsByMonth, backgroundColor: '#1565c0', borderRadius: 4 },
+            { label: 'Umum', data: d.umumByMonth, backgroundColor: '#e65100', borderRadius: 4 }
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+    });
+
+    // 6. Pasien baru vs lama bulan ini (doughnut)
+    const hasStatus = d.baruCur > 0 || d.lamaCur > 0;
+    const statusChart = new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: { labels: hasStatus ? ['Pasien Baru', 'Pasien Lama'] : ['Belum ada data'], datasets: [{ data: hasStatus ? [d.baruCur, d.lamaCur] : [1], backgroundColor: hasStatus ? ['#00897b', '#7a9e98'] : ['#e0e0e0'], borderWidth: 0, hoverOffset: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%' }
+    });
+
+    chartInstances.push(visitChart, visitsMonthChart, revenueMonthChart, paymentChart, paymentMonthChart, statusChart);
 }
 
 // 2. FOLLOW UP
@@ -869,7 +1181,7 @@ async function searchPoliUmum(resetPage = true) {
         <td>${r.nama_dokter||'-'}</td>
         <td style="white-space:normal;min-width:150px">${r.diagnosis||'-'}</td>
         <td style="white-space:normal;min-width:150px">${r.tindakan||'-'}</td>
-        <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('poli_umum','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliUmum)"><i class="fa-solid fa-trash-can"></i></button></td>
+        <td class="td-aksi"><button class="btn-edit" onclick="bukaEdit('poli_umum','${r.id}')" title="Edit data"><i class="fa-solid fa-pen"></i></button><button class="btn-hapus" onclick="konfirmasiHapus('poli_umum','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliUmum)"><i class="fa-solid fa-trash-can"></i></button></td>
     </tr>`).join('');
     
     document.getElementById('poliUmumContent').innerHTML = `
@@ -921,7 +1233,7 @@ async function searchPoliGigi(resetPage = true) {
             <td>${r.nama_dokter_gigi||'-'}</td>
             <td style="white-space:normal;min-width:150px">${diag||'-'}</td>
             <td style="white-space:normal;min-width:180px">${tindBiaya||'-'} <br><strong style="color:var(--success)">Tot: ${fmtRp(tot)}</strong></td>
-            <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('poli_gigi','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliGigi)"><i class="fa-solid fa-trash-can"></i></button></td>
+            <td class="td-aksi"><button class="btn-edit" onclick="bukaEdit('poli_gigi','${r.id}')" title="Edit data"><i class="fa-solid fa-pen"></i></button><button class="btn-hapus" onclick="konfirmasiHapus('poli_gigi','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPoliGigi)"><i class="fa-solid fa-trash-can"></i></button></td>
         </tr>`;
     }).join('');
 
@@ -1044,9 +1356,13 @@ async function searchPasienKontrol(resetPage = true) {
     const rows = data.map(r => `<tr>
         <td class="td-date">${fmtDate(r.tanggal_kontrol)}</td>
         <td class="td-name">${r.nama_pasien}</td>
+        <td class="td-mono">${r.no_bpjs||'-'}</td>
+        <td>${r.no_wa||'-'}</td>
         <td>${r.poli_asal||'-'}</td>
         <td>${r.nama_dokter||'-'}</td>
+        <td style="white-space:normal;min-width:150px">${r.diagnosa||'-'}</td>
         <td class="td-date">${fmtDate(r.tanggal_followup)}</td>
+        <td style="white-space:normal;min-width:150px">${r.instruksi_petugas||'-'}</td>
         <td class="td-aksi"><button class="btn-hapus" onclick="konfirmasiHapus('pasien_kontrol','${r.id}','${(r.nama_pasien||'').replace(/'/g,"\\'")}',searchPasienKontrol)"><i class="fa-solid fa-trash-can"></i></button></td>
     </tr>`).join('');
 
@@ -1055,8 +1371,8 @@ async function searchPasienKontrol(resetPage = true) {
         <div class="table-scroll">
             <table id="tblPasienKontrol">
                 <thead><tr>
-                    <th>Tgl Kontrol</th><th>Nama Pasien</th><th>Poli</th><th>Dokter</th>
-                    <th>Tgl Follow-up</th><th class="th-aksi">Aksi</th>
+                    <th>Tgl Kontrol</th><th>Nama Pasien</th><th>No BPJS</th><th>No WA</th><th>Poli</th><th>Dokter</th>
+                    <th>Diagnosa</th><th>Tgl Follow-up</th><th>Instruksi Petugas</th><th class="th-aksi">Aksi</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
