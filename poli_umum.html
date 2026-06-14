@@ -364,8 +364,13 @@
         // Kirim data ke Supabase saat form disubmit
         document.getElementById('formPoliUmum').addEventListener('submit', async (e) => {
             e.preventDefault()
-            const tindakanChecked = [...document.querySelectorAll('input[name="tindakan"]:checked')]
-                                    .map(el => el.value).join(', ')
+            let tindakanArr = [...document.querySelectorAll('input[name="tindakan"]:checked')]
+                                    .map(el => el.value)
+            const detailLain = document.getElementById('input_tindakan_lain').value.trim()
+            if (tindakanArr.includes('Lain-lain') && detailLain) {
+                tindakanArr = tindakanArr.map(v => v === 'Lain-lain' ? detailLain : v)
+            }
+            const tindakanChecked = tindakanArr.join(', ')
             const diagArr = ['diagnosa1','diagnosa2','diagnosa3','diagnosa4','diagnosa5']
                             .map(id => document.getElementById(id)?.value || null)
                             .filter(v => v)
@@ -373,7 +378,7 @@
                 tanggal:         document.getElementById('tanggal').value,
                 jam_kedatangan:  document.getElementById('jam_kedatangan').value,
                 nama_pasien:     document.getElementById('nama_pasien').value,
-                usia:            parseInt(document.getElementById('usia').value) || null,
+                usia:            document.getElementById('usia').value !== '' ? parseInt(document.getElementById('usia').value) : null,
                 jenis_kelamin:   document.getElementById('jenis_kelamin').value,
                 no_telp:         document.getElementById('no_telp').value || null,
                 no_bpjs:         document.getElementById('no_bpjs').value || null,
