@@ -417,7 +417,7 @@
             const data = {
                 tanggal:          document.getElementById('tanggal').value,
                 nama_pasien:      document.getElementById('nama_pasien').value,
-                usia:             parseInt(document.getElementById('usia').value) || null,
+                usia:             document.getElementById('usia').value !== '' ? parseInt(document.getElementById('usia').value) : null,
                 jenis_kelamin:    document.getElementById('jenis_kelamin').value,
                 no_bpjs:          document.getElementById('no_bpjs').value || null,
                 no_telp:          document.getElementById('no_telp').value || null,
