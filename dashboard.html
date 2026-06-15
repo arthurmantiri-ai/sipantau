@@ -81,6 +81,9 @@
         .keuangan-summary { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
         
         .stat-card, .overview-card, .keuangan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; transition: box-shadow 0.2s; }
+        .keuangan-card { min-width: 0; }
+        #panel-keuangan .keuangan-summary { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+        #panel-keuangan .keuangan-card .amount { font-size: 1.45rem; overflow-wrap: anywhere; }
         .overview-card { display: flex; align-items: center; gap: 14px; cursor: pointer; }
         .overview-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
         .overview-card-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
