@@ -1043,7 +1043,7 @@ function openJurnal(id){
   const it = id? DB.jurnal.find(x=>x.id===id) : null;
   const isEdit=!!it;
   const tgl = it? it.tgl : new Date().toISOString().slice(0,10);
-  jurnalJenis = it ? (catInfo(it.kategori).jenis) : "out";
+  jurnalJenis = it ? (it.debet>0 ? "in" : "out") : "in";
   const amt = it ? (it.debet||it.kredit||"") : "";
   openModal(`
     <div class="modal">
@@ -1052,17 +1052,16 @@ function openJurnal(id){
       <div class="modal-body">
         <div class="form-row">
           <div class="field"><label>Tanggal</label><input type="date" id="jTgl" value="${tgl}"></div>
-          <div class="field"><label>Jenis transaksi</label>
+          <div class="field"><label>Uang kas</label>
             <div class="seg" id="jSeg">
-              <button type="button" class="${jurnalJenis==='in'?'on-in':''}" onclick="setJenis('in')">Masuk</button>
-              <button type="button" class="${jurnalJenis==='out'?'on-out':''}" onclick="setJenis('out')">Keluar</button>
-              <button type="button" class="${jurnalJenis==='mut'?'on-mut':''}" onclick="setJenis('mut')">Mutasi</button>
+              <button type="button" class="${jurnalJenis==='in'?'on-in':''}" onclick="setJenis('in')">Masuk (+)</button>
+              <button type="button" class="${jurnalJenis==='out'?'on-out':''}" onclick="setJenis('out')">Keluar (−)</button>
             </div>
           </div>
         </div>
         <div class="field one"><label>Uraian</label><input type="text" id="jUraian" placeholder="cth: Terima Konsultasi Poli Umum" value="${it?esc(it.uraian):""}"></div>
         <div class="form-row">
-          <div class="field"><label>Kategori</label><select id="jKat">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
+          <div class="field"><label>Kategori</label><select id="jKat" onchange="syncJenisFromCat()">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
           <div class="field"><label>Jumlah (Rp)</label><input type="number" id="jAmt" placeholder="0" value="${amt}"></div>
         </div>
       </div>
@@ -1072,22 +1071,34 @@ function openJurnal(id){
         <button class="btn" onclick="saveJurnal('${it?it.id:""}')">${isEdit?"Simpan perubahan":"Simpan transaksi"}</button>
       </div>
     </div>`);
-  syncKatToJenis();
+  if(!isEdit) syncJenisFromCat(); else updateJenisHelp();
 }
 function setJenis(j){
   jurnalJenis=j;
-  document.querySelectorAll("#jSeg button").forEach((b,i)=>{ b.className = (["in","out","mut"][i]===j)?({in:"on-in",out:"on-out",mut:"on-mut"}[j]):""; });
+  const btns=document.querySelectorAll("#jSeg button");
+  btns[0].className = j==="in"?"on-in":"";
+  btns[1].className = j==="out"?"on-out":"";
+  updateJenisHelp();
 }
-function syncKatToJenis(){ /* dibiarkan: kategori bebas dipilih; jenis ikut kategori saat simpan */ }
+function syncJenisFromCat(){
+  const kat=document.getElementById("jKat").value;
+  const info=catInfo(kat);
+  let j = info.jenis==="in" ? "in" : "out";
+  if(kat==="Tarik Tunai dari Bank") j="in";   // tarik tunai menambah kas
+  setJenis(j);
+}
+function updateJenisHelp(){
+  const h=document.getElementById("jKatHelp"); if(!h) return;
+  h.textContent = jurnalJenis==="in" ? "Tercatat sebagai kas MASUK (+)" : "Tercatat sebagai kas KELUAR (−)";
+}
 async function saveJurnal(id){
   const tgl=document.getElementById("jTgl").value;
   const uraian=document.getElementById("jUraian").value.trim();
   const kat=document.getElementById("jKat").value;
   const amt=Math.abs(+document.getElementById("jAmt").value||0);
   if(!tgl||!uraian||!amt){ toast("Lengkapi tanggal, uraian, dan jumlah.",false); return; }
-  const jenis=catInfo(kat).jenis;
-  const debet = jenis==="in" ? amt : 0;
-  const kredit = jenis==="in" ? 0 : amt; // mutasi & keluar dianggap kas keluar
+  const debet = jurnalJenis==="in" ? amt : 0;
+  const kredit = jurnalJenis==="in" ? 0 : amt;
   const payload={tgl,uraian,kategori:kat,debet,kredit};
   if(id){
     const { error } = await supa.from('keu_jurnal').update(payload).eq('id', id);
