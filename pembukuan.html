@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pembukuan Keuangan — Klinik Imanuel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10241E; --ink-soft:#4B635B; --ink-faint:#7E948B;
+    --bg:#EEF4F1; --surface:#FFFFFF; --surface-2:#F3F8F5;
+    --line:#D7E5DF; --line-soft:#E6EFE9;
+    --primary:#004D40; --primary-700:#00352C; --primary-50:#E0F2F1; --primary-100:#B2DFDB;
+    --accent:#A9791A; --accent-50:#F6EEDA;
+    --pos:#1B7A41; --pos-bg:#E5F3EA;
+    --neg:#BF3B2E; --neg-bg:#FBEAE8;
+    --radius:14px; --radius-sm:9px;
+    --shadow:0 1px 2px rgba(20,40,46,.05), 0 8px 24px rgba(20,40,46,.06);
+    --shadow-lg:0 18px 50px rgba(12,40,38,.20);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg); color:var(--ink);
+    -webkit-font-smoothing:antialiased; font-size:14.5px; line-height:1.5;
+  }
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums}
+  button{font-family:inherit; cursor:pointer}
+  input,select{font-family:inherit}
+  .hidden{display:none !important}
+
+  /* ---------- LOGIN ---------- */
+  #login{
+    position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+    background:
+      radial-gradient(120% 90% at 15% 0%, #00796b 0%, transparent 55%),
+      radial-gradient(120% 90% at 100% 100%, #00352c 0%, transparent 50%),
+      #004d40;
+    padding:24px;
+  }
+  .login-card{
+    width:100%; max-width:392px; background:var(--surface); border-radius:20px;
+    box-shadow:var(--shadow-lg); padding:38px 34px 30px; position:relative; overflow:hidden;
+  }
+  .login-card::before{content:""; position:absolute; top:0; left:0; right:0; height:5px;
+    background:linear-gradient(90deg,var(--primary),var(--accent))}
+  .crest{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    background:var(--primary-50); color:var(--primary); margin-bottom:18px}
+  .crest svg{width:28px;height:28px}
+  .login-card h1{font-size:21px; font-weight:800; margin:0 0 4px; letter-spacing:-.02em}
+  .login-card .sub{color:var(--ink-soft); font-size:13.5px; margin:0 0 26px}
+  label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin:0 0 7px; letter-spacing:.01em}
+  .field{position:relative; margin-bottom:14px}
+  input[type=text],input[type=password],input[type=number],input[type=date],select{
+    width:100%; padding:12px 13px; border:1.5px solid var(--line); border-radius:var(--radius-sm);
+    background:var(--surface); color:var(--ink); font-size:14.5px; transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus,select:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-50)}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding:12px 16px; border:none; border-radius:var(--radius-sm); font-weight:700; font-size:14.5px;
+    background:var(--primary); color:#fff; transition:background .15s, transform .05s;
+  }
+  .btn:hover{background:var(--primary-700)}
+  .btn:active{transform:translateY(1px)}
+  .btn-block{width:100%}
+  .btn-ghost{background:transparent; color:var(--primary); border:1.5px solid var(--line)}
+  .btn-ghost:hover{background:var(--surface-2); border-color:var(--primary-100)}
+  .btn-soft{background:var(--primary-50); color:var(--primary-700)}
+  .btn-soft:hover{background:var(--primary-100)}
+  .btn-sm{padding:8px 12px; font-size:13px; border-radius:8px}
+  .btn-danger-ghost{background:transparent; color:var(--neg); border:1.5px solid var(--line)}
+  .btn-danger-ghost:hover{background:var(--neg-bg); border-color:#eecccd}
+  .login-err{color:var(--neg); font-size:13px; font-weight:600; min-height:18px; margin:2px 0 12px}
+  .login-foot{margin-top:20px; padding-top:16px; border-top:1px solid var(--line-soft);
+    font-size:12px; color:var(--ink-faint); line-height:1.55}
+
+  /* ---------- APP SHELL ---------- */
+  #app{display:flex; min-height:100vh}
+  .sidebar{
+    width:236px; flex-shrink:0; background:var(--primary-700); color:#dfeae7;
+    display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  }
+  .brand{padding:22px 20px 18px; display:flex; gap:12px; align-items:center; border-bottom:1px solid rgba(255,255,255,.08)}
+  .brand .mark{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);
+    display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+  .brand .mark svg{width:21px;height:21px}
+  .brand .t1{font-weight:800; font-size:14.5px; color:#fff; line-height:1.15; letter-spacing:-.01em}
+  .brand .t2{font-size:11.5px; color:#9fc4bd; margin-top:2px}
+  .nav{padding:14px 12px; display:flex; flex-direction:column; gap:3px; flex:1}
+  .nav-label{font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:#7fa9a2; padding:8px 12px 6px; font-weight:700}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px;
+    color:#cfe0dc; font-weight:600; font-size:14px; border:none; background:transparent; text-align:left; width:100%; transition:background .12s,color .12s}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0;opacity:.9}
+  .nav-item:hover{background:rgba(255,255,255,.07); color:#fff}
+  .nav-item.active{background:rgba(255,255,255,.14); color:#fff}
+  .nav-item.active svg{opacity:1}
+  .sidebar-foot{padding:14px; border-top:1px solid rgba(255,255,255,.08); display:flex; flex-direction:column; gap:7px}
+  .side-mini{display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; border:none;
+    background:rgba(255,255,255,.06); color:#dfeae7; font-weight:600; font-size:13px; width:100%; transition:background .12s}
+  .side-mini:hover{background:rgba(255,255,255,.13)}
+  .side-mini svg{width:16px;height:16px}
+
+  .main{flex:1; min-width:0; display:flex; flex-direction:column}
+  .topbar{
+    background:var(--surface); border-bottom:1px solid var(--line);
+    padding:13px 26px; display:flex; align-items:center; gap:16px; justify-content:space-between;
+    position:sticky; top:0; z-index:30;
+  }
+  .topbar .ttl{font-weight:800; font-size:18px; letter-spacing:-.02em}
+  .topbar .ttl span{display:block; font-size:12px; font-weight:500; color:var(--ink-soft); letter-spacing:0}
+  .top-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .period{display:flex; align-items:center; gap:8px; background:var(--surface-2); border:1.5px solid var(--line);
+    border-radius:10px; padding:5px 6px 5px 12px}
+  .period label{margin:0; font-size:12px}
+  .period select{border:none; background:transparent; padding:6px 8px; font-weight:700; color:var(--primary-700)}
+  .period select:focus{box-shadow:none}
+
+  .content{padding:24px 26px 60px; max-width:1320px; width:100%}
+  .mobile-nav{display:none}
+
+  /* ---------- CARDS / STATS ---------- */
+  .grid-stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:24px}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 18px 16px; box-shadow:var(--shadow)}
+  .stat .lab{font-size:12px; font-weight:600; color:var(--ink-soft); display:flex; align-items:center; gap:7px; margin-bottom:9px}
+  .stat .lab .dot{width:9px;height:9px;border-radius:50%}
+  .stat .val{font-size:23px; font-weight:700; letter-spacing:-.02em}
+  .stat .meta{font-size:12px; color:var(--ink-faint); margin-top:5px}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; margin-bottom:22px}
+  .card-head{padding:16px 20px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .card-head h2{font-size:15.5px; font-weight:800; margin:0; letter-spacing:-.01em}
+  .card-head .hint{font-size:12.5px; color:var(--ink-soft); margin-top:2px; font-weight:500}
+  .card-tools{display:flex; gap:9px; flex-wrap:wrap}
+
+  /* ---------- TABLES ---------- */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%; border-collapse:collapse; font-size:13.5px}
+  thead th{
+    background:var(--surface-2); text-align:left; font-weight:700; color:var(--ink-soft);
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; padding:11px 14px; white-space:nowrap;
+    border-bottom:1.5px solid var(--line); position:sticky; top:0;
+  }
+  tbody td{padding:11px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  tbody tr:hover{background:var(--surface-2)}
+  td.num,th.num{text-align:right; white-space:nowrap}
+  .ledger td.num,.ledger th.num{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .saldo-cell{font-weight:600; background:var(--primary-50)}
+  .tag{display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap}
+  .tag-in{background:var(--pos-bg); color:var(--pos)}
+  .tag-out{background:var(--neg-bg); color:var(--neg)}
+  .tag-mut{background:var(--accent-50); color:var(--accent)}
+  .row-actions{display:flex; gap:6px; justify-content:flex-end}
+  .ico-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line); background:var(--surface);
+    display:inline-flex;align-items:center;justify-content:center; color:var(--ink-soft); transition:all .12s}
+  .ico-btn:hover{border-color:var(--primary-100); color:var(--primary); background:var(--primary-50)}
+  .ico-btn.del:hover{border-color:#eecccd; color:var(--neg); background:var(--neg-bg)}
+  .ico-btn svg{width:15px;height:15px}
+  .empty{padding:46px 20px; text-align:center; color:var(--ink-faint)}
+  .empty svg{width:34px;height:34px;opacity:.5;margin-bottom:10px}
+  .empty p{margin:0 0 4px; font-weight:600; color:var(--ink-soft)}
+
+  /* report tables */
+  .report td{padding:8px 16px}
+  .report .grp{font-weight:800; color:var(--primary-700); background:var(--surface-2)}
+  .report .sub td:first-child{padding-left:30px; color:var(--ink)}
+  .report .total td{font-weight:800; border-top:1.5px solid var(--line); border-bottom:1.5px solid var(--line); background:#fbfcfb}
+  .report .laba td{font-weight:800; font-size:15px; background:var(--primary-50); color:var(--primary-700)}
+  .report input{padding:6px 8px; text-align:right; font-size:13px; max-width:150px; border:1.5px solid var(--line); border-radius:7px}
+  .neraca-grid{display:grid; grid-template-columns:1fr 1fr; gap:0}
+  .neraca-grid > div{padding:4px 0}
+  .neraca-col h3{font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--primary-700);
+    padding:12px 16px; margin:0; background:var(--surface-2); border-bottom:1px solid var(--line)}
+  @media(max-width:860px){.neraca-grid{grid-template-columns:1fr}}
+
+  /* ---------- MODAL ---------- */
+  .modal-bg{position:fixed; inset:0; background:rgba(16,30,34,.46); backdrop-filter:blur(2px); z-index:80;
+    display:flex; align-items:flex-start; justify-content:center; padding:38px 18px; overflow-y:auto}
+  .modal{background:var(--surface); border-radius:18px; box-shadow:var(--shadow-lg); width:100%; max-width:560px; overflow:hidden; margin:auto}
+  .modal-head{padding:20px 24px 16px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:flex-start}
+  .modal-head h3{margin:0; font-size:17px; font-weight:800; letter-spacing:-.01em}
+  .modal-head p{margin:3px 0 0; font-size:12.5px; color:var(--ink-soft)}
+  .modal-x{width:32px;height:32px;border-radius:9px;border:none;background:var(--surface-2);color:var(--ink-soft);display:flex;align-items:center;justify-content:center}
+  .modal-x:hover{background:var(--neg-bg);color:var(--neg)}
+  .modal-body{padding:20px 24px}
+  .modal-foot{padding:16px 24px 20px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid var(--line-soft); background:var(--surface-2)}
+  .form-row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .form-row.one{grid-template-columns:1fr}
+  .seg{display:flex; gap:8px}
+  .seg button{flex:1; padding:11px; border-radius:9px; border:1.5px solid var(--line); background:var(--surface); font-weight:700; font-size:13.5px; color:var(--ink-soft)}
+  .seg button.on-in{border-color:var(--pos); background:var(--pos-bg); color:var(--pos)}
+  .seg button.on-out{border-color:var(--neg); background:var(--neg-bg); color:var(--neg)}
+  .seg button.on-mut{border-color:var(--accent); background:var(--accent-50); color:var(--accent)}
+  .help{font-size:11.5px; color:var(--ink-faint); margin-top:6px}
+
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:var(--ink); color:#fff; padding:13px 20px; border-radius:11px; font-weight:600; font-size:13.5px;
+    z-index:120; transition:all .25s; box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:9px}
+  .toast.show{transform:translateX(-50%) translateY(0); opacity:1}
+  .toast svg{width:17px;height:17px}
+
+  .note{background:var(--accent-50); border:1px solid #ecd9b0; border-radius:11px; padding:13px 15px; font-size:12.5px; color:#7a5715; margin-bottom:20px; display:flex; gap:10px}
+  .note svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+
+  /* ---------- TOOLBAR / SEARCH ---------- */
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:12px 20px; border-bottom:1px solid var(--line-soft); background:var(--primary-50)}
+  .search-box{position:relative; flex:1; min-width:200px}
+  .search-box svg{position:absolute; left:11px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--ink-faint); pointer-events:none}
+  .search-box input{width:100%; padding:8px 12px 8px 33px; border:1px solid var(--line); border-radius:9px; font-size:13px; font-family:inherit; background:#fff}
+  .search-box input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-100)}
+  .toolbar select{padding:8px 10px; border:1px solid var(--line); border-radius:9px; font-size:13px; font-family:inherit; background:#fff; max-width:220px}
+  .toolbar select:focus{outline:none; border-color:var(--primary)}
+
+  /* ---------- CHARTS ---------- */
+  .chart-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px}
+  .chart-body{padding:16px 20px}
+  .stackbar{display:flex; height:22px; border-radius:6px; overflow:hidden; margin-bottom:14px; background:var(--line-soft)}
+  .stackbar>div{height:100%}
+  .legend{display:flex; flex-direction:column; gap:7px}
+  .leg-row{display:flex; align-items:center; gap:8px; font-size:12.5px}
+  .leg-dot{width:11px; height:11px; border-radius:3px; flex-shrink:0}
+  .leg-name{flex:1; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .leg-val{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink); white-space:nowrap}
+  .leg-val em{color:var(--ink-faint); font-style:normal; font-size:10.5px; margin-left:3px}
+  .leg-total{margin-top:12px; padding-top:10px; border-top:1px solid var(--line-soft); font-size:12.5px; color:var(--ink-soft)}
+  @media(max-width:820px){ .chart-grid{grid-template-columns:1fr} }
+
+  /* ---------- PRINT AREA ---------- */
+  #printArea{display:none}
+  @media print{
+    body{background:#fff!important}
+    #login,#app,#modalRoot,#toast,.mobile-nav{display:none!important}
+    #printArea{display:block!important; padding:0; color:#000; font-size:11.5px}
+    @page{margin:14mm}
+    .p-kop{text-align:center; margin-bottom:4px}
+    .p-yayasan{font-size:16px; font-weight:800; letter-spacing:.02em}
+    .p-klinik{font-size:12px; margin-top:2px}
+    .p-rule{border-bottom:2.5px solid #000; margin:7px 0 2px}
+    .p-rule.thin{border-bottom:1px solid #000; margin-top:1px}
+    .p-title{text-align:center; font-size:14px; font-weight:800; margin:14px 0 1px; text-transform:uppercase}
+    .p-sub{text-align:center; font-size:11px; margin-bottom:12px}
+    table.p-tbl{width:100%; border-collapse:collapse; font-size:10.5px}
+    table.p-tbl th,table.p-tbl td{border:1px solid #555; padding:4px 6px; text-align:left}
+    table.p-tbl th{background:#eee!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; font-weight:700}
+    table.p-tbl td.n,table.p-tbl th.n{text-align:right; font-family:'IBM Plex Mono',monospace; white-space:nowrap}
+    table.p-tbl tr.tot td{font-weight:800; background:#f3f3f3!important; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    table.p-tbl tr.grp td{font-weight:800; background:#e9efed!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; text-transform:uppercase; font-size:10px}
+    .p-sign{display:flex; justify-content:space-between; margin-top:34px; font-size:11px; page-break-inside:avoid}
+    .p-sign .col{width:44%; text-align:center}
+    .p-sign .date{text-align:right; margin-bottom:18px; font-size:11px}
+    .p-sign .role{margin-bottom:46px}
+    .p-sign .nm{font-weight:700; text-decoration:underline}
+    .p-note{font-size:9.5px; margin-top:8px; color:#444}
+    .p-flex{display:flex; gap:18px; align-items:flex-start}
+    .p-flex>div{flex:1}
+    .p-h3{font-weight:800; font-size:11.5px; margin:0 0 5px; text-transform:uppercase}
+  }
+
+
+  @media(max-width:820px){
+    .sidebar{display:none}
+    .mobile-nav{display:flex; gap:6px; overflow-x:auto; padding:10px 16px; background:var(--primary-700); position:sticky; top:0; z-index:31}
+    .mobile-nav button{white-space:nowrap; padding:8px 14px; border-radius:999px; border:none; background:rgba(255,255,255,.1); color:#dfeae7; font-weight:600; font-size:13px}
+    .mobile-nav button.active{background:#fff; color:var(--primary-700)}
+    .topbar{padding:12px 16px; flex-wrap:wrap}
+    .content{padding:18px 16px 50px}
+    .form-row{grid-template-columns:1fr}
+    .topbar .ttl{font-size:16px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login">
+  <div class="login-card">
+    <div class="crest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg>
+    </div>
+    <h1>Pembukuan Keuangan</h1>
+    <p class="sub">Klinik Imanuel · Yayasan Kesehatan Imanuel</p>
+    <div class="field">
+      <label for="pw">Kata sandi</label>
+      <input type="password" id="pw" placeholder="Masukkan kata sandi" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-block" onclick="doLogin()">Masuk ke Keuangan</button>
+    <div class="login-foot">
+      Halaman ini terlindungi kata sandi. Setelah masuk, Anda dapat mengganti kata sandi melalui menu di pojok bawah.
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/></svg></div>
+      <div><div class="t1">Klinik Imanuel</div><div class="t2">Pembukuan Keuangan</div></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Laporan</div>
+      <button class="nav-item active" data-view="dashboard" onclick="go('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg> Ringkasan</button>
+      <button class="nav-item" data-view="jurnal" onclick="go('jurnal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Jurnal Kas</button>
+      <button class="nav-item" data-view="bank" onclick="go('bank')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 21 18 0M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg> Buku Bank</button>
+      <button class="nav-item" data-view="labarugi" onclick="go('labarugi')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Laba / Rugi</button>
+      <button class="nav-item" data-view="neraca" onclick="go('neraca')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 7h18"/><path d="m6 7-3 6h6zM18 7l-3 6h6z"/></svg> Neraca</button>
+      <button class="nav-item" data-view="inventaris" onclick="go('inventaris')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg> Inventaris</button>
+      <div class="nav-label" style="margin-top:8px">Data</div>
+      <button class="nav-item" onclick="openExport()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg> Cadangan data</button>
+    </nav>
+    <div class="sidebar-foot">
+      <a class="side-mini" href="index.html" style="text-decoration:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg> Kembali ke Portal</a>
+      <button class="side-mini" onclick="openChangePw()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Ganti kata sandi</button>
+      <button class="side-mini" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg> Keluar</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="mobile-nav" id="mobileNav"></div>
+    <div class="topbar">
+      <div class="ttl" id="pageTitle">Ringkasan<span>Periode berjalan</span></div>
+      <div class="top-actions">
+        <div class="period">
+          <label>Periode</label>
+          <select id="periodSel" onchange="changePeriod(this.value)"></select>
+        </div>
+        <button class="btn btn-soft btn-sm" id="primaryAction" onclick="primaryAdd()">+ Tambah</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =================================================================
+   DATA MODEL  —  diturunkan persis dari file Excel klinik
+   (frontend; seluruh data tersimpan di database Supabase)
+================================================================= */
+const BULAN = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"];
+const BULAN_PANJANG = {JAN:"Januari",FEB:"Februari",MAR:"Maret",APR:"April",MEI:"Mei",JUN:"Juni",JUL:"Juli",AGU:"Agustus",SEP:"September",OKT:"Oktober",NOV:"November",DES:"Desember"};
+
+/* Kategori klasifikasi jurnal — mengikuti kolom Laba/Rugi di Excel */
+const KATEGORI = [
+  {grup:"Pendapatan dari BPJS Kesehatan", jenis:"in", items:["Kapitasi BPJS Kes","Kegiatan Kelompok","Pelayanan KB","Lab. GDP PRB-Prolanis","Protesa Gigi"]},
+  {grup:"Pendapatan dari Klinik", jenis:"in", items:["Pendapatan Konsultasi","Pendapatan Obat","Tindakan Poli Gigi","Tindakan Poli Umum","Pendapatan Laboratorium","Protesa","Pendapatan Lain"]},
+  {grup:"Pembelian (HPP)", jenis:"out", items:["Pembelian Obat","Pembelian Alkes","Pembelian Medis","Pembelian Laboratorium","Pembelian Protesa"]},
+  {grup:"Gaji & Jasa", jenis:"out", items:["Gaji Pegawai","Jasa Dokter"]},
+  {grup:"Iuran & Potongan", jenis:"out", items:["Iuran BPJS TK + Kes","Potongan PPh Instansi"]},
+  {grup:"Biaya Operasional", jenis:"out", items:["Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain"]},
+  {grup:"Kerohanian", jenis:"out", items:["Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah"]},
+  {grup:"Bidang Kesehatan", jenis:"out", items:["Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan"]},
+  {grup:"Diakonia / P3K", jenis:"out", items:["Diakonia / Obat P3K"]},
+  {grup:"Bidang Sekretariat", jenis:"out", items:["Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK"]},
+  {grup:"Lain-lain", jenis:"out", items:["Subsidi YKI ke GK","Penyusutan Inventaris"]},
+  {grup:"Mutasi Bank & Inventaris", jenis:"mut", items:["Setoran/Transfer ke Bank","Tarik Tunai dari Bank","Pembelian Inventaris"]},
+];
+function catInfo(name){
+  for(const g of KATEGORI){ if(g.items.includes(name)) return {grup:g.grup, jenis:g.jenis}; }
+  return {grup:"Lain-lain", jenis:"out"};
+}
+
+/* ---- DATA AWAL (seed) — contoh dari periode Juni 2026 supaya tampilan terlihat hidup ---- */
+const SEED = {
+  meta:{ yayasan:"Yayasan Kesehatan Imanuel", klinik:"Klinik Pratama Imanuel", kota:"Manado", tahun:2026,
+         ketua:"Dkn. Yuansun Khosama", bendahara:"May Maria Santosa" },
+  pw:"keuanganimanuel",
+  saldoAwal:{ kas:26254100, bankMandiri:219687722.46, deposito:400000000, piutang:300000, stockObat:18433626.17 },
+  modalAwal:714395348.63,
+  hutangPendek:0, hutangPanjang:0,
+  stockObat:{ JAN:{awal:18433626.17,akhir:13981194.2}, FEB:{awal:13981194.2,akhir:13457480.79},
+              MAR:{awal:13457480.79,akhir:12272156.94}, APR:{awal:12272156.94,akhir:11280262.08},
+              MEI:{awal:11280262.08,akhir:11269514.13}, JUN:{awal:11269514.13,akhir:11269514.13} },
+  jurnal:[
+    {id:"j1", tgl:"2026-06-02", uraian:"Setoran iuran BPJS Kesehatan Bulan Juni 2026", debet:0, kredit:2815414, kategori:"Iuran BPJS TK + Kes"},
+    {id:"j2", tgl:"2026-06-02", uraian:"Beli 2bh banner pemberitahuan pelayanan Klinik Imanuel", debet:0, kredit:320000, kategori:"Biaya Administrasi"},
+    {id:"j3", tgl:"2026-06-02", uraian:"SETORAN TRANSFER ke Bank Mandiri", debet:0, kredit:10000000, kategori:"Setoran/Transfer ke Bank"},
+    {id:"j4", tgl:"2026-06-02", uraian:"Terima Konsultasi Poli Umum", debet:100000, kredit:0, kategori:"Pendapatan Konsultasi"},
+    {id:"j5", tgl:"2026-06-02", uraian:"Terima Tindakan Poli Umum", debet:110000, kredit:0, kategori:"Tindakan Poli Umum"},
+    {id:"j6", tgl:"2026-06-03", uraian:"Byr jasa dokter gigi pengganti an: drg. Windy", debet:0, kredit:264000, kategori:"Jasa Dokter"},
+    {id:"j7", tgl:"2026-06-03", uraian:"Terima Pemeriksaan Laboratorium", debet:150000, kredit:0, kategori:"Pendapatan Laboratorium"},
+    {id:"j8", tgl:"2026-06-04", uraian:"Beli 5 galon air isi ulang + parkir u/ Klinik", debet:0, kredit:30000, kategori:"Biaya Konsumsi"},
+    {id:"j9", tgl:"2026-06-04", uraian:"Terima Tindakan Poli Gigi", debet:400000, kredit:0, kategori:"Tindakan Poli Gigi"},
+    {id:"j10", tgl:"2026-06-05", uraian:"Byr instruktur senam u/ kegiatan senam club Marina", debet:0, kredit:150000, kategori:"Edukasi/Senam"},
+    {id:"j11", tgl:"2026-06-08", uraian:"Tagihan PLN Bulan Juni 2026", debet:0, kredit:2062476, kategori:"Biaya Telepon, Listrik, Air"},
+    {id:"j12", tgl:"2026-06-10", uraian:"Terima Penjualan Obat Poli Umum", debet:50000, kredit:0, kategori:"Pendapatan Obat"},
+  ],
+  inventaris:[
+    {id:"i1", jenis:"Meja Receptionis set kaca", jumlah:1, tahun:"Dibawah 2020", nilaiBeli:6915000, manfaat:4},
+    {id:"i2", jenis:"PABX Merk Panasonic KX-TES-824", jumlah:1, tahun:"Dibawah 2020", nilaiBeli:6215000, manfaat:4},
+    {id:"i3", jenis:"AC Merk Panasonic 1 PK", jumlah:1, tahun:"Dibawah 2020", nilaiBeli:5211000, manfaat:4},
+    {id:"i4", jenis:"Motor Merk Honda Beat DB 208", jumlah:1, tahun:"Dibawah 2020", nilaiBeli:17450000, manfaat:4},
+    {id:"i5", jenis:"Speaker 12\" Merk Huper", jumlah:1, tahun:"2022", nilaiBeli:3600000, manfaat:4},
+    {id:"i6", jenis:"Beli 4 unit PC u/ Klinik (3 unit lt.1, 1 unit lt.2)", jumlah:4, tahun:"2023", nilaiBeli:24560000, manfaat:4},
+    {id:"i7", jenis:"Beli lemari kabinet u/ alkes Klinik (lt.1)", jumlah:1, tahun:"2023", nilaiBeli:1000000, manfaat:8},
+    {id:"i8", jenis:"Beli paket CCTV 8 titik Merk Hilook u/ Klinik (lt.3)", jumlah:1, tahun:"2023", nilaiBeli:8373000, manfaat:4},
+    {id:"i9", jenis:"Beli printer Merk HP 315", jumlah:1, tahun:"Juni 2024", nilaiBeli:1800000, manfaat:4},
+    {id:"i10", jenis:"Beli 1 dental unit Cina K-502 u/ Poli Gigi Klinik", jumlah:1, tahun:"Juli 2024", nilaiBeli:44551600, manfaat:4},
+  ],
+};
+
+/* =================================================================
+   STATE & DATABASE (Supabase) — pola sama dengan sistem sipantau
+================================================================= */
+const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0';
+const supa = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+const DEFAULT_CONFIG = {
+  meta:SEED.meta, saldoAwal:SEED.saldoAwal, modalAwal:SEED.modalAwal,
+  hutangPendek:SEED.hutangPendek, hutangPanjang:SEED.hutangPanjang, stockObat:SEED.stockObat
+};
+
+let DB = { meta:SEED.meta, saldoAwal:SEED.saldoAwal, modalAwal:SEED.modalAwal,
+           hutangPendek:0, hutangPanjang:0, stockObat:{}, pw:null, jurnal:[], inventaris:[], bank:[] };
+let state = { view:"dashboard", period:"JUN", authed:false, q:"", qcat:"" };
+
+function persist(){ /* tidak dipakai lagi — data tersimpan di Supabase */ }
+
+async function loadSettings(){
+  const { data, error } = await supa.from('keu_setting').select('*');
+  if(error) throw error;
+  let cfg=null, auth=null;
+  (data||[]).forEach(r=>{ if(r.id==='config') cfg=r.data; if(r.id==='auth') auth=r.data; });
+  if(!cfg){ cfg=DEFAULT_CONFIG; await supa.from('keu_setting').upsert({id:'config', data:cfg}); }
+  if(!auth){ auth={pw:'keuanganimanuel'}; await supa.from('keu_setting').upsert({id:'auth', data:auth}); }
+  DB.meta = cfg.meta || DEFAULT_CONFIG.meta;
+  DB.saldoAwal = cfg.saldoAwal || DEFAULT_CONFIG.saldoAwal;
+  DB.modalAwal = (cfg.modalAwal!=null) ? cfg.modalAwal : DEFAULT_CONFIG.modalAwal;
+  DB.hutangPendek = cfg.hutangPendek || 0;
+  DB.hutangPanjang = cfg.hutangPanjang || 0;
+  DB.stockObat = cfg.stockObat || {};
+  DB.pw = auth.pw || 'keuanganimanuel';
+}
+async function loadData(){
+  const [j,i,bk] = await Promise.all([
+    supa.from('keu_jurnal').select('*').order('tgl',{ascending:true}).order('id',{ascending:true}),
+    supa.from('keu_inventaris').select('*').order('id',{ascending:true}),
+    supa.from('keu_bank').select('*').order('tgl',{ascending:true}).order('id',{ascending:true})
+  ]);
+  if(j.error) toast('Gagal memuat jurnal: '+j.error.message,false);
+  if(i.error) toast('Gagal memuat inventaris: '+i.error.message,false);
+  DB.jurnal = (j.data||[]).map(r=>({id:r.id, tgl:r.tgl, uraian:r.uraian, kategori:r.kategori, debet:+r.debet, kredit:+r.kredit}));
+  DB.inventaris = (i.data||[]).map(r=>({id:r.id, jenis:r.jenis, jumlah:r.jumlah, tahun:r.tahun, nilaiBeli:+r.nilai_beli, manfaat:r.manfaat}));
+  DB.bank = (bk&&bk.data?bk.data:[]).map(r=>({id:r.id, tgl:r.tgl, akun:r.akun, uraian:r.uraian, debet:+r.debet, kredit:+r.kredit}));
+}
+async function saveConfig(){
+  const cfg = { meta:DB.meta, saldoAwal:DB.saldoAwal, modalAwal:DB.modalAwal,
+                hutangPendek:DB.hutangPendek, hutangPanjang:DB.hutangPanjang, stockObat:DB.stockObat };
+  const { error } = await supa.from('keu_setting').upsert({id:'config', data:cfg});
+  if(error){ toast('Gagal menyimpan: '+error.message, false); return false; }
+  return true;
+}
+
+/* =================================================================
+   HELPERS
+================================================================= */
+const fmt = n => "Rp " + (Math.round((+n||0))).toLocaleString("id-ID");
+const fmt0 = n => (Math.round((+n||0))).toLocaleString("id-ID");
+const uid = () => "x"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const monthOf = iso => { const m=(iso||"").slice(5,7); const map={ "01":"JAN","02":"FEB","03":"MAR","04":"APR","05":"MEI","06":"JUN","07":"JUL","08":"AGU","09":"SEP","10":"OKT","11":"NOV","12":"DES"}; return map[m]||"JAN"; };
+function jurnalPeriode(p){ return DB.jurnal.filter(j=>monthOf(j.tgl)===p).sort((a,b)=> (a.tgl||"").localeCompare(b.tgl||"") ); }
+/* ---- Buku Bank helpers ---- */
+const AKUN_BANK=["Bank Mandiri","Bank Mandiri Deposito"];
+function bankPeriode(p){ return DB.bank.filter(b=>monthOf(b.tgl)===p).sort((a,b)=>(a.tgl||"").localeCompare(b.tgl||"")); }
+function openingBankFor(akun, period){
+  const idx=BULAN.indexOf(period);
+  let s = akun==="Bank Mandiri Deposito" ? DB.saldoAwal.deposito : DB.saldoAwal.bankMandiri;
+  for(const b of DB.bank){ if(b.akun===akun && BULAN.indexOf(monthOf(b.tgl))<idx) s+=(+b.debet||0)-(+b.kredit||0); }
+  return s;
+}
+function bankBalanceEnd(akun, period){
+  const idx=BULAN.indexOf(period);
+  let s = akun==="Bank Mandiri Deposito" ? DB.saldoAwal.deposito : DB.saldoAwal.bankMandiri;
+  for(const b of DB.bank){ if(b.akun===akun && BULAN.indexOf(monthOf(b.tgl))<=idx) s+=(+b.debet||0)-(+b.kredit||0); }
+  return s;
+}
+function toast(msg, ok=true){
+  const t=document.getElementById("toast");
+  t.innerHTML=(ok?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>')+ "<span>"+msg+"</span>";
+  t.classList.add("show"); clearTimeout(window.__tt); window.__tt=setTimeout(()=>t.classList.remove("show"),2400);
+}
+function esc(s){ return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* running saldo kas untuk satu periode */
+function withSaldo(rows, openingKas){
+  let s = openingKas; const out=[];
+  for(const j of rows){ s += (+j.debet||0) - (+j.kredit||0); out.push({...j, saldo:s}); }
+  return out;
+}
+/* saldo kas awal periode = saldo awal tahun + semua mutasi sebelum periode itu */
+function openingKasFor(period){
+  const idx = BULAN.indexOf(period);
+  let kas = DB.saldoAwal.kas;
+  for(const j of DB.jurnal){ if(BULAN.indexOf(monthOf(j.tgl)) < idx) kas += (+j.debet||0)-(+j.kredit||0); }
+  return kas;
+}
+
+/* =================================================================
+   AUTH
+================================================================= */
+async function doLogin(){
+  if(!DB.pw){ document.getElementById("loginErr").textContent="Sedang menghubungkan ke database…"; return; }
+  const v=document.getElementById("pw").value;
+  if(v === DB.pw){
+    state.authed=true;
+    document.getElementById("login").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    initShell();
+    document.getElementById("content").innerHTML='<div class="empty" style="padding:80px 20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><p>Memuat data…</p></div>';
+    try{ await loadData(); }catch(e){ toast('Tidak dapat memuat data dari database.',false); }
+    go("dashboard");
+  }else{
+    document.getElementById("loginErr").textContent="Kata sandi salah. Coba lagi.";
+    document.getElementById("pw").select();
+  }
+}
+function logout(){
+  state.authed=false;
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("pw").value=""; document.getElementById("loginErr").textContent="";
+}
+
+/* =================================================================
+   SHELL
+================================================================= */
+function initShell(){
+  const sel=document.getElementById("periodSel");
+  sel.innerHTML = BULAN.map(b=>`<option value="${b}" ${b===state.period?"selected":""}>${BULAN_PANJANG[b]} ${DB.meta.tahun}</option>`).join("");
+  const mn=document.getElementById("mobileNav");
+  const views=[["dashboard","Ringkasan"],["jurnal","Jurnal"],["bank","Bank"],["labarugi","Laba/Rugi"],["neraca","Neraca"],["inventaris","Inventaris"]];
+  mn.innerHTML=views.map(v=>`<button data-mv="${v[0]}" onclick="go('${v[0]}')">${v[1]}</button>`).join("");
+}
+function changePeriod(p){ state.period=p; render(); }
+function go(view){
+  state.view=view; state.q=""; state.qcat="";
+  document.querySelectorAll(".nav-item[data-view]").forEach(n=>n.classList.toggle("active",n.dataset.view===view));
+  document.querySelectorAll("#mobileNav button").forEach(n=>n.classList.toggle("active",n.dataset.mv===view));
+  render();
+}
+
+const TITLES={dashboard:["Ringkasan","Ikhtisar posisi keuangan klinik"],jurnal:["Jurnal Kas","Pembukuan kas masuk & keluar"],bank:["Buku Bank","Mutasi rekening bank & deposito"],labarugi:["Laporan Laba / Rugi","Pendapatan dan pengeluaran"],neraca:["Neraca","Posisi aktiva, hutang & modal"],inventaris:["Inventaris","Daftar & penyusutan inventaris"]};
+function render(){
+  const [t,s]=TITLES[state.view];
+  document.getElementById("pageTitle").innerHTML=`${t}<span>${BULAN_PANJANG[state.period]} ${DB.meta.tahun} · ${s}</span>`;
+  const pa=document.getElementById("primaryAction");
+  if(state.view==="jurnal"){ pa.classList.remove("hidden"); pa.textContent="+ Catat transaksi"; }
+  else if(state.view==="bank"){ pa.classList.remove("hidden"); pa.textContent="+ Catat mutasi bank"; }
+  else if(state.view==="inventaris"){ pa.classList.remove("hidden"); pa.textContent="+ Tambah inventaris"; }
+  else pa.classList.add("hidden");
+  const c=document.getElementById("content");
+  if(state.view==="dashboard") c.innerHTML=viewDashboard();
+  else if(state.view==="jurnal") c.innerHTML=viewJurnal();
+  else if(state.view==="bank") c.innerHTML=viewBank();
+  else if(state.view==="labarugi") c.innerHTML=viewLabaRugi();
+  else if(state.view==="neraca") c.innerHTML=viewNeraca();
+  else if(state.view==="inventaris") c.innerHTML=viewInventaris();
+  window.scrollTo(0,0);
+}
+function primaryAdd(){ if(state.view==="jurnal") openJurnal(); else if(state.view==="bank") openBank(); else if(state.view==="inventaris") openInventaris(); }
+
+/* =================================================================
+   PERHITUNGAN LAPORAN
+================================================================= */
+function lrData(period){
+  // jumlahkan jurnal per kategori untuk bulan terpilih
+  const sum={}; KATEGORI.forEach(g=>g.items.forEach(i=>sum[i]=0));
+  for(const j of jurnalPeriode(period)){
+    const info=catInfo(j.kategori);
+    const v = info.jenis==="in" ? (+j.debet||0) : (+j.kredit||0);
+    if(sum[j.kategori]!==undefined) sum[j.kategori]+=v;
+  }
+  const so = DB.stockObat[period] || {awal:0,akhir:0};
+  return {sum, stockAwal:so.awal||0, stockAkhir:so.akhir||0};
+}
+function lrTotals(period){
+  const d=lrData(period);
+  const pendapatan = KATEGORI.filter(g=>g.jenis==="in").reduce((a,g)=>a+g.items.reduce((x,i)=>x+d.sum[i],0),0);
+  const hpp = (d.stockAwal - d.stockAkhir) + d.sum["Pembelian Obat"]+d.sum["Pembelian Alkes"]+d.sum["Pembelian Medis"]+d.sum["Pembelian Laboratorium"]+d.sum["Pembelian Protesa"];
+  const biayaItems=["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"];
+  const biaya = biayaItems.reduce((a,i)=>a+d.sum[i],0);
+  const laba = pendapatan - hpp - biaya;
+  return {pendapatan,hpp,biaya,laba,d};
+}
+function labaTahun(){ return BULAN.reduce((a,b)=>a+lrTotals(b).laba,0); }
+
+/* penyusutan inventaris */
+function invCalc(it){
+  const nilai=+it.nilaiBeli||0, manfaat=+it.manfaat||4;
+  const perTahun = manfaat>0 ? nilai/manfaat : 0;
+  // taksiran umur (tahun berlalu) — sederhana untuk tampilan
+  let umur = 4;
+  if(/^\d{4}$/.test((it.tahun||"").trim())){ umur = Math.max(0, DB.meta.tahun - parseInt(it.tahun)); }
+  else if(/2024/.test(it.tahun||"")) umur=2; else if(/2025/.test(it.tahun||"")) umur=1;
+  else umur=manfaat; // "Dibawah 2020" dianggap sudah penuh
+  let akum = Math.min(nilai, perTahun*umur);
+  if(/Dibawah/i.test(it.tahun||"")) akum=nilai;
+  const buku = Math.max(0, nilai-akum);
+  return {perTahun, akum, buku};
+}
+
+/* =================================================================
+   VIEWS
+================================================================= */
+function viewDashboard(){
+  const p=state.period;
+  const opening=openingKasFor(p);
+  const rows=withSaldo(jurnalPeriode(p),opening);
+  const kasAkhir = rows.length? rows[rows.length-1].saldo : opening;
+  const t=lrTotals(p);
+  const totalInven = DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
+  const bukuInven = DB.inventaris.reduce((a,it)=>a+invCalc(it).buku,0);
+  const masuk=rows.reduce((a,r)=>a+(+r.debet||0),0);
+  const keluar=rows.reduce((a,r)=>a+(+r.kredit||0),0);
+
+  return `
+  <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <div><b>Tersambung ke database.</b> Setiap transaksi yang dicatat langsung tersimpan di Supabase — sama seperti modul lain di portal. Angka di bawah dihitung otomatis dari data ${BULAN_PANJANG[p]}.</div></div>
+
+  <div class="grid-stats">
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Saldo Kas — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(kasAkhir)}</div><div class="meta">Saldo awal periode ${fmt(opening)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Kas Masuk</div><div class="val pos">${fmt(masuk)}</div><div class="meta">${rows.filter(r=>r.debet>0).length} transaksi</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Kas Keluar</div><div class="val neg">${fmt(keluar)}</div><div class="meta">${rows.filter(r=>r.kredit>0).length} transaksi</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Laba / Rugi ${BULAN_PANJANG[p]}</div><div class="val ${t.laba>=0?'pos':'neg'}">${fmt(t.laba)}</div><div class="meta">Pendapatan ${fmt(t.pendapatan)}</div></div>
+  </div>
+
+  <div class="grid-stats">
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri",p))}</div><div class="meta">+ Deposito ${fmt(bankBalanceEnd("Bank Mandiri Deposito",p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--ink-soft)"></span>Stock Obat</div><div class="val">${fmt((DB.stockObat[p]||{}).akhir||DB.saldoAwal.stockObat)}</div><div class="meta">Persediaan akhir periode</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Nilai Inventaris</div><div class="val">${fmt(totalInven)}</div><div class="meta">Nilai buku ${fmt(bukuInven)} · ${DB.inventaris.length} item</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Laba Berjalan ${DB.meta.tahun}</div><div class="val ${labaTahun()>=0?'pos':'neg'}">${fmt(labaTahun())}</div><div class="meta">Akumulasi 12 bulan</div></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="card"><div class="card-head"><div><h2>Tren Laba / Rugi ${DB.meta.tahun}</h2><div class="hint">Per bulan (Januari–Desember)</div></div></div>
+      <div class="chart-body">${chartLabaTren(p)}</div></div>
+    <div class="card"><div class="card-head"><div><h2>Komposisi Pendapatan</h2><div class="hint">${BULAN_PANJANG[p]} ${DB.meta.tahun}</div></div></div>
+      <div class="chart-body">${chartPendapatan(p)}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><h2>Transaksi terakhir</h2><div class="hint">${BULAN_PANJANG[p]} ${DB.meta.tahun}</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="go('jurnal')">Lihat jurnal lengkap</button></div>
+    <div class="tbl-wrap"><table class="ledger">
+      <thead><tr><th>Tgl</th><th>Uraian</th><th class="num">Masuk</th><th class="num">Keluar</th><th class="num">Saldo</th></tr></thead>
+      <tbody>${rows.slice(-6).reverse().map(r=>`<tr>
+        <td class="mono">${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td>
+        <td>${esc(r.uraian)}</td>
+        <td class="num pos">${r.debet?fmt0(r.debet):"—"}</td>
+        <td class="num neg">${r.kredit?fmt0(r.kredit):"—"}</td>
+        <td class="num saldo-cell">${fmt0(r.saldo)}</td></tr>`).join("")||emptyRow(5)}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function viewJurnal(){
+  const p=state.period;
+  const opening=openingKasFor(p);
+  const allRows=withSaldo(jurnalPeriode(p),opening);
+  const masuk=allRows.reduce((a,r)=>a+(+r.debet||0),0);
+  const keluar=allRows.reduce((a,r)=>a+(+r.kredit||0),0);
+  const kasAkhir=allRows.length?allRows[allRows.length-1].saldo:opening;
+  const q=(state.q||"").toLowerCase(), qc=state.qcat||"";
+  const rows=allRows.filter(r=>(!q||(r.uraian||"").toLowerCase().includes(q)||(r.kategori||"").toLowerCase().includes(q))&&(!qc||r.kategori===qc));
+
+  const body = rows.length ? rows.map(r=>{
+    const info=catInfo(r.kategori);
+    const tag = info.jenis==="in"?'<span class="tag tag-in">Masuk</span>':info.jenis==="mut"?'<span class="tag tag-mut">Mutasi</span>':'<span class="tag tag-out">Keluar</span>';
+    return `<tr>
+      <td class="mono" style="white-space:nowrap">${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td>
+      <td><div>${esc(r.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.kategori||"")}</div></td>
+      <td>${tag}</td>
+      <td class="num pos">${r.debet?fmt0(r.debet):"—"}</td>
+      <td class="num neg">${r.kredit?fmt0(r.kredit):"—"}</td>
+      <td class="num saldo-cell">${fmt0(r.saldo)}</td>
+      <td><div class="row-actions">
+        <button class="ico-btn" title="Edit" onclick="openJurnal('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="ico-btn del" title="Hapus" onclick="delJurnal('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div></td></tr>`;
+  }).join("") : emptyRow(7, (q||qc)?"Tidak ada transaksi yang cocok":"Belum ada transaksi di bulan ini", (q||qc)?"Coba ubah kata kunci atau filter.":"Klik “Catat transaksi” untuk mulai membukukan.");
+
+  return `
+  <div class="grid-stats" style="margin-bottom:18px">
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Total Masuk</div><div class="val pos">${fmt(masuk)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Total Keluar</div><div class="val neg">${fmt(keluar)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Saldo Kas Akhir</div><div class="val">${fmt(kasAkhir)}</div><div class="meta">Awal ${fmt(opening)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div><h2>Jurnal Kas — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length}${(q||qc)?" dari "+allRows.length:""} transaksi · saldo berjalan otomatis</div></div>
+      <div class="card-tools">
+        <button class="btn btn-ghost btn-sm" onclick="cetakJurnal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
+        <button class="btn btn-soft btn-sm" onclick="openJurnal()">+ Catat transaksi</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="jq" placeholder="Cari uraian / kategori…" value="${esc(state.q)}" oninput="onSearch(this.value)"></div>
+      <select id="jqc" onchange="onFilterCat(this.value)">${filterCatOptions(qc)}</select>
+      ${(q||qc)?'<button class="btn btn-ghost btn-sm" onclick="clearSearch()">Hapus filter</button>':''}
+    </div>
+    <div class="tbl-wrap"><table class="ledger">
+      <thead><tr><th>Tgl</th><th>Uraian &amp; Kategori</th><th>Jenis</th><th class="num">Debet (Masuk)</th><th class="num">Kredit (Keluar)</th><th class="num">Saldo</th><th></th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>
+  </div>`;
+}
+function filterCatOptions(sel){
+  let o='<option value="">Semua kategori</option>';
+  for(const g of KATEGORI){ o+=`<optgroup label="${g.grup}">`+g.items.map(i=>`<option value="${esc(i)}" ${i===sel?"selected":""}>${esc(i)}</option>`).join("")+'</optgroup>'; }
+  return o;
+}
+let __searchT=null;
+function onSearch(v){ state.q=v; clearTimeout(__searchT); __searchT=setTimeout(()=>{ rerenderKeepFocus(); },220); }
+function onFilterCat(v){ state.qcat=v; render(); }
+function clearSearch(){ state.q=""; state.qcat=""; render(); }
+function rerenderKeepFocus(){
+  const cur=document.activeElement; const isJ=cur&&cur.id==="jq"; const pos=isJ?cur.selectionStart:0;
+  render();
+  if(isJ){ const el=document.getElementById("jq"); if(el){ el.focus(); try{el.setSelectionRange(pos,pos);}catch(e){} } }
+}
+
+/* =================================================================
+   GRAFIK (SVG inline, tanpa pustaka luar)
+================================================================= */
+function chartLabaTren(period){
+  const data=BULAN.map(b=>({b, v:lrTotals(b).laba}));
+  const W=520,H=210, padL=20,padR=12,padT=14,padB=26;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const vals=data.map(d=>d.v);
+  const max=Math.max(1,...vals,0), min=Math.min(0,...vals);
+  const span=(max-min)||1;
+  const bw=iw/data.length;
+  const y0=padT+ (max/span)*ih; // garis nol
+  let bars="",labs="";
+  data.forEach((d,i)=>{
+    const x=padL+i*bw+bw*0.18, w=bw*0.64;
+    const h=Math.abs(d.v)/span*ih;
+    const y=d.v>=0 ? y0-h : y0;
+    const col=d.v>=0?"var(--pos)":"var(--neg)";
+    const active=d.b===period;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0.5,h).toFixed(1)}" rx="2" fill="${col}" opacity="${active?1:0.5}"><title>${BULAN_PANJANG[d.b]}: ${fmt(d.v)}</title></rect>`;
+    labs+=`<text x="${(padL+i*bw+bw/2).toFixed(1)}" y="${H-9}" text-anchor="middle" font-size="9.5" fill="var(--ink-faint)" ${active?'font-weight="700"':''}>${d.b}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="Inter">
+    <line x1="${padL}" y1="${y0.toFixed(1)}" x2="${W-padR}" y2="${y0.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+    ${bars}${labs}</svg>`;
+}
+function chartPendapatan(period){
+  const d=lrData(period);
+  const items=[];
+  KATEGORI.filter(g=>g.jenis==="in").forEach(g=>g.items.forEach(i=>{ if(d.sum[i]>0) items.push([i,d.sum[i]]); }));
+  items.sort((a,b)=>b[1]-a[1]);
+  const total=items.reduce((a,x)=>a+x[1],0);
+  if(!total) return `<div class="empty" style="padding:34px 12px"><p>Belum ada pendapatan di ${BULAN_PANJANG[period]}.</p></div>`;
+  const cols=["#0f766e","#15803d","#b45309","#0369a1","#7c3aed","#be123c","#a16207","#4d7c0f","#9333ea","#0e7490","#92400e","#1e40af"];
+  const top=items.slice(0,8); const sisa=items.slice(8).reduce((a,x)=>a+x[1],0);
+  if(sisa>0) top.push(["Lainnya",sisa]);
+  let bar="",leg=""; let acc=0;
+  top.forEach((it,i)=>{
+    const pct=it[1]/total*100; const c=cols[i%cols.length];
+    bar+=`<div style="width:${pct}%;background:${c}" title="${esc(it[0])}: ${fmt(it[1])}"></div>`;
+    leg+=`<div class="leg-row"><span class="leg-dot" style="background:${c}"></span><span class="leg-name">${esc(it[0])}</span><span class="leg-val">${fmt0(it[1])} <em>${pct.toFixed(1)}%</em></span></div>`;
+    acc+=it[1];
+  });
+  return `<div class="stackbar">${bar}</div><div class="legend">${leg}</div>
+    <div class="leg-total">Total pendapatan ${BULAN_PANJANG[period]}: <b>${fmt(total)}</b></div>`;
+}
+
+/* =================================================================
+   BUKU BANK
+================================================================= */
+function viewBank(){
+  const p=state.period;
+  const q=(state.q||"").toLowerCase();
+  const all=bankPeriode(p).filter(b=>!q || (b.uraian||"").toLowerCase().includes(q) || (b.akun||"").toLowerCase().includes(q));
+  // saldo berjalan per akun
+  const run={}; AKUN_BANK.forEach(a=>run[a]=openingBankFor(a,p));
+  const rows=all.map(b=>{ run[b.akun]=(run[b.akun]??0)+(+b.debet||0)-(+b.kredit||0); return {...b, saldo:run[b.akun]}; });
+  const masuk=all.reduce((a,b)=>a+(+b.debet||0),0), keluar=all.reduce((a,b)=>a+(+b.kredit||0),0);
+  const body = rows.length ? rows.map(b=>`<tr>
+      <td class="mono" style="white-space:nowrap">${b.tgl.slice(8,10)}/${b.tgl.slice(5,7)}</td>
+      <td><div>${esc(b.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(b.akun)}</div></td>
+      <td class="num pos">${b.debet?fmt0(b.debet):"—"}</td>
+      <td class="num neg">${b.kredit?fmt0(b.kredit):"—"}</td>
+      <td class="num saldo-cell">${fmt0(b.saldo)}</td>
+      <td><div class="row-actions">
+        <button class="ico-btn" title="Edit" onclick="openBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="ico-btn del" title="Hapus" onclick="delBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div></td></tr>`).join("") : emptyRow(6, q?"Tidak ada mutasi yang cocok":"Belum ada mutasi bank di bulan ini","Catat setoran/tarikan ke rekening di sini agar Neraca akurat.");
+  return `
+  <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div>Saldo bank di <b>Neraca</b> dihitung dari saldo awal + mutasi di sini. <b>Debet</b> = uang masuk ke rekening (setoran), <b>Kredit</b> = uang keluar dari rekening (tarik tunai).</div></div>
+  <div class="grid-stats" style="margin-bottom:18px">
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri",p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Deposito — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri Deposito",p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Mutasi ${BULAN_PANJANG[p]}</div><div class="val">${fmt(masuk-keluar)}</div><div class="meta">Masuk ${fmt0(masuk)} · Keluar ${fmt0(keluar)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div><h2>Buku Bank — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length} mutasi · saldo berjalan per rekening</div></div>
+      <div class="card-tools">
+        <button class="btn btn-ghost btn-sm" onclick="cetakBank()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
+        <button class="btn btn-soft btn-sm" onclick="openBank()">+ Catat mutasi bank</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="jq" placeholder="Cari mutasi…" value="${esc(state.q)}" oninput="onSearch(this.value)"></div>
+      ${q?'<button class="btn btn-ghost btn-sm" onclick="clearSearch()">Hapus filter</button>':''}
+    </div>
+    <div class="tbl-wrap"><table class="ledger">
+      <thead><tr><th>Tgl</th><th>Uraian &amp; Rekening</th><th class="num">Debet (Masuk)</th><th class="num">Kredit (Keluar)</th><th class="num">Saldo</th><th></th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>
+  </div>`;
+}
+function openBank(id){
+  const b = id? DB.bank.find(x=>String(x.id)===String(id)) : null;
+  const isEdit=!!b;
+  const today=new Date().toISOString().slice(0,10);
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>${isEdit?"Edit mutasi bank":"Catat mutasi bank"}</h3><p>Buku bank ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Tanggal</label><input type="date" id="bTgl" value="${b?b.tgl:today}"></div>
+          <div class="field"><label>Rekening</label><select id="bAkun">${AKUN_BANK.map(a=>`<option value="${a}" ${b&&b.akun===a?"selected":""}>${a}</option>`).join("")}</select></div>
+        </div>
+        <div class="field one"><label>Uraian</label><input type="text" id="bUraian" placeholder="cth: Setoran tunai ke Bank Mandiri" value="${b?esc(b.uraian):""}"></div>
+        <div class="form-row">
+          <div class="field"><label>Debet — masuk ke bank (Rp)</label><input type="number" id="bDebet" placeholder="0" value="${b&&b.debet?b.debet:""}"></div>
+          <div class="field"><label>Kredit — keluar dari bank (Rp)</label><input type="number" id="bKredit" placeholder="0" value="${b&&b.kredit?b.kredit:""}"></div>
+        </div>
+        <div class="help" style="margin-top:-4px">Isi salah satu: <b>Debet</b> untuk setoran ke bank, <b>Kredit</b> untuk penarikan dari bank.</div>
+      </div>
+      <div class="modal-foot">
+        ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delBank('${b.id}')">Hapus</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn" onclick="saveBank('${id||""}')">${isEdit?"Simpan perubahan":"Simpan mutasi"}</button>
+      </div>
+    </div>`);
+}
+async function saveBank(id){
+  const rec={ tgl:document.getElementById("bTgl").value, akun:document.getElementById("bAkun").value,
+    uraian:document.getElementById("bUraian").value.trim(),
+    debet:Math.abs(+document.getElementById("bDebet").value||0), kredit:Math.abs(+document.getElementById("bKredit").value||0) };
+  if(!rec.tgl){ toast("Tanggal wajib diisi.",false); return; }
+  if(!rec.debet && !rec.kredit){ toast("Isi debet atau kredit.",false); return; }
+  if(id){ const {error}=await supa.from('keu_bank').update(rec).eq('id',id);
+    if(error){toast('Gagal menyimpan: '+error.message,false);return;}
+    Object.assign(DB.bank.find(x=>String(x.id)===String(id)), rec); toast("Mutasi diperbarui.");
+  }else{ const {data,error}=await supa.from('keu_bank').insert(rec).select().single();
+    if(error){toast('Gagal menyimpan: '+error.message,false);return;}
+    DB.bank.push({id:data.id, ...rec}); toast("Mutasi bank tersimpan.");
+  }
+  closeModal();
+  const m=monthOf(rec.tgl); if(m!==state.period){ state.period=m; document.getElementById("periodSel").value=m; }
+  render();
+}
+async function delBank(id){
+  if(!confirm("Hapus mutasi bank ini?")) return;
+  const {error}=await supa.from('keu_bank').delete().eq('id',id);
+  if(error){toast('Gagal menghapus: '+error.message,false);return;}
+  DB.bank=DB.bank.filter(x=>String(x.id)!==String(id)); closeModal(); render(); toast("Mutasi dihapus.");
+}
+
+function viewLabaRugi(){
+  const p=state.period;
+  const T=lrTotals(p); const d=T.d;
+  const line=(label,val,cls="")=>`<tr class="sub ${cls}"><td>${label}</td><td class="num mono">${fmt(val)}</td></tr>`;
+  const grp=(label)=>`<tr class="grp"><td colspan="2">${label}</td></tr>`;
+  const selisihStock = d.stockAwal - d.stockAkhir;
+
+  return `
+  <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div>Laporan ini dihitung otomatis dari <b>Jurnal Kas</b> bulan ${BULAN_PANJANG[p]}. Hanya <b>Stock Obat Awal/Akhir</b> yang diisi manual (lihat tombol ubah di bawah).</div></div>
+
+  <div class="card">
+    <div class="card-head"><div><h2>Laporan Laba / Rugi — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${DB.meta.yayasan}</div></div>
+      <div class="card-tools">
+        <button class="btn btn-ghost btn-sm" onclick="cetakLR()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
+        <button class="btn btn-ghost btn-sm" onclick="openStock()">Ubah stock obat</button>
+      </div></div>
+    <div class="tbl-wrap"><table class="report">
+      <tbody>
+        ${grp("PENDAPATAN")}
+        ${KATEGORI.filter(g=>g.jenis==="in").map(g=>g.items.map(i=>line("- "+i,d.sum[i])).join("")).join("")}
+        <tr class="total"><td>TOTAL PENDAPATAN</td><td class="num mono">${fmt(T.pendapatan)}</td></tr>
+
+        ${grp("HARGA POKOK / PERSEDIAAN")}
+        ${line("- Stock Obat Awal",d.stockAwal)}
+        ${line("- Stock Obat Akhir",-d.stockAkhir)}
+        ${line("- Selisih Persediaan",selisihStock)}
+        ${line("- Pembelian Obat",d.sum["Pembelian Obat"])}
+        ${line("- Pembelian Alkes",d.sum["Pembelian Alkes"])}
+        ${line("- Pembelian Medis",d.sum["Pembelian Medis"])}
+        ${line("- Pembelian Laboratorium",d.sum["Pembelian Laboratorium"])}
+        ${line("- Protesa",d.sum["Pembelian Protesa"])}
+        <tr class="total"><td>TOTAL HARGA POKOK</td><td class="num mono">${fmt(T.hpp)}</td></tr>
+
+        ${grp("BIAYA-BIAYA")}
+        ${["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"].map(i=>line("- "+i,d.sum[i])).join("")}
+        <tr class="total"><td>TOTAL BIAYA</td><td class="num mono">${fmt(T.biaya)}</td></tr>
+
+        <tr class="laba"><td>${T.laba>=0?"LABA":"RUGI"} BULAN ${BULAN_PANJANG[p].toUpperCase()}</td><td class="num mono">${fmt(T.laba)}</td></tr>
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function viewNeraca(){
+  const p=state.period; const idx=BULAN.indexOf(p);
+  const opening=openingKasFor(p);
+  const rows=withSaldo(jurnalPeriode(p),opening);
+  const kas = rows.length?rows[rows.length-1].saldo:opening;
+  const bankM = bankBalanceEnd("Bank Mandiri",p);
+  const depo = bankBalanceEnd("Bank Mandiri Deposito",p);
+  const stock = (DB.stockObat[p]||{}).akhir || DB.saldoAwal.stockObat;
+  const inven = DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
+  const penyusutan = DB.inventaris.reduce((a,it)=>a+invCalc(it).akum,0);
+  const invenBuku = inven - penyusutan;
+  let labaYtd=0; for(let i=0;i<=idx;i++) labaYtd+=lrTotals(BULAN[i]).laba;
+
+  const aktivaLancar = kas + bankM + depo + DB.saldoAwal.piutang + stock;
+  const totalAktiva = aktivaLancar + invenBuku;
+  const totalHutang = (+DB.hutangPendek||0)+(+DB.hutangPanjang||0);
+  const modal = DB.modalAwal + labaYtd;
+  const totalPasiva = totalHutang + modal;
+
+  const r=(l,v,strong=false)=>`<tr class="${strong?'total':'sub'}"><td>${l}</td><td class="num mono">${fmt(v)}</td></tr>`;
+
+  return `
+  <div class="card">
+    <div class="card-head"><div><h2>Neraca — per akhir ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${DB.meta.yayasan}</div></div>
+      <div class="card-tools">
+        <button class="btn btn-ghost btn-sm" onclick="cetakNeraca()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
+        <button class="btn btn-ghost btn-sm" onclick="openNeracaInput()">Ubah saldo awal / hutang / modal</button>
+      </div></div>
+    <div class="neraca-grid">
+      <div class="neraca-col" style="border-right:1px solid var(--line)">
+        <h3>Aktiva</h3>
+        <table class="report"><tbody>
+          <tr class="grp"><td colspan="2">I. Aktiva Lancar</td></tr>
+          ${r("Kas",kas)} ${r("Bank Mandiri",bankM)} ${r("Bank Mandiri Deposito",depo)}
+          ${r("Piutang",DB.saldoAwal.piutang)} ${r("Stock Obat-obatan",stock)}
+          ${r("Jumlah Aktiva Lancar",aktivaLancar,true)}
+          <tr class="grp"><td colspan="2">II. Aktiva Tetap</td></tr>
+          ${r("Inventaris",inven)} ${r("Penyusutan & Barang Rusak",-penyusutan)}
+          ${r("Jumlah Aktiva Tetap",invenBuku,true)}
+          <tr class="laba"><td>TOTAL AKTIVA</td><td class="num mono">${fmt(totalAktiva)}</td></tr>
+        </tbody></table>
+      </div>
+      <div class="neraca-col">
+        <h3>Pasiva</h3>
+        <table class="report"><tbody>
+          <tr class="grp"><td colspan="2">IV. Hutang Jangka Pendek</td></tr>
+          ${r("Hutang",DB.hutangPendek||0)}
+          <tr class="grp"><td colspan="2">V. Hutang Jangka Panjang</td></tr>
+          ${r("Hutang",DB.hutangPanjang||0)}
+          <tr class="grp"><td colspan="2">VI. Modal</td></tr>
+          ${r("Modal Awal "+DB.meta.tahun,DB.modalAwal)}
+          ${r((labaYtd>=0?"Laba":"Rugi")+" tahun "+DB.meta.tahun+" (s.d. "+BULAN_PANJANG[p]+")",labaYtd)}
+          ${r("Jumlah Modal",modal,true)}
+          <tr class="laba"><td>TOTAL PASIVA</td><td class="num mono">${fmt(totalPasiva)}</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function viewInventaris(){
+  const items=DB.inventaris;
+  const totBeli=items.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
+  const totAkum=items.reduce((a,it)=>a+invCalc(it).akum,0);
+  const totBuku=items.reduce((a,it)=>a+invCalc(it).buku,0);
+  const totSus=items.reduce((a,it)=>a+invCalc(it).perTahun,0);
+
+  const body=items.length? items.map((it,n)=>{
+    const c=invCalc(it);
+    return `<tr>
+      <td class="mono">${n+1}</td>
+      <td>${esc(it.jenis)}</td>
+      <td class="num">${it.jumlah}</td>
+      <td>${esc(it.tahun)}</td>
+      <td class="num mono">${fmt0(it.nilaiBeli)}</td>
+      <td class="num">${it.manfaat} thn</td>
+      <td class="num mono">${fmt0(c.perTahun)}</td>
+      <td class="num mono">${fmt0(c.akum)}</td>
+      <td class="num mono saldo-cell">${fmt0(c.buku)}</td>
+      <td><div class="row-actions">
+        <button class="ico-btn" title="Edit" onclick="openInventaris('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+        <button class="ico-btn del" title="Hapus" onclick="delInventaris('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div></td></tr>`;
+  }).join("") : emptyRow(10,"Belum ada inventaris","Klik “Tambah inventaris”.");
+
+  return `
+  <div class="grid-stats" style="margin-bottom:18px">
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Total Nilai Beli</div><div class="val">${fmt(totBeli)}</div><div class="meta">${items.length} jenis inventaris</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Akumulasi Penyusutan</div><div class="val neg">${fmt(totAkum)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Penyusutan / Tahun</div><div class="val">${fmt(totSus)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Nilai Buku</div><div class="val pos">${fmt(totBuku)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div><h2>Daftar Inventaris &amp; Penyusutan</h2><div class="hint">Penyusutan per tahun = nilai beli ÷ taksiran manfaat</div></div>
+      <div class="card-tools">
+        <button class="btn btn-ghost btn-sm" onclick="cetakInventaris()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
+        <button class="btn btn-soft btn-sm" onclick="openInventaris()">+ Tambah inventaris</button>
+      </div></div>
+    <div class="tbl-wrap"><table class="ledger">
+      <thead><tr><th>No</th><th>Jenis Inventaris</th><th class="num">Jumlah</th><th>Tahun Perolehan</th><th class="num">Nilai Beli</th><th class="num">Manfaat</th><th class="num">Penyusutan/Thn</th><th class="num">Akumulasi</th><th class="num">Nilai Buku</th><th></th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function emptyRow(cols,title="Belum ada data",sub=""){
+  return `<tr><td colspan="${cols}"><div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><p>${title}</p>${sub?`<div style="font-size:12.5px">${sub}</div>`:""}</div></td></tr>`;
+}
+
+/* =================================================================
+   MODALS
+================================================================= */
+function openModal(html){ document.getElementById("modalRoot").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()">${html}</div>`; }
+function closeModal(){ document.getElementById("modalRoot").innerHTML=""; }
+
+/* ---- Jurnal add/edit ---- */
+function catOptions(sel){
+  return KATEGORI.map(g=>`<optgroup label="${g.grup}">${g.items.map(i=>`<option value="${esc(i)}" ${i===sel?"selected":""}>${esc(i)}</option>`).join("")}</optgroup>`).join("");
+}
+let jurnalJenis="out";
+function openJurnal(id){
+  const it = id? DB.jurnal.find(x=>x.id===id) : null;
+  const isEdit=!!it;
+  const tgl = it? it.tgl : new Date().toISOString().slice(0,10);
+  jurnalJenis = it ? (catInfo(it.kategori).jenis) : "out";
+  const amt = it ? (it.debet||it.kredit||"") : "";
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>${isEdit?"Edit transaksi":"Catat transaksi"}</h3><p>Jurnal kas ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Tanggal</label><input type="date" id="jTgl" value="${tgl}"></div>
+          <div class="field"><label>Jenis transaksi</label>
+            <div class="seg" id="jSeg">
+              <button type="button" class="${jurnalJenis==='in'?'on-in':''}" onclick="setJenis('in')">Masuk</button>
+              <button type="button" class="${jurnalJenis==='out'?'on-out':''}" onclick="setJenis('out')">Keluar</button>
+              <button type="button" class="${jurnalJenis==='mut'?'on-mut':''}" onclick="setJenis('mut')">Mutasi</button>
+            </div>
+          </div>
+        </div>
+        <div class="field one"><label>Uraian</label><input type="text" id="jUraian" placeholder="cth: Terima Konsultasi Poli Umum" value="${it?esc(it.uraian):""}"></div>
+        <div class="form-row">
+          <div class="field"><label>Kategori</label><select id="jKat">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
+          <div class="field"><label>Jumlah (Rp)</label><input type="number" id="jAmt" placeholder="0" value="${amt}"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delJurnal('${it.id}')">Hapus</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn" onclick="saveJurnal('${it?it.id:""}')">${isEdit?"Simpan perubahan":"Simpan transaksi"}</button>
+      </div>
+    </div>`);
+  syncKatToJenis();
+}
+function setJenis(j){
+  jurnalJenis=j;
+  document.querySelectorAll("#jSeg button").forEach((b,i)=>{ b.className = (["in","out","mut"][i]===j)?({in:"on-in",out:"on-out",mut:"on-mut"}[j]):""; });
+}
+function syncKatToJenis(){ /* dibiarkan: kategori bebas dipilih; jenis ikut kategori saat simpan */ }
+async function saveJurnal(id){
+  const tgl=document.getElementById("jTgl").value;
+  const uraian=document.getElementById("jUraian").value.trim();
+  const kat=document.getElementById("jKat").value;
+  const amt=Math.abs(+document.getElementById("jAmt").value||0);
+  if(!tgl||!uraian||!amt){ toast("Lengkapi tanggal, uraian, dan jumlah.",false); return; }
+  const jenis=catInfo(kat).jenis;
+  const debet = jenis==="in" ? amt : 0;
+  const kredit = jenis==="in" ? 0 : amt; // mutasi & keluar dianggap kas keluar
+  const payload={tgl,uraian,kategori:kat,debet,kredit};
+  if(id){
+    const { error } = await supa.from('keu_jurnal').update(payload).eq('id', id);
+    if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
+    Object.assign(DB.jurnal.find(x=>String(x.id)===String(id)), payload);
+    toast("Transaksi diperbarui.");
+  }else{
+    const { data, error } = await supa.from('keu_jurnal').insert(payload).select().single();
+    if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
+    DB.jurnal.push({id:data.id, tgl:data.tgl, uraian:data.uraian, kategori:data.kategori, debet:+data.debet, kredit:+data.kredit});
+    toast("Transaksi tersimpan.");
+  }
+  closeModal();
+  const m=monthOf(tgl); if(m!==state.period){ state.period=m; document.getElementById("periodSel").value=m; }
+  render();
+}
+async function delJurnal(id){
+  if(!confirm("Hapus transaksi ini?")) return;
+  const { error } = await supa.from('keu_jurnal').delete().eq('id', id);
+  if(error){ toast('Gagal menghapus: '+error.message,false); return; }
+  DB.jurnal=DB.jurnal.filter(x=>String(x.id)!==String(id)); closeModal(); render(); toast("Transaksi dihapus.");
+}
+
+/* ---- Inventaris add/edit ---- */
+function openInventaris(id){
+  const it = id? DB.inventaris.find(x=>x.id===id):null; const isEdit=!!it;
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>${isEdit?"Edit inventaris":"Tambah inventaris"}</h3><p>Daftar & penyusutan inventaris</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="field one"><label>Jenis inventaris</label><input type="text" id="iJenis" placeholder="cth: AC Merk Panasonic 1 PK" value="${it?esc(it.jenis):""}"></div>
+        <div class="form-row">
+          <div class="field"><label>Jumlah</label><input type="number" id="iJml" value="${it?it.jumlah:1}"></div>
+          <div class="field"><label>Tahun perolehan</label><input type="text" id="iThn" placeholder="cth: 2024 / Juli 2024 / Dibawah 2020" value="${it?esc(it.tahun):DB.meta.tahun}"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Nilai beli (Rp)</label><input type="number" id="iNilai" value="${it?it.nilaiBeli:""}"></div>
+          <div class="field"><label>Taksiran manfaat (tahun)</label><input type="number" id="iManfaat" value="${it?it.manfaat:4}"></div>
+        </div>
+        <div class="help">Penyusutan per tahun &amp; nilai buku akan dihitung otomatis.</div>
+      </div>
+      <div class="modal-foot">
+        ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delInventaris('${it.id}')">Hapus</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn" onclick="saveInventaris('${it?it.id:""}')">${isEdit?"Simpan perubahan":"Tambah"}</button>
+      </div>
+    </div>`);
+}
+async function saveInventaris(id){
+  const jenis=document.getElementById("iJenis").value.trim();
+  const jumlah=+document.getElementById("iJml").value||1;
+  const tahun=document.getElementById("iThn").value.trim();
+  const nilaiBeli=+document.getElementById("iNilai").value||0;
+  const manfaat=+document.getElementById("iManfaat").value||4;
+  if(!jenis){ toast("Isi jenis inventaris.",false); return; }
+  const payload={jenis,jumlah,tahun,nilai_beli:nilaiBeli,manfaat};
+  if(id){
+    const { error } = await supa.from('keu_inventaris').update(payload).eq('id', id);
+    if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
+    Object.assign(DB.inventaris.find(x=>String(x.id)===String(id)),{jenis,jumlah,tahun,nilaiBeli,manfaat});
+    toast("Inventaris diperbarui.");
+  }else{
+    const { data, error } = await supa.from('keu_inventaris').insert(payload).select().single();
+    if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
+    DB.inventaris.push({id:data.id, jenis:data.jenis, jumlah:data.jumlah, tahun:data.tahun, nilaiBeli:+data.nilai_beli, manfaat:data.manfaat});
+    toast("Inventaris ditambahkan.");
+  }
+  closeModal(); render();
+}
+async function delInventaris(id){
+  if(!confirm("Hapus inventaris ini?")) return;
+  const { error } = await supa.from('keu_inventaris').delete().eq('id', id);
+  if(error){ toast('Gagal menghapus: '+error.message,false); return; }
+  DB.inventaris=DB.inventaris.filter(x=>String(x.id)!==String(id)); closeModal(); render(); toast("Inventaris dihapus.");
+}
+
+/* ---- Stock obat (manual LR) ---- */
+function openStock(){
+  const p=state.period; const so=DB.stockObat[p]||{awal:0,akhir:0};
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>Stock Obat — ${BULAN_PANJANG[p]}</h3><p>Diisi manual untuk laporan laba/rugi</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body"><div class="form-row">
+        <div class="field"><label>Stock obat awal (Rp)</label><input type="number" id="sAwal" value="${so.awal||0}"></div>
+        <div class="field"><label>Stock obat akhir (Rp)</label><input type="number" id="sAkhir" value="${so.akhir||0}"></div>
+      </div></div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn" onclick="saveStock()">Simpan</button></div>
+    </div>`);
+}
+async function saveStock(){
+  const p=state.period;
+  DB.stockObat[p]={awal:+document.getElementById("sAwal").value||0, akhir:+document.getElementById("sAkhir").value||0};
+  if(await saveConfig()){ closeModal(); render(); toast("Stock obat tersimpan."); }
+}
+
+/* ---- Neraca manual inputs ---- */
+function openNeracaInput(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>Saldo Awal, Hutang &amp; Modal</h3><p>Nilai pembuka untuk neraca</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Saldo Awal Kas</label><input type="number" id="nKas" value="${DB.saldoAwal.kas}"></div>
+          <div class="field"><label>Bank Mandiri</label><input type="number" id="nBank" value="${DB.saldoAwal.bankMandiri}"></div>
+          <div class="field"><label>Bank Mandiri Deposito</label><input type="number" id="nDepo" value="${DB.saldoAwal.deposito}"></div>
+          <div class="field"><label>Piutang</label><input type="number" id="nPiutang" value="${DB.saldoAwal.piutang}"></div>
+          <div class="field"><label>Hutang Jangka Pendek</label><input type="number" id="nHp" value="${DB.hutangPendek||0}"></div>
+          <div class="field"><label>Hutang Jangka Panjang</label><input type="number" id="nHpj" value="${DB.hutangPanjang||0}"></div>
+          <div class="field"><label>Modal Awal ${DB.meta.tahun}</label><input type="number" id="nModal" value="${DB.modalAwal}"></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn" onclick="saveNeraca()">Simpan</button></div>
+    </div>`);
+}
+async function saveNeraca(){
+  DB.saldoAwal.kas=+document.getElementById("nKas").value||0;
+  DB.saldoAwal.bankMandiri=+document.getElementById("nBank").value||0;
+  DB.saldoAwal.deposito=+document.getElementById("nDepo").value||0;
+  DB.saldoAwal.piutang=+document.getElementById("nPiutang").value||0;
+  DB.hutangPendek=+document.getElementById("nHp").value||0;
+  DB.hutangPanjang=+document.getElementById("nHpj").value||0;
+  DB.modalAwal=+document.getElementById("nModal").value||0;
+  if(await saveConfig()){ closeModal(); render(); toast("Neraca diperbarui."); }
+}
+
+/* ---- Ganti kata sandi ---- */
+function openChangePw(){
+  openModal(`
+    <div class="modal" style="max-width:440px">
+      <div class="modal-head"><div><h3>Ganti kata sandi</h3><p>Kata sandi baru tersimpan bersama data</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <div class="field one"><label>Kata sandi lama</label><input type="password" id="pwOld" placeholder="Kata sandi saat ini"></div>
+        <div class="field one"><label>Kata sandi baru</label><input type="password" id="pwNew" placeholder="Minimal 5 karakter"></div>
+        <div class="field one"><label>Ulangi kata sandi baru</label><input type="password" id="pwNew2" placeholder="Ulangi"></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn" onclick="saveChangePw()">Ganti kata sandi</button></div>
+    </div>`);
+}
+async function saveChangePw(){
+  const o=document.getElementById("pwOld").value, n=document.getElementById("pwNew").value, n2=document.getElementById("pwNew2").value;
+  if(o!==DB.pw){ toast("Kata sandi lama salah.",false); return; }
+  if(n.length<5){ toast("Kata sandi baru minimal 5 karakter.",false); return; }
+  if(n!==n2){ toast("Konfirmasi kata sandi tidak sama.",false); return; }
+  const { error } = await supa.from('keu_setting').upsert({id:'auth', data:{pw:n}});
+  if(error){ toast('Gagal: '+error.message,false); return; }
+  DB.pw=n; closeModal(); toast("Kata sandi berhasil diganti.");
+}
+
+/* ---- Cadangan data (backup) ---- */
+function openExport(){
+  openModal(`
+    <div class="modal">
+      <div class="modal-head"><div><h3>Cadangan Data</h3><p>Unduh salinan seluruh data keuangan</p></div>
+        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+      <div class="modal-body">
+        <p style="margin:0 0 14px;color:var(--ink-soft);font-size:13.5px">Semua data sudah otomatis tersimpan di database Supabase saat Anda input. Tombol di bawah hanya untuk membuat <b>salinan cadangan</b> (backup) dalam satu file JSON yang bisa Anda simpan sendiri.</p>
+        <button class="btn btn-block" onclick="downloadJSON()"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg> Unduh cadangan (.json)</button>
+        <div class="help" style="margin-top:14px">Tip: simpan cadangan ini sesekali (mis. tiap akhir bulan) sebagai arsip.</div>
+      </div>
+    </div>`);
+}
+function downloadJSON(){
+  const backup={ dibuat:new Date().toISOString(), meta:DB.meta, saldoAwal:DB.saldoAwal, modalAwal:DB.modalAwal,
+                 hutangPendek:DB.hutangPendek, hutangPanjang:DB.hutangPanjang, stockObat:DB.stockObat,
+                 jurnal:DB.jurnal, inventaris:DB.inventaris };
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="cadangan-keuangan-"+new Date().toISOString().slice(0,10)+".json"; a.click();
+  toast("Cadangan diunduh.");
+}
+
+/* =================================================================
+   CETAK / PDF LAPORAN (kop yayasan + tanda tangan)
+================================================================= */
+function tglIndo(){
+  const b=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const d=new Date(); return `${d.getDate()} ${b[d.getMonth()]} ${d.getFullYear()}`;
+}
+function printDoc(title, sub, bodyHtml, opt){
+  opt=opt||{};
+  const kop=`<div class="p-kop">
+      <div class="p-yayasan">${esc(DB.meta.yayasan||"YAYASAN KESEHATAN IMANUEL").toUpperCase()}</div>
+      <div class="p-klinik">${esc(DB.meta.klinik||"Klinik Pratama Imanuel")} — ${esc(DB.meta.kota||"Manado")}</div>
+      <div class="p-rule"></div><div class="p-rule thin"></div>
+    </div>
+    <div class="p-title">${esc(title)}</div>
+    <div class="p-sub">${esc(sub)}</div>`;
+  const sign = opt.noSign ? "" : `<div class="p-sign">
+      <div class="col"><div class="role">Mengetahui,<br>Ketua Yayasan</div><div class="nm">${esc(DB.meta.ketua||"")}</div></div>
+      <div class="col"><div class="date">${esc(DB.meta.kota||"Manado")}, ${tglIndo()}</div><div class="role">Bendahara</div><div class="nm">${esc(DB.meta.bendahara||"")}</div></div>
+    </div>`;
+  document.getElementById("printArea").innerHTML = kop + bodyHtml + sign;
+  const after=()=>{ document.getElementById("printArea").innerHTML=""; window.removeEventListener("afterprint",after); };
+  window.addEventListener("afterprint", after);
+  window.print();
+}
+function ptbl(head, rows, foot){
+  return `<table class="p-tbl"><thead>${head}</thead><tbody>${rows}</tbody>${foot?`<tfoot>${foot}</tfoot>`:""}</table>`;
+}
+function cetakJurnal(){
+  const p=state.period, opening=openingKasFor(p);
+  const rows=withSaldo(jurnalPeriode(p),opening);
+  const masuk=rows.reduce((a,r)=>a+(+r.debet||0),0), keluar=rows.reduce((a,r)=>a+(+r.kredit||0),0);
+  const akhir=rows.length?rows[rows.length-1].saldo:opening;
+  const head=`<tr><th>Tgl</th><th>Uraian</th><th>Kategori</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr>`;
+  let body=`<tr><td></td><td><i>Saldo awal periode</i></td><td></td><td class="n">—</td><td class="n">—</td><td class="n">${fmt0(opening)}</td></tr>`;
+  body+=rows.map(r=>`<tr><td>${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td><td>${esc(r.uraian)}</td><td>${esc(r.kategori||"")}</td><td class="n">${r.debet?fmt0(r.debet):"—"}</td><td class="n">${r.kredit?fmt0(r.kredit):"—"}</td><td class="n">${fmt0(r.saldo)}</td></tr>`).join("");
+  const foot=`<tr class="tot"><td colspan="3">JUMLAH</td><td class="n">${fmt0(masuk)}</td><td class="n">${fmt0(keluar)}</td><td class="n">${fmt0(akhir)}</td></tr>`;
+  printDoc("Jurnal Kas", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+}
+function cetakBank(){
+  const p=state.period;
+  const run={}; AKUN_BANK.forEach(a=>run[a]=openingBankFor(a,p));
+  const list=bankPeriode(p).map(b=>{ run[b.akun]=(run[b.akun]??0)+(+b.debet||0)-(+b.kredit||0); return {...b,saldo:run[b.akun]}; });
+  const head=`<tr><th>Tgl</th><th>Uraian</th><th>Rekening</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr>`;
+  const body=list.length?list.map(b=>`<tr><td>${b.tgl.slice(8,10)}/${b.tgl.slice(5,7)}</td><td>${esc(b.uraian)}</td><td>${esc(b.akun)}</td><td class="n">${b.debet?fmt0(b.debet):"—"}</td><td class="n">${b.kredit?fmt0(b.kredit):"—"}</td><td class="n">${fmt0(b.saldo)}</td></tr>`).join(""):`<tr><td colspan="6" style="text-align:center">Tidak ada mutasi</td></tr>`;
+  const foot=`<tr class="tot"><td colspan="3">SALDO AKHIR ${BULAN_PANJANG[p].toUpperCase()}</td><td class="n" colspan="2">Bank Mandiri</td><td class="n">${fmt0(bankBalanceEnd("Bank Mandiri",p))}</td></tr>
+    <tr class="tot"><td colspan="3"></td><td class="n" colspan="2">Deposito</td><td class="n">${fmt0(bankBalanceEnd("Bank Mandiri Deposito",p))}</td></tr>`;
+  printDoc("Buku Bank", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+}
+function cetakLR(){
+  const p=state.period, T=lrTotals(p), d=T.d;
+  const ln=(l,v)=>`<tr><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
+  const grp=l=>`<tr class="grp"><td colspan="2">${esc(l)}</td></tr>`;
+  const tot=(l,v)=>`<tr class="tot"><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
+  let b=grp("Pendapatan");
+  KATEGORI.filter(g=>g.jenis==="in").forEach(g=>g.items.forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); }));
+  b+=tot("Total Pendapatan",T.pendapatan);
+  b+=grp("Harga Pokok / Persediaan");
+  b+=ln("- Stock Obat Awal",d.stockAwal)+ln("- Stock Obat Akhir",-d.stockAkhir);
+  ["Pembelian Obat","Pembelian Alkes","Pembelian Medis","Pembelian Laboratorium","Pembelian Protesa"].forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
+  b+=tot("Total Harga Pokok",T.hpp);
+  b+=grp("Biaya-biaya");
+  ["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"].forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
+  b+=tot("Total Biaya",T.biaya);
+  b+=tot((T.laba>=0?"LABA":"RUGI")+" BERSIH "+BULAN_PANJANG[p].toUpperCase(),T.laba);
+  printDoc("Laporan Laba / Rugi", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(`<tr><th>Uraian</th><th class="n">Jumlah (Rp)</th></tr>`,b));
+}
+function cetakNeraca(){
+  const p=state.period, idx=BULAN.indexOf(p);
+  const kas=(()=>{ const r=withSaldo(jurnalPeriode(p),openingKasFor(p)); return r.length?r[r.length-1].saldo:openingKasFor(p); })();
+  const bankM=bankBalanceEnd("Bank Mandiri",p), depo=bankBalanceEnd("Bank Mandiri Deposito",p);
+  const stock=(DB.stockObat[p]||{}).akhir||DB.saldoAwal.stockObat;
+  const inven=DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
+  const peny=DB.inventaris.reduce((a,it)=>a+invCalc(it).akum,0);
+  const invBuku=inven-peny;
+  let laba=0; for(let i=0;i<=idx;i++) laba+=lrTotals(BULAN[i]).laba;
+  const aktivaLancar=kas+bankM+depo+DB.saldoAwal.piutang+stock, totalAktiva=aktivaLancar+invBuku;
+  const hutang=(+DB.hutangPendek||0)+(+DB.hutangPanjang||0), modal=DB.modalAwal+laba, totalPasiva=hutang+modal;
+  const ln=(l,v)=>`<tr><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
+  const grp=l=>`<tr class="grp"><td colspan="2">${esc(l)}</td></tr>`;
+  const tot=(l,v)=>`<tr class="tot"><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
+  const aktiva=ptbl(`<tr><th>Aktiva</th><th class="n">Rp</th></tr>`,
+    grp("Aktiva Lancar")+ln("Kas",kas)+ln("Bank Mandiri",bankM)+ln("Bank Mandiri Deposito",depo)+ln("Piutang",DB.saldoAwal.piutang)+ln("Stock Obat",stock)+tot("Jumlah Aktiva Lancar",aktivaLancar)
+    +grp("Aktiva Tetap")+ln("Inventaris",inven)+ln("Penyusutan",-peny)+tot("Jumlah Aktiva Tetap",invBuku)+tot("TOTAL AKTIVA",totalAktiva));
+  const pasiva=ptbl(`<tr><th>Pasiva</th><th class="n">Rp</th></tr>`,
+    grp("Hutang")+ln("Hutang Jangka Pendek",DB.hutangPendek||0)+ln("Hutang Jangka Panjang",DB.hutangPanjang||0)
+    +grp("Modal")+ln("Modal Awal "+DB.meta.tahun,DB.modalAwal)+ln((laba>=0?"Laba":"Rugi")+" s.d. "+BULAN_PANJANG[p],laba)+tot("Jumlah Modal",modal)+tot("TOTAL PASIVA",totalPasiva));
+  printDoc("Neraca", `Per akhir ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, `<div class="p-flex"><div>${aktiva}</div><div>${pasiva}</div></div>`);
+}
+function cetakInventaris(){
+  const items=DB.inventaris;
+  const head=`<tr><th>No</th><th>Jenis</th><th class="n">Jml</th><th>Tahun</th><th class="n">Nilai Beli</th><th class="n">Peny./Thn</th><th class="n">Akumulasi</th><th class="n">Nilai Buku</th></tr>`;
+  const body=items.map((it,n)=>{ const c=invCalc(it); return `<tr><td>${n+1}</td><td>${esc(it.jenis)}</td><td class="n">${it.jumlah}</td><td>${esc(it.tahun)}</td><td class="n">${fmt0(it.nilaiBeli)}</td><td class="n">${fmt0(c.perTahun)}</td><td class="n">${fmt0(c.akum)}</td><td class="n">${fmt0(c.buku)}</td></tr>`; }).join("");
+  const tBeli=items.reduce((a,it)=>a+(+it.nilaiBeli||0),0), tAkum=items.reduce((a,it)=>a+invCalc(it).akum,0), tBuku=items.reduce((a,it)=>a+invCalc(it).buku,0);
+  const foot=`<tr class="tot"><td colspan="4">JUMLAH (${items.length} item)</td><td class="n">${fmt0(tBeli)}</td><td class="n"></td><td class="n">${fmt0(tAkum)}</td><td class="n">${fmt0(tBuku)}</td></tr>`;
+  printDoc("Daftar Inventaris & Penyusutan", `Per ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+}
+
+/* =================================================================
+   BOOT
+================================================================= */
+(async function(){
+  try{
+    await loadSettings();
+  }catch(e){
+    // Tabel belum dibuat / koneksi gagal — biarkan login tetap bisa dengan kata sandi awal
+    DB.pw = DB.pw || 'keuanganimanuel';
+    toast('Belum terhubung ke database. Pastikan tabel sudah dibuat di Supabase.', false);
+  }
+})();
+</script>
+</body>
+</html>

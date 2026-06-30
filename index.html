@@ -257,6 +257,37 @@
         .dashboard-card:hover .banner-cta { background: #e0f2f1; transform: scale(1.04); }
         .farmasi-card:hover .banner-cta { background: #eff6ff; transform: scale(1.04); }
 
+        /* ── Pembukuan Keuangan Card (Emas - Berbeda dari modul lain) ── */
+        .pembukuan-card {
+            background: linear-gradient(135deg, #7c4a03 0%, #a55d09 55%, #c9870f 100%);
+            border-radius: 20px;
+            padding: 28px 36px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            box-shadow: 0 8px 32px rgba(124, 74, 3, 0.25);
+            border: 1px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .pembukuan-card::before {
+            content: ''; position: absolute; top: -40px; right: -40px;
+            width: 160px; height: 160px; background: rgba(255,255,255,0.07);
+            border-radius: 50%; pointer-events: none;
+        }
+        .pembukuan-card::after {
+            content: ''; position: absolute; bottom: -50px; right: 120px;
+            width: 200px; height: 200px; background: rgba(255,255,255,0.05);
+            border-radius: 50%; pointer-events: none;
+        }
+        .pembukuan-card:hover { transform: translateY(-5px); box-shadow: 0 16px 48px rgba(124, 74, 3, 0.35); }
+        .pembukuan-card:hover .banner-card-icon { background: rgba(255,255,255,0.25); transform: scale(1.08) rotate(-3deg); }
+        .pembukuan-card .banner-cta { color: #a55d09; }
+        .pembukuan-card:hover .banner-cta { background: #fdf3e3; transform: scale(1.04); }
+
         /* Divider Label */
         .section-divider {
             width: 90%; max-width: 1200px; display: flex; align-items: center;
@@ -273,7 +304,7 @@
             .header h1 { font-size: 2rem; }
             .dashboard-container { grid-template-columns: 1fr; }
             .banners-container { width: 90%; }
-            .dashboard-card, .farmasi-card { flex-direction: column; align-items: flex-start; padding: 24px 22px; }
+            .dashboard-card, .farmasi-card, .pembukuan-card { flex-direction: column; align-items: flex-start; padding: 24px 22px; }
             .banner-card-right { width: 100%; }
             .banner-cta { width: 100%; justify-content: center; }
             .banner-card-text p { max-width: 100%; }
@@ -324,6 +355,24 @@
             </div>
             <div class="banner-card-right">
                 <div class="banner-cta">Buka Modul Farmasi <i class="fa-solid fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="pembukuan.html" class="pembukuan-card">
+            <div class="banner-card-left">
+                <div class="banner-card-icon"><i class="fa-solid fa-book-open"></i></div>
+                <div class="banner-card-text">
+                    <h3>Pembukuan Keuangan</h3>
+                    <p>Jurnal kas, laporan laba/rugi, neraca, dan penyusutan inventaris klinik &mdash; lengkap dalam satu sistem untuk bendahara/pengurus yayasan.</p>
+                    <div class="banner-card-pills">
+                        <span class="banner-pill" style="background: rgba(220, 38, 38, 0.8); border:none;"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Akses Terkunci</span>
+                        <span class="banner-pill"><i class="fa-solid fa-scale-balanced" style="margin-right:4px"></i>Laba/Rugi &amp; Neraca</span>
+                        <span class="banner-pill"><i class="fa-solid fa-box-archive" style="margin-right:4px"></i>Inventaris</span>
+                    </div>
+                </div>
+            </div>
+            <div class="banner-card-right">
+                <div class="banner-cta">Buka Pembukuan <i class="fa-solid fa-arrow-right"></i></div>
             </div>
         </a>
 
