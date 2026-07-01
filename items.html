@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manajemen Item &amp; Harga — Invoice</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#0f172a; --ink-soft:#64748b;
+    --line:#e2e8f0; --brand:#047857; --brand-soft:#ecfdf5; --brand-ink:#065f46;
+    --danger:#dc2626; --danger-soft:#fef2f2; --radius:14px;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.5}
+  a{color:inherit}
+
+  .topbar{background:var(--card);border-bottom:1px solid var(--line);padding:14px 20px;
+    display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+  .topbar .logo{width:36px;height:36px;border-radius:10px;background:var(--brand-soft);
+    color:var(--brand);display:grid;place-items:center;font-size:1.05rem}
+  .topbar h1{font-size:1.02rem;margin:0}
+  .topbar .sub{font-size:.78rem;color:var(--ink-soft)}
+  .topbar nav{margin-left:auto;display:flex;gap:8px}
+  .navlink{padding:8px 13px;border-radius:9px;font-size:.85rem;font-weight:600;
+    color:var(--ink-soft);text-decoration:none}
+  .navlink.active,.navlink:hover{background:var(--brand-soft);color:var(--brand-ink)}
+
+  .wrap{max-width:1000px;margin:26px auto;padding:0 18px;display:grid;
+    grid-template-columns:340px 1fr;gap:22px;align-items:start}
+  @media(max-width:820px){.wrap{grid-template-columns:1fr}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow)}
+  .card-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:10px}
+  .card-head i{color:var(--brand)}
+  .card-head h2{font-size:.98rem;margin:0}
+  .card-head p{margin:2px 0 0;font-size:.78rem;color:var(--ink-soft)}
+  .card-body{padding:18px}
+
+  label{display:block;font-size:.8rem;font-weight:600;margin:0 0 6px;color:var(--ink)}
+  .field{margin-bottom:14px}
+  .control{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:14.5px;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+  .control:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .input-rp{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;
+    overflow:hidden;background:#fff}
+  .input-rp:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+  .input-rp .rp{padding:10px 12px;background:#f8fafc;color:var(--ink-soft);font-weight:600;
+    border-right:1px solid var(--line)}
+  .input-rp input{border:none;outline:none;padding:10px 12px;font-size:14.5px;width:100%}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+    border:none;border-radius:10px;font-weight:600;font-size:14px;padding:10px 15px;
+    transition:filter .15s,background .15s}
+  .btn-primary{background:var(--brand);color:#fff;width:100%}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#f1f5f9;color:var(--ink)}
+  .btn-ghost:hover{background:#e2e8f0}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .btn-sm{padding:7px 10px;font-size:.82rem}
+
+  .searchbar{display:flex;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .searchbar .control{flex:1}
+  .count-pill{font-size:.75rem;color:var(--ink-soft);background:#f1f5f9;border-radius:999px;
+    padding:6px 12px;align-self:center;white-space:nowrap}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:12px 18px;border-bottom:1px solid var(--line);font-size:.9rem}
+  th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);
+    background:#fafbfc}
+  td.price{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;white-space:nowrap}
+  th.price{text-align:right}
+  td.act{text-align:right;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .row-actions button{background:none;border:none;cursor:pointer;color:var(--ink-soft);
+    padding:6px;border-radius:7px;font-size:.92rem}
+  .row-actions button:hover{background:#f1f5f9;color:var(--ink)}
+  .row-actions .del:hover{background:var(--danger-soft);color:var(--danger)}
+
+  .empty{padding:44px 18px;text-align:center;color:var(--ink-soft)}
+  .empty i{font-size:1.8rem;opacity:.5;display:block;margin-bottom:10px}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;
+    align-items:center;justify-content:center;padding:18px;z-index:50}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+  .modal .m-head{padding:18px 20px;border-bottom:1px solid var(--line)}
+  .modal .m-head h3{margin:0;font-size:1rem}
+  .modal .m-head p{margin:4px 0 0;font-size:.82rem;color:var(--ink-soft)}
+  .modal .m-body{padding:18px 20px}
+  .modal .m-foot{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;
+    justify-content:flex-end}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:#0f172a;color:#fff;padding:12px 18px;border-radius:11px;font-size:.9rem;
+    opacity:0;pointer-events:none;transition:.25s;z-index:80;display:flex;gap:9px;align-items:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#b91c1c}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo"><i class="fa-solid fa-tags"></i></div>
+  <div>
+    <h1>Manajemen Item &amp; Harga</h1>
+    <div class="sub">Daftar barang/jasa yang bisa dipakai saat membuat invoice</div>
+  </div>
+  <nav>
+    <a class="navlink active" href="items.html"><i class="fa-solid fa-tags"></i> Item</a>
+    <a class="navlink" href="generate.html"><i class="fa-solid fa-file-invoice-dollar"></i> Buat Invoice</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <!-- FORM TAMBAH ITEM -->
+  <section class="card">
+    <div class="card-head">
+      <i class="fa-solid fa-plus"></i>
+      <div><h2>Tambah Item</h2><p>Simpan item baru ke database</p></div>
+    </div>
+    <div class="card-body">
+      <form id="formItem">
+        <div class="field">
+          <label for="nama">Nama Item</label>
+          <input id="nama" class="control" type="text" placeholder="cth. Jasa Konsultasi" required>
+        </div>
+        <div class="field">
+          <label for="harga">Harga (IDR)</label>
+          <div class="input-rp">
+            <span class="rp">Rp</span>
+            <!-- inputmode numeric + formatting ribuan otomatis -->
+            <input id="harga" type="text" inputmode="numeric" placeholder="0" autocomplete="off" required>
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit" id="btnSave">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan Item
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- DAFTAR ITEM -->
+  <section class="card">
+    <div class="card-head">
+      <i class="fa-solid fa-list"></i>
+      <div><h2>Daftar Item</h2><p>Cari, edit, atau hapus item</p></div>
+    </div>
+    <div class="searchbar">
+      <input id="cari" class="control" type="text" placeholder="Cari nama item...">
+      <span class="count-pill" id="jml">0 item</span>
+    </div>
+    <div id="tabelWrap">
+      <div class="empty"><i class="fa-solid fa-spinner fa-spin"></i>Memuat data…</div>
+    </div>
+  </section>
+</div>
+
+<!-- MODAL EDIT -->
+<div class="modal-bg" id="modalEdit">
+  <div class="modal">
+    <div class="m-head"><h3>Edit Item</h3><p>Perbarui nama atau harga item</p></div>
+    <div class="m-body">
+      <div class="field">
+        <label for="eNama">Nama Item</label>
+        <input id="eNama" class="control" type="text">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="eHarga">Harga (IDR)</label>
+        <div class="input-rp"><span class="rp">Rp</span>
+          <input id="eHarga" type="text" inputmode="numeric" autocomplete="off"></div>
+      </div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="tutupEdit()">Batal</button>
+      <button class="btn btn-primary" style="width:auto" id="btnUpdate" onclick="simpanEdit()">
+        <i class="fa-solid fa-check"></i> Simpan Perubahan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HAPUS -->
+<div class="modal-bg" id="modalHapus">
+  <div class="modal">
+    <div class="m-head"><h3>Hapus Item?</h3><p id="hapusInfo">Tindakan ini tidak dapat dibatalkan.</p></div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="tutupHapus()">Batal</button>
+      <button class="btn btn-danger" style="width:auto" id="btnDelete" onclick="eksekusiHapus()">
+        <i class="fa-solid fa-trash-can"></i> Ya, Hapus
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   BLOK A — Koneksi Supabase (samakan dengan project klinik Anda)
+   ============================================================ */
+const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   BLOK B — Util: format Rupiah + input ribuan otomatis
+   ============================================================ */
+const fmtRp = n => 'Rp ' + (Number(n)||0).toLocaleString('id-ID');
+const onlyDigits = s => (s||'').toString().replace(/\D/g,'');
+const parseRp = s => parseInt(onlyDigits(s) || '0', 10);
+// Pasang formatter ribuan pada sebuah <input>
+function bindRupiah(el){
+  el.addEventListener('input', ()=>{
+    const d = onlyDigits(el.value);
+    el.value = d ? Number(d).toLocaleString('id-ID') : '';
+  });
+}
+bindRupiah(document.getElementById('harga'));
+bindRupiah(document.getElementById('eHarga'));
+
+let toastTimer;
+function toast(msg, ok=true){
+  const t=document.getElementById('toast');
+  t.className='toast show'+(ok?'':' err');
+  t.innerHTML=`<i class="fa-solid ${ok?'fa-circle-check':'fa-circle-exclamation'}"></i> ${msg}`;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='toast',2600);
+}
+
+/* ============================================================
+   BLOK C — State + render tabel
+   ============================================================ */
+let ITEMS = [];          // cache semua item
+let filterText = '';
+
+function render(){
+  const q = filterText.trim().toLowerCase();
+  const rows = ITEMS.filter(it => it.name.toLowerCase().includes(q));
+  document.getElementById('jml').textContent = `${rows.length} item`;
+  const wrap = document.getElementById('tabelWrap');
+
+  if(!rows.length){
+    wrap.innerHTML = `<div class="empty"><i class="fa-solid fa-box-open"></i>
+      ${ITEMS.length ? 'Tidak ada item yang cocok.' : 'Belum ada item. Tambahkan lewat form di kiri.'}</div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Nama Item</th><th class="price">Harga</th><th></th></tr></thead>
+      <tbody>${rows.map(it=>`
+        <tr>
+          <td>${escapeHtml(it.name)}</td>
+          <td class="price">${fmtRp(it.price)}</td>
+          <td class="act"><div class="row-actions">
+            <button title="Edit" onclick="bukaEdit('${it.id}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="del" title="Hapus" onclick="bukaHapus('${it.id}')"><i class="fa-solid fa-trash-can"></i></button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+}
+const escapeHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+async function loadItems(){
+  const { data, error } = await db.from('items').select('*').order('name');
+  if(error){ toast('Gagal memuat: '+error.message,false); return; }
+  ITEMS = data || [];
+  render();
+}
+
+/* ============================================================
+   BLOK D — Create
+   ============================================================ */
+document.getElementById('formItem').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('nama').value.trim();
+  const price = parseRp(document.getElementById('harga').value);
+  if(!name){ toast('Nama item wajib diisi.',false); return; }
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
+
+  const { error } = await db.from('items').insert([{ name, price }]);
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Item';
+
+  if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
+  e.target.reset();
+  toast('Item berhasil disimpan.');
+  loadItems();
+});
+
+/* ============================================================
+   BLOK E — Update (modal)
+   ============================================================ */
+let editId = null;
+function bukaEdit(id){
+  const it = ITEMS.find(x=>x.id===id); if(!it) return;
+  editId = id;
+  document.getElementById('eNama').value = it.name;
+  document.getElementById('eHarga').value = Number(it.price).toLocaleString('id-ID');
+  document.getElementById('modalEdit').classList.add('show');
+}
+function tutupEdit(){ document.getElementById('modalEdit').classList.remove('show'); editId=null; }
+async function simpanEdit(){
+  if(!editId) return;
+  const name = document.getElementById('eNama').value.trim();
+  const price = parseRp(document.getElementById('eHarga').value);
+  if(!name){ toast('Nama item wajib diisi.',false); return; }
+
+  const btn = document.getElementById('btnUpdate');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan…';
+  const { error } = await db.from('items').update({ name, price }).eq('id', editId);
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Simpan Perubahan';
+
+  if(error){ toast('Gagal memperbarui: '+error.message,false); return; }
+  tutupEdit(); toast('Item diperbarui.'); loadItems();
+}
+
+/* ============================================================
+   BLOK F — Delete (modal konfirmasi)
+   ============================================================ */
+let hapusId = null;
+function bukaHapus(id){
+  const it = ITEMS.find(x=>x.id===id); if(!it) return;
+  hapusId = id;
+  document.getElementById('hapusInfo').textContent =
+    `"${it.name}" akan dihapus permanen. Invoice lama tidak terpengaruh.`;
+  document.getElementById('modalHapus').classList.add('show');
+}
+function tutupHapus(){ document.getElementById('modalHapus').classList.remove('show'); hapusId=null; }
+async function eksekusiHapus(){
+  if(!hapusId) return;
+  const btn = document.getElementById('btnDelete');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus…';
+  const { error } = await db.from('items').delete().eq('id', hapusId);
+  btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Hapus';
+
+  if(error){ toast('Gagal menghapus: '+error.message,false); return; }
+  tutupHapus(); toast('Item dihapus.'); loadItems();
+}
+
+/* Klik luar modal untuk menutup */
+document.querySelectorAll('.modal-bg').forEach(bg=>{
+  bg.addEventListener('click', e=>{ if(e.target===bg) bg.classList.remove('show'); });
+});
+
+/* ============================================================
+   BLOK G — Cari + boot
+   ============================================================ */
+document.getElementById('cari').addEventListener('input', e=>{ filterText=e.target.value; render(); });
+loadItems();
+</script>
+</body>
+</html>

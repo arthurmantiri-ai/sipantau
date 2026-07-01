@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buat Invoice</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- pdfmake untuk membuat PDF di sisi browser -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#0f172a; --ink-soft:#64748b;
+    --line:#e2e8f0; --brand:#047857; --brand-soft:#ecfdf5; --brand-ink:#065f46;
+    --blue:#2563eb; --blue-soft:#eff6ff; --amber:#b45309; --amber-soft:#fffbeb;
+    --danger:#dc2626; --danger-soft:#fef2f2; --radius:14px;
+    --shadow:0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.5}
+
+  .topbar{background:var(--card);border-bottom:1px solid var(--line);padding:14px 20px;
+    display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+  .topbar .logo{width:36px;height:36px;border-radius:10px;background:var(--brand-soft);
+    color:var(--brand);display:grid;place-items:center;font-size:1.05rem}
+  .topbar h1{font-size:1.02rem;margin:0}
+  .topbar .sub{font-size:.78rem;color:var(--ink-soft)}
+  .topbar nav{margin-left:auto;display:flex;gap:8px}
+  .navlink{padding:8px 13px;border-radius:9px;font-size:.85rem;font-weight:600;
+    color:var(--ink-soft);text-decoration:none}
+  .navlink.active,.navlink:hover{background:var(--brand-soft);color:var(--brand-ink)}
+
+  .wrap{max-width:1080px;margin:26px auto;padding:0 18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin-bottom:22px}
+  .card-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:10px}
+  .card-head i{color:var(--brand)}
+  .card-head h2{font-size:.98rem;margin:0}
+  .card-head p{margin:2px 0 0;font-size:.78rem;color:var(--ink-soft)}
+  .card-body{padding:18px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  label{display:block;font-size:.8rem;font-weight:600;margin:0 0 6px}
+  .field{margin-bottom:0}
+  .control{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:14.5px;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+  .control:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+    border:none;border-radius:10px;font-weight:600;font-size:14px;padding:10px 15px;
+    transition:filter .15s,background .15s}
+  .btn-primary{background:var(--brand);color:#fff}
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-ghost{background:#f1f5f9;color:var(--ink)}
+  .btn-ghost:hover{background:#e2e8f0}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-outline{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn-outline:hover{background:#f8fafc}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .btn-sm{padding:7px 11px;font-size:.82rem}
+  .btn-block{width:100%}
+
+  /* Baris penambah item */
+  .adder{display:grid;grid-template-columns:1fr 84px 96px auto;gap:10px;align-items:end;
+    background:#f8fafc;border:1px dashed var(--line);border-radius:12px;padding:14px;margin-top:14px}
+  table.lines input.disc{width:70px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;
+    text-align:center;font-size:.9rem}
+  @media(max-width:640px){.adder{grid-template-columns:1fr}}
+
+  table.lines{width:100%;border-collapse:collapse;margin-top:16px}
+  table.lines th,table.lines td{padding:10px 10px;border-bottom:1px solid var(--line);font-size:.9rem}
+  table.lines th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);text-align:left}
+  table.lines td.num,table.lines th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.lines input.qty{width:64px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;
+    text-align:center;font-size:.9rem}
+  .rm{background:none;border:none;color:var(--ink-soft);cursor:pointer;padding:6px;border-radius:7px}
+  .rm:hover{background:var(--danger-soft);color:var(--danger)}
+  .lines-empty{padding:22px;text-align:center;color:var(--ink-soft);font-size:.9rem}
+
+  .totals{margin-top:8px;display:flex;justify-content:flex-end}
+  .totals table{border-collapse:collapse;min-width:260px}
+  .totals td{padding:7px 10px}
+  .totals .tlabel{color:var(--ink-soft)}
+  .totals .tnum{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .totals .grand td{border-top:2px solid var(--ink);font-size:1.05rem;padding-top:11px}
+  .totals .grand .tnum{color:var(--brand-ink)}
+
+  .foot-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+
+  /* Panel hasil generate */
+  .result{display:none;border:1px solid var(--brand);background:var(--brand-soft);
+    border-radius:12px;padding:16px 18px;margin-top:18px}
+  .result.show{display:block}
+  .result h3{margin:0 0 4px;font-size:1rem;color:var(--brand-ink);display:flex;gap:8px;align-items:center}
+  .result .r-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+  /* Riwayat */
+  table.hist{width:100%;border-collapse:collapse}
+  table.hist th,table.hist td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:.88rem;text-align:left}
+  table.hist th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:#fafbfc}
+  table.hist td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.hist tr:last-child td{border-bottom:none}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;
+    padding:3px 8px;border-radius:999px;margin-right:4px}
+  .b-mail{background:var(--blue-soft);color:var(--blue)}
+  .b-wa{background:var(--brand-soft);color:var(--brand-ink)}
+  .hist-actions{display:flex;gap:4px;justify-content:flex-end}
+  .hist-actions button{background:none;border:1px solid var(--line);cursor:pointer;color:var(--ink-soft);
+    padding:6px 9px;border-radius:8px;font-size:.82rem}
+  .hist-actions button:hover{background:#f8fafc;color:var(--ink)}
+  .hist-actions .del:hover{background:var(--danger-soft);color:var(--danger);border-color:#fecaca}
+
+  .empty{padding:40px 18px;text-align:center;color:var(--ink-soft)}
+  .empty i{font-size:1.8rem;opacity:.5;display:block;margin-bottom:10px}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:#0f172a;color:#fff;padding:12px 18px;border-radius:11px;font-size:.9rem;
+    opacity:0;pointer-events:none;transition:.25s;z-index:80;display:flex;gap:9px;align-items:center;max-width:90vw}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#b91c1c}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+  <div>
+    <h1>Buat Invoice</h1>
+    <div class="sub">Pilih item, buat PDF, lalu kirim via Email / WhatsApp</div>
+  </div>
+  <nav>
+    <a class="navlink" href="items.html"><i class="fa-solid fa-tags"></i> Item</a>
+    <a class="navlink active" href="generate.html"><i class="fa-solid fa-file-invoice-dollar"></i> Buat Invoice</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ BUILDER ============ -->
+  <section class="card">
+    <div class="card-head">
+      <i class="fa-solid fa-user"></i>
+      <div><h2>Data Pelanggan</h2><p>Informasi penerima invoice</p></div>
+    </div>
+    <div class="card-body">
+      <div class="grid2" style="margin-bottom:14px">
+        <div class="field">
+          <label for="tanggal">Tanggal</label>
+          <input id="tanggal" class="control" type="date">
+        </div>
+        <div class="field">
+          <label for="custNama">Nama Pelanggan</label>
+          <input id="custNama" class="control" type="text" placeholder="cth. Budi Santoso">
+        </div>
+        <div class="field">
+          <label for="custWa">Nomor WhatsApp</label>
+          <input id="custWa" class="control" type="tel" placeholder="cth. 0812xxxxxxx">
+        </div>
+        <div class="field">
+          <label for="custEmail">Email</label>
+          <input id="custEmail" class="control" type="email" placeholder="cth. budi@email.com">
+        </div>
+      </div>
+
+      <!-- Penambah item dinamis -->
+      <label>Item Invoice</label>
+      <div class="adder">
+        <div class="field">
+          <label style="font-weight:500;color:var(--ink-soft)">Pilih item</label>
+          <select id="pilihItem" class="control"><option value="">Memuat item…</option></select>
+        </div>
+        <div class="field">
+          <label style="font-weight:500;color:var(--ink-soft)">Qty</label>
+          <input id="qty" class="control" type="number" value="1" min="1" style="text-align:center">
+        </div>
+        <div class="field">
+          <label style="font-weight:500;color:var(--ink-soft)">Diskon %</label>
+          <input id="disc" class="control" type="number" value="0" min="0" max="100" step="0.1" style="text-align:center">
+        </div>
+        <button class="btn btn-primary" id="btnAddLine" onclick="tambahBaris()">
+          <i class="fa-solid fa-plus"></i> Tambah
+        </button>
+      </div>
+
+      <div id="linesWrap">
+        <div class="lines-empty">Belum ada item. Tambahkan minimal satu item di atas.</div>
+      </div>
+
+      <div class="totals" id="totalsBox" style="display:none">
+        <table>
+          <tr><td class="tlabel">Subtotal</td><td class="tnum" id="tSub">Rp 0</td></tr>
+          <tr><td class="tlabel">Diskon</td><td class="tnum" id="tDisc" style="color:var(--danger)">Rp 0</td></tr>
+          <tr class="grand"><td>Total</td><td class="tnum" id="tTotal">Rp 0</td></tr>
+        </table>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <label for="notes">Catatan (opsional)</label>
+        <input id="notes" class="control" type="text" placeholder="cth. Pembayaran via transfer BCA a.n. ...">
+      </div>
+
+      <div class="foot-actions">
+        <button class="btn btn-ghost" onclick="resetBuilder()"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+        <button class="btn btn-primary" id="btnGenerate" onclick="generateInvoice()">
+          <i class="fa-solid fa-file-arrow-down"></i> Generate Invoice
+        </button>
+      </div>
+
+      <!-- Panel hasil -->
+      <div class="result" id="result">
+        <h3><i class="fa-solid fa-circle-check"></i> <span id="resultTitle">Invoice dibuat</span></h3>
+        <div style="font-size:.85rem;color:var(--brand-ink)" id="resultSub"></div>
+        <div class="r-actions" id="resultActions"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RIWAYAT ============ -->
+  <section class="card">
+    <div class="card-head">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      <div><h2>Riwayat Invoice</h2><p>Semua invoice yang pernah dibuat</p></div>
+    </div>
+    <div id="histWrap">
+      <div class="empty"><i class="fa-solid fa-spinner fa-spin"></i>Memuat riwayat…</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   KONFIGURASI BISNIS — ubah sesuai identitas Anda (muncul di PDF)
+   ============================================================ */
+const BUSINESS = {
+  name:    'Klinik Imanuel',
+  address: 'Jl. Contoh No. 123, Tondano, Sulawesi Utara',
+  phone:   '0812-3456-7890',
+  email:   'kontak@klinikimanuel.example',
+  vision:  'Mewujudnyatakan Kristus dalam pelayanan kesehatan',
+
+  /* LOGO — tampil di pojok kiri atas PDF.
+     Ini logo bawaan (SVG). Untuk mengganti dengan logo asli Anda:
+       • Cara termudah: ganti string di bawah dengan <svg>…</svg> logo Anda, ATAU
+       • Pakai file gambar: set logoSvg:null lalu isi logoImage dengan data URL
+         base64, contoh: logoImage:'data:image/png;base64,iVBORw0KGgo...'
+     pdfmake akan memakai logoImage bila ada; jika tidak, memakai logoSvg. */
+  logoImage: null,
+  logoSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <rect x="3" y="3" width="94" height="94" rx="22" fill="#047857"/>
+      <rect x="43" y="16" width="14" height="50" rx="3" fill="#ffffff"/>
+      <rect x="29" y="29" width="42" height="14" rx="3" fill="#ffffff"/>
+      <path d="M18 82 h12 l5 -11 l7 18 l5 -7 h23" fill="none" stroke="#6ee7b7"
+            stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`,
+};
+
+/* ============================================================
+   BLOK A — Koneksi Supabase (samakan dengan project klinik Anda)
+   ============================================================ */
+const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   BLOK B — Util
+   ============================================================ */
+const fmtRp = n => 'Rp ' + (Number(n)||0).toLocaleString('id-ID');
+const onlyDigits = s => (s||'').toString().replace(/\D/g,'');
+const escapeHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus',
+  'September','Oktober','November','Desember'];
+function formatDateID(d){
+  if(!d) return '-';
+  const [y,m,day] = String(d).split('-');
+  return `${parseInt(day)} ${BULAN[parseInt(m)-1]} ${y}`;
+}
+// 0812.. / +62.. / 62.. -> 62812..
+function normalizeWa(raw){
+  let d = onlyDigits(raw);
+  if(!d) return '';
+  if(d.startsWith('0'))       d = '62' + d.slice(1);
+  else if(d.startsWith('62')) { /* sudah benar */ }
+  else                        d = '62' + d;
+  return d;
+}
+let toastTimer;
+function toast(msg, ok=true){
+  const t=document.getElementById('toast');
+  t.className='toast show'+(ok?'':' err');
+  t.innerHTML=`<i class="fa-solid ${ok?'fa-circle-check':'fa-circle-exclamation'}"></i> ${msg}`;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='toast',3000);
+}
+
+// default tanggal = hari ini (zona lokal ≈ WIB/WITA)
+document.getElementById('tanggal').value = new Date().toLocaleDateString('en-CA');
+
+/* ============================================================
+   BLOK C — Master item -> dropdown
+   ============================================================ */
+let ITEMS = [];
+async function loadItemsDropdown(){
+  const { data, error } = await db.from('items').select('*').order('name');
+  const sel = document.getElementById('pilihItem');
+  if(error){ sel.innerHTML='<option value="">Gagal memuat item</option>'; toast('Gagal memuat item: '+error.message,false); return; }
+  ITEMS = data || [];
+  if(!ITEMS.length){
+    sel.innerHTML='<option value="">Belum ada item — tambahkan di halaman Item</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">— pilih item —</option>' +
+    ITEMS.map(it=>`<option value="${it.id}">${escapeHtml(it.name)} — ${fmtRp(it.price)}</option>`).join('');
+}
+
+/* ============================================================
+   BLOK D — Baris item dinamis + kalkulasi total
+   ============================================================ */
+let LINES = [];   // {item_id, name, price, qty, disc}
+const clampDisc = d => Math.min(100, Math.max(0, Number(d)||0));
+const lineGross = l => l.price * l.qty;                                 // harga × qty (sebelum diskon)
+const lineNet   = l => Math.round(lineGross(l) * (1 - clampDisc(l.disc)/100)); // setelah diskon
+
+function tambahBaris(){
+  const id = document.getElementById('pilihItem').value;
+  const qty = Math.max(1, parseInt(document.getElementById('qty').value)||1);
+  const disc = clampDisc(document.getElementById('disc').value);
+  if(!id){ toast('Pilih item terlebih dahulu.',false); return; }
+  const it = ITEMS.find(x=>x.id===id);
+  if(!it) return;
+
+  const existing = LINES.find(l=>l.item_id===id);
+  if(existing){ existing.qty += qty; existing.disc = disc; }  // item sama: qty ditambah, diskon diperbarui
+  else LINES.push({ item_id:it.id, name:it.name, price:Number(it.price), qty, disc });
+
+  document.getElementById('qty').value = 1;
+  document.getElementById('disc').value = 0;
+  renderLines();
+}
+function ubahQty(idx, val){
+  LINES[idx].qty = Math.max(1, parseInt(val)||1); renderLines();
+}
+function ubahDisk(idx, val){
+  LINES[idx].disc = clampDisc(val); renderLines();
+}
+function hapusBaris(idx){ LINES.splice(idx,1); renderLines(); }
+
+function renderLines(){
+  const wrap = document.getElementById('linesWrap');
+  const totalsBox = document.getElementById('totalsBox');
+  if(!LINES.length){
+    wrap.innerHTML = '<div class="lines-empty">Belum ada item. Tambahkan minimal satu item di atas.</div>';
+    totalsBox.style.display='none';
+    return;
+  }
+  const subtotal = LINES.reduce((s,l)=>s + lineGross(l), 0);
+  const total    = LINES.reduce((s,l)=>s + lineNet(l), 0);
+  const diskon   = subtotal - total;
+  wrap.innerHTML = `
+    <table class="lines">
+      <thead><tr><th style="width:34px">#</th><th>Item</th><th class="num">Harga</th>
+        <th style="width:72px">Qty</th><th style="width:92px">Diskon %</th>
+        <th class="num">Jumlah</th><th style="width:34px"></th></tr></thead>
+      <tbody>${LINES.map((l,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(l.name)}</td>
+          <td class="num">${fmtRp(l.price)}</td>
+          <td><input class="qty" type="number" min="1" value="${l.qty}"
+                 onchange="ubahQty(${i}, this.value)"></td>
+          <td><input class="disc" type="number" min="0" max="100" step="0.1" value="${l.disc}"
+                 onchange="ubahDisk(${i}, this.value)"></td>
+          <td class="num">${fmtRp(lineNet(l))}</td>
+          <td><button class="rm" title="Hapus" onclick="hapusBaris(${i})"><i class="fa-solid fa-xmark"></i></button></td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+  totalsBox.style.display='flex';
+  document.getElementById('tSub').textContent   = fmtRp(subtotal);
+  document.getElementById('tDisc').textContent  = '− ' + fmtRp(diskon);
+  document.getElementById('tTotal').textContent = fmtRp(total);
+}
+
+/* ============================================================
+   BLOK E — Membuat definisi PDF (pdfmake)
+   ============================================================ */
+function td(text, align){ return { text:text??'', alignment:align||'left', margin:[0,3] }; }
+function th(text, align){ return { text:text??'', bold:true, fontSize:9, color:'#334155', alignment:align||'left', margin:[0,3] }; }
+const lineLayout = {
+  hLineWidth:(i,node)=> (i===0||i===node.table.body.length||i===1)?0.7:0.4,
+  vLineWidth:()=>0,
+  hLineColor:()=>'#e2e8f0',
+  paddingLeft:()=>4, paddingRight:()=>4, paddingTop:()=>5, paddingBottom:()=>5,
+};
+
+// Logo untuk PDF: pakai gambar (base64) bila ada, jika tidak pakai SVG bawaan
+function logoNode(){
+  if(BUSINESS.logoImage) return { image:BUSINESS.logoImage, width:56, height:56 };
+  if(BUSINESS.logoSvg)   return { svg:BUSINESS.logoSvg, width:56, height:56 };
+  return { text:'' };
+}
+const fmtPct = p => { const n = Number(p)||0; return n ? n.toLocaleString('id-ID')+'%' : '—'; };
+
+function buildPdfDoc(inv, lines){
+  const diskonTotal = Math.max(0, (Number(inv.subtotal)||0) - (Number(inv.total)||0));
+  return {
+    pageMargins:[40,46,40,58],
+    content:[
+      { columns:[
+        { width:64, stack:[ logoNode() ] },
+        { width:'*', stack:[
+            {text:BUSINESS.name, style:'biz'},
+            {text:BUSINESS.address, style:'muted'},
+            {text:`${BUSINESS.phone}  •  ${BUSINESS.email}`, style:'muted'},
+            BUSINESS.vision ? {text:'“'+BUSINESS.vision+'”', style:'vision', margin:[0,5,0,0]} : {},
+          ], margin:[10,2,0,0] },
+        { width:'auto', stack:[
+            {text:'INVOICE', style:'title', alignment:'right'},
+            {text:inv.invoice_number, style:'muted', alignment:'right'},
+          ] },
+      ]},
+      {canvas:[{type:'line', x1:0,y1:8,x2:515,y2:8, lineWidth:1, lineColor:'#047857'}], margin:[0,10,0,0]},
+
+      { columns:[
+        [ {text:'DITAGIHKAN KEPADA', style:'eyebrow', margin:[0,14,0,4]},
+          {text:inv.customer_name, style:'strong'},
+          inv.customer_email    ? {text:inv.customer_email, style:'muted'} : {},
+          inv.customer_whatsapp ? {text:'WhatsApp: '+inv.customer_whatsapp, style:'muted'} : {} ],
+        [ {text:'TANGGAL', style:'eyebrow', alignment:'right', margin:[0,14,0,4]},
+          {text:formatDateID(inv.invoice_date), alignment:'right'} ]
+      ]},
+
+      { style:'tableWrap', table:{
+          headerRows:1, widths:['auto','*','auto','auto','auto','auto'],
+          body:[
+            [th('No'),th('Deskripsi Item'),th('Qty','right'),th('Harga','right'),th('Diskon','right'),th('Jumlah','right')],
+            ...lines.map((l,i)=>[
+              td(String(i+1)),
+              td(l.item_name),
+              td(String(l.quantity),'right'),
+              td(fmtRp(l.unit_price),'right'),
+              td(fmtPct(l.discount_pct),'right'),
+              td(fmtRp(l.line_total),'right'),
+            ])
+          ]
+        }, layout:lineLayout },
+
+      { columns:[ {width:'*', text:''}, {width:230, table:{ widths:['*','auto'], body:[
+            [ {text:'Subtotal', style:'muted', border:[false,false,false,false]},
+              {text:fmtRp(inv.subtotal), alignment:'right', border:[false,false,false,false]} ],
+            [ {text:'Diskon', style:'muted', border:[false,false,false,false]},
+              {text:(diskonTotal?'− ':'')+fmtRp(diskonTotal), alignment:'right', color:'#dc2626', border:[false,false,false,false]} ],
+            [ {text:'TOTAL', bold:true, fontSize:12, border:[false,true,false,false], borderColor:['','#0f172a','',''], margin:[0,4,0,0]},
+              {text:fmtRp(inv.total), alignment:'right', bold:true, fontSize:12, color:'#065f46', border:[false,true,false,false], borderColor:['','#0f172a','',''], margin:[0,4,0,0]} ],
+          ]}, layout:{ vLineWidth:()=>0, hLineWidth:(i)=> i===2?1:0, hLineColor:()=>'#0f172a', paddingTop:()=>4, paddingBottom:()=>4 } } ],
+        margin:[0,10,0,0] },
+
+      inv.notes ? {text:'Catatan', style:'eyebrow', margin:[0,20,0,3]} : {},
+      inv.notes ? {text:inv.notes, style:'muted'} : {},
+    ],
+    footer: (cur,total)=>({
+      columns:[
+        {text:'Terima kasih atas kepercayaan Anda.', style:'muted', margin:[40,0,0,0]},
+        {text:`Halaman ${cur} / ${total}`, style:'muted', alignment:'right', margin:[0,0,40,0]},
+      ], margin:[0,10,0,0]
+    }),
+    styles:{
+      biz:{fontSize:15, bold:true, color:'#0f172a', margin:[0,0,0,2]},
+      title:{fontSize:22, bold:true, color:'#047857'},
+      eyebrow:{fontSize:8, bold:true, color:'#94a3b8', characterSpacing:0.5},
+      strong:{fontSize:12, bold:true, margin:[0,0,0,1]},
+      muted:{fontSize:9.5, color:'#64748b'},
+      vision:{fontSize:9.5, italics:true, color:'#047857'},
+      tableWrap:{margin:[0,18,0,0]},
+    },
+    defaultStyle:{fontSize:10, color:'#0f172a'}
+  };
+}
+
+/* ============================================================
+   BLOK F — Generate: simpan DB -> buat PDF -> upload Storage
+   ============================================================ */
+async function generateInvoice(){
+  const customer_name = document.getElementById('custNama').value.trim();
+  const invoice_date  = document.getElementById('tanggal').value || new Date().toLocaleDateString('en-CA');
+  const custWaRaw     = document.getElementById('custWa').value.trim();
+  const customer_email= document.getElementById('custEmail').value.trim();
+  const notes         = document.getElementById('notes').value.trim();
+
+  if(!customer_name){ toast('Nama pelanggan wajib diisi.',false); return; }
+  if(!LINES.length){ toast('Tambahkan minimal satu item.',false); return; }
+
+  const subtotal = LINES.reduce((s,l)=>s + lineGross(l), 0);   // sebelum diskon
+  const total    = LINES.reduce((s,l)=>s + lineNet(l), 0);     // setelah diskon
+
+  const btn = document.getElementById('btnGenerate');
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Membuat…';
+
+  try{
+    // 1) Simpan header invoice (nomor invoice dibuat otomatis oleh database)
+    const { data:inv, error:e1 } = await db.from('invoices').insert([{
+      customer_name, invoice_date,
+      customer_whatsapp: custWaRaw || null,
+      customer_email: customer_email || null,
+      subtotal, total, notes: notes || null, status:'draft'
+    }]).select().single();
+    if(e1) throw e1;
+
+    // 2) Simpan baris item (snapshot nama + harga + diskon)
+    const itemRows = LINES.map(l=>({
+      invoice_id: inv.id, item_id: l.item_id, item_name: l.name,
+      unit_price: l.price, quantity: l.qty,
+      discount_pct: clampDisc(l.disc), line_total: lineNet(l)
+    }));
+    const { error:e2 } = await db.from('invoice_items').insert(itemRows);
+    if(e2) throw e2;
+
+    // 3) Buat PDF di browser
+    const doc = buildPdfDoc(inv, itemRows.map(r=>({
+      item_name:r.item_name, quantity:r.quantity, unit_price:r.unit_price,
+      discount_pct:r.discount_pct, line_total:r.line_total
+    })));
+    const blob = await new Promise((res,rej)=>{
+      try{ pdfMake.createPdf(doc).getBlob(res); }catch(err){ rej(err); }
+    });
+
+    // 4) Upload PDF ke Storage (bucket 'invoices')
+    const path = `${inv.id}.pdf`;
+    const { error:e3 } = await db.storage.from('invoices')
+      .upload(path, blob, { contentType:'application/pdf', upsert:true });
+    if(e3) throw e3;
+
+    // 5) Tandai invoice sudah punya PDF
+    await db.from('invoices').update({ pdf_path:path, status:'generated' }).eq('id', inv.id);
+
+    toast(`Invoice ${inv.invoice_number} berhasil dibuat.`);
+    showResult({ ...inv, pdf_path:path });
+    resetBuilderFields();
+    loadHistory();
+  }catch(err){
+    console.error(err);
+    toast('Gagal membuat invoice: '+(err.message||err),false);
+  }finally{
+    btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-file-arrow-down"></i> Generate Invoice';
+  }
+}
+
+/* Panel hasil dengan tombol kirim */
+function showResult(inv){
+  const box = document.getElementById('result');
+  document.getElementById('resultTitle').textContent = `Invoice ${inv.invoice_number} siap`;
+  document.getElementById('resultSub').textContent =
+    `${inv.customer_name} • ${fmtRp(inv.total)}`;
+  document.getElementById('resultActions').innerHTML = `
+    <button class="btn btn-outline btn-sm" onclick="downloadPdf('${inv.pdf_path}')"><i class="fa-solid fa-download"></i> Unduh PDF</button>
+    <button class="btn btn-blue btn-sm" onclick="kirimEmail('${inv.id}', this)"><i class="fa-solid fa-envelope"></i> Kirim Email</button>
+    <button class="btn btn-primary btn-sm" onclick="kirimWhatsappApi('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i> Kirim WhatsApp</button>
+    <button class="btn btn-ghost btn-sm" onclick="waManual('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i> Buka WhatsApp (manual)</button>`;
+  box.classList.add('show');
+}
+
+/* ============================================================
+   BLOK G — Unduh PDF (signed URL sementara)
+   ============================================================ */
+async function signedUrl(path, expiresSec=3600){
+  const { data, error } = await db.storage.from('invoices').createSignedUrl(path, expiresSec);
+  if(error) throw error;
+  return data.signedUrl;
+}
+async function downloadPdf(path){
+  try{ window.open(await signedUrl(path, 3600), '_blank'); }
+  catch(err){ toast('Gagal membuka PDF: '+err.message,false); }
+}
+
+/* ============================================================
+   BLOK H — Kirim EMAIL (via Netlify Function)
+   ============================================================ */
+async function kirimEmail(invoiceId, btn){
+  const old = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…';
+  try{
+    const res = await fetch('/.netlify/functions/send-email', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ invoiceId })
+    });
+    const out = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+    toast('Email terkirim ke pelanggan.');
+    loadHistory();
+  }catch(err){ toast('Gagal kirim email: '+err.message,false); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+/* ============================================================
+   BLOK I — Kirim WHATSAPP
+   Mode 1: via Netlify Function (Twilio) — otomatis
+   Mode 2: manual wa.me — buka WhatsApp dengan pesan siap kirim (tanpa API)
+   ============================================================ */
+async function kirimWhatsappApi(invoiceId, btn){
+  const old = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Mengirim…';
+  try{
+    const res = await fetch('/.netlify/functions/send-whatsapp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ invoiceId })
+    });
+    const out = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+    toast('Pesan WhatsApp terkirim.');
+    loadHistory();
+  }catch(err){ toast('Gagal kirim WhatsApp: '+err.message,false); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+// Manual: tidak butuh API. Buat link unduh lalu buka wa.me
+async function waManual(invoiceId, btn){
+  const old = btn.innerHTML;
+  btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan…';
+  try{
+    const inv = HIST.find(x=>x.id===invoiceId);
+    if(!inv) throw new Error('Invoice tidak ditemukan');
+    if(!inv.customer_whatsapp) throw new Error('Nomor WhatsApp kosong');
+    const url = await signedUrl(inv.pdf_path, 60*60*24*7); // link berlaku 7 hari
+    const wa = normalizeWa(inv.customer_whatsapp);
+    const msg = `Halo ${inv.customer_name}, berikut invoice *${inv.invoice_number}* dari ${BUSINESS.name}.\n`
+              + `Total: *${fmtRp(inv.total)}*\n\nUnduh PDF invoice:\n${url}\n\nTerima kasih 🙏`;
+    window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
+  }catch(err){ toast('Gagal: '+err.message,false); }
+  finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+
+/* ============================================================
+   BLOK J — Riwayat invoice
+   ============================================================ */
+let HIST = [];
+async function loadHistory(){
+  const { data, error } = await db.from('invoices')
+    .select('*').order('created_at',{ascending:false}).limit(100);
+  const wrap = document.getElementById('histWrap');
+  if(error){ wrap.innerHTML=`<div class="empty">Gagal memuat: ${escapeHtml(error.message)}</div>`; return; }
+  HIST = data || [];
+  if(!HIST.length){
+    wrap.innerHTML='<div class="empty"><i class="fa-solid fa-inbox"></i>Belum ada invoice.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="hist">
+      <thead><tr><th>No. Invoice</th><th>Tanggal</th><th>Pelanggan</th>
+        <th class="num">Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>${HIST.map(inv=>{
+        const badges =
+          (inv.email_sent_at    ? '<span class="badge b-mail"><i class="fa-solid fa-envelope"></i> Email</span>' : '') +
+          (inv.whatsapp_sent_at ? '<span class="badge b-wa"><i class="fa-brands fa-whatsapp"></i> WA</span>' : '') ||
+          '<span style="color:var(--ink-soft);font-size:.8rem">—</span>';
+        const canSend = !!inv.pdf_path;
+        return `<tr>
+          <td style="font-weight:600">${escapeHtml(inv.invoice_number)}</td>
+          <td>${formatDateID(inv.invoice_date)}</td>
+          <td>${escapeHtml(inv.customer_name)}</td>
+          <td class="num">${fmtRp(inv.total)}</td>
+          <td>${badges}</td>
+          <td><div class="hist-actions">
+            <button title="Unduh PDF" ${canSend?'':'disabled'} onclick="downloadPdf('${inv.pdf_path}')"><i class="fa-solid fa-download"></i></button>
+            <button title="Kirim Email" ${canSend?'':'disabled'} onclick="kirimEmail('${inv.id}', this)"><i class="fa-solid fa-envelope"></i></button>
+            <button title="Kirim WhatsApp" ${canSend?'':'disabled'} onclick="kirimWhatsappApi('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i></button>
+            <button title="WhatsApp manual" ${canSend?'':'disabled'} onclick="waManual('${inv.id}', this)"><i class="fa-solid fa-share-from-square"></i></button>
+            <button class="del" title="Hapus" onclick="hapusInvoice('${inv.id}','${escapeHtml(inv.invoice_number)}','${inv.pdf_path||''}')"><i class="fa-solid fa-trash-can"></i></button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+async function hapusInvoice(id, number, path){
+  if(!confirm(`Hapus invoice ${number}? Baris item & PDF ikut terhapus.`)) return;
+  try{
+    if(path){ await db.storage.from('invoices').remove([path]); } // hapus PDF
+    const { error } = await db.from('invoices').delete().eq('id', id); // cascade -> invoice_items
+    if(error) throw error;
+    toast('Invoice dihapus.');
+    loadHistory();
+  }catch(err){ toast('Gagal menghapus: '+err.message,false); }
+}
+
+/* ============================================================
+   BLOK K — Reset + boot
+   ============================================================ */
+function resetBuilderFields(){
+  document.getElementById('custNama').value='';
+  document.getElementById('custWa').value='';
+  document.getElementById('custEmail').value='';
+  document.getElementById('notes').value='';
+  document.getElementById('tanggal').value = new Date().toLocaleDateString('en-CA');
+  LINES = []; renderLines();
+}
+function resetBuilder(){
+  resetBuilderFields();
+  document.getElementById('result').classList.remove('show');
+}
+
+loadItemsDropdown();
+loadHistory();
+</script>
+</body>
+</html>
