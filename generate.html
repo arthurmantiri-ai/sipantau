@@ -12,7 +12,7 @@
 <style>
   :root{
     --bg:#f4f6f8; --card:#ffffff; --ink:#0f172a; --ink-soft:#64748b;
-    --line:#e2e8f0; --brand:#047857; --brand-soft:#ecfdf5; --brand-ink:#065f46;
+    --line:#e2e8f0; --brand:#004d40; --brand-soft:#e0f2f1; --brand-ink:#00352c;
     --blue:#2563eb; --blue-soft:#eff6ff; --amber:#b45309; --amber-soft:#fffbeb;
     --danger:#dc2626; --danger-soft:#fef2f2; --radius:14px;
     --shadow:0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
@@ -25,6 +25,7 @@
     display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
   .topbar .logo{width:36px;height:36px;border-radius:10px;background:var(--brand-soft);
     color:var(--brand);display:grid;place-items:center;font-size:1.05rem}
+  .topbar-logo{width:42px;height:42px;object-fit:contain;flex:none}
   .topbar h1{font-size:1.02rem;margin:0}
   .topbar .sub{font-size:.78rem;color:var(--ink-soft)}
   .topbar nav{margin-left:auto;display:flex;gap:8px}
@@ -109,6 +110,8 @@
     padding:3px 8px;border-radius:999px;margin-right:4px}
   .b-mail{background:var(--blue-soft);color:var(--blue)}
   .b-wa{background:var(--brand-soft);color:var(--brand-ink)}
+  .b-paid{background:#e5f3ea;color:#1b7a41}
+  .b-due{background:#fdecea;color:#c0392b}
   .hist-actions{display:flex;gap:4px;justify-content:flex-end}
   .hist-actions button{background:none;border:1px solid var(--line);cursor:pointer;color:var(--ink-soft);
     padding:6px 9px;border-radius:8px;font-size:.82rem}
@@ -128,12 +131,13 @@
 <body>
 
 <header class="topbar">
-  <div class="logo"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+  <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="topbar-logo" onerror="this.style.display='none'">
   <div>
     <h1>Buat Invoice</h1>
     <div class="sub">Pilih item, buat PDF, lalu kirim via Email / WhatsApp</div>
   </div>
   <nav>
+    <a class="navlink" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
     <a class="navlink" href="items.html"><i class="fa-solid fa-tags"></i> Item</a>
     <a class="navlink active" href="generate.html"><i class="fa-solid fa-file-invoice-dollar"></i> Buat Invoice</a>
   </nav>
@@ -199,9 +203,18 @@
         </table>
       </div>
 
-      <div class="field" style="margin-top:16px">
-        <label for="notes">Catatan (opsional)</label>
-        <input id="notes" class="control" type="text" placeholder="cth. Pembayaran via transfer BCA a.n. ...">
+      <div class="grid2" style="margin-top:16px">
+        <div class="field">
+          <label for="statusBayar">Status Pembayaran</label>
+          <select id="statusBayar" class="control">
+            <option value="belum_lunas">Belum Lunas</option>
+            <option value="lunas">Lunas</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="notes">Catatan (opsional)</label>
+          <input id="notes" class="control" type="text" placeholder="cth. Pembayaran via transfer BCA a.n. ...">
+        </div>
       </div>
 
       <div class="foot-actions">
@@ -241,24 +254,21 @@
    ============================================================ */
 const BUSINESS = {
   name:    'Klinik Imanuel',
-  address: 'Komp. Marina Plaza, blok E nomor 4, Wenang, Kota Manado',
-  phone:   '0811-4340-0454',
-  email:   'klinikimanuel@gmail.com',
+  address: 'Jl. Contoh No. 123, Tondano, Sulawesi Utara',
+  phone:   '0812-3456-7890',
+  email:   'kontak@klinikimanuel.example',
   vision:  'Mewujudnyatakan Kristus dalam pelayanan kesehatan',
 
-  /* LOGO — tampil di pojok kiri atas PDF.
-     Ini logo bawaan (SVG). Untuk mengganti dengan logo asli Anda:
-       • Cara termudah: ganti string di bawah dengan <svg>…</svg> logo Anda, ATAU
-       • Pakai file gambar: set logoSvg:null lalu isi logoImage dengan data URL
-         base64, contoh: logoImage:'data:image/png;base64,iVBORw0KGgo...'
-     pdfmake akan memakai logoImage bila ada; jika tidak, memakai logoSvg. */
-  logoImage: null,
+  /* LOGO di PDF.
+     Default membaca file 'logo klinik imanuel.png' yang SUDAH ADA di repo Anda
+     (dimuat otomatis saat membuat PDF — file yang sama dipakai index.html).
+     • Ganti nama di logoUrl bila file logo Anda berbeda.
+     • Jika logoUrl gagal dimuat (mis. saat dev lokal), dipakai logoSvg cadangan. */
+  logoUrl: 'logo klinik imanuel.png',
   logoSvg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-      <rect x="3" y="3" width="94" height="94" rx="22" fill="#047857"/>
-      <rect x="43" y="16" width="14" height="50" rx="3" fill="#ffffff"/>
-      <rect x="29" y="29" width="42" height="14" rx="3" fill="#ffffff"/>
-      <path d="M18 82 h12 l5 -11 l7 18 l5 -7 h23" fill="none" stroke="#6ee7b7"
-            stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M50 86 C22 64 9 45 9 30 C9 17 20 11 30 11 C40 11 47 19 50 27 C53 19 60 11 70 11 C80 11 91 17 91 30 C91 45 78 64 50 86 Z" fill="#e11507"/>
+      <rect x="42" y="30" width="16" height="38" rx="2" fill="#1fa80a"/>
+      <rect x="31" y="41" width="38" height="16" rx="2" fill="#1fa80a"/>
     </svg>`,
 };
 
@@ -302,6 +312,19 @@ function toast(msg, ok=true){
 
 // default tanggal = hari ini (zona lokal ≈ WIB/WITA)
 document.getElementById('tanggal').value = new Date().toLocaleDateString('en-CA');
+
+/* Muat logo dari file di repo -> data URL agar bisa disematkan ke PDF */
+let LOGO_DATAURL = null, logoLoaded = false;
+async function preloadLogo(){
+  if(logoLoaded || !BUSINESS.logoUrl) return;
+  logoLoaded = true;
+  try{
+    const res = await fetch(BUSINESS.logoUrl);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob = await res.blob();
+    LOGO_DATAURL = await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=no; r.readAsDataURL(blob); });
+  }catch(e){ console.warn('Logo tidak dapat dimuat, memakai cadangan SVG:', e.message); LOGO_DATAURL = null; }
+}
 
 /* ============================================================
    BLOK C — Master item -> dropdown
@@ -399,21 +422,45 @@ const lineLayout = {
   paddingLeft:()=>4, paddingRight:()=>4, paddingTop:()=>5, paddingBottom:()=>5,
 };
 
-// Logo untuk PDF: pakai gambar (base64) bila ada, jika tidak pakai SVG bawaan
+// Tema PDF — diambil dari warna logo Klinik Imanuel: MERAH (hati) + HIJAU (salib)
+const THEME = { accent:'#d81b06', accentDark:'#a81304',   // merah (hati) untuk judul & garis
+  green:'#1a8f0a', greenDark:'#0f5e08',                   // hijau (salib) untuk TOTAL & visi
+  paidBg:'#e6f4e6', paidInk:'#1a8f0a', dueBg:'#fdeceb', dueInk:'#c81e0f' };
+
+// Logo untuk PDF: pakai gambar dari repo (LOGO_DATAURL) bila ada, jika tidak pakai SVG cadangan
 function logoNode(){
-  if(BUSINESS.logoImage) return { image:BUSINESS.logoImage, width:56, height:56 };
-  if(BUSINESS.logoSvg)   return { svg:BUSINESS.logoSvg, width:56, height:56 };
+  if(LOGO_DATAURL)     return { image:LOGO_DATAURL, fit:[58,58] };
+  if(BUSINESS.logoSvg) return { svg:BUSINESS.logoSvg, width:56, height:56 };
   return { text:'' };
 }
 const fmtPct = p => { const n = Number(p)||0; return n ? n.toLocaleString('id-ID')+'%' : '—'; };
 
+// Waktu pembuatan invoice (zona WITA / Asia/Makassar) -> "1 Juli 2026, 14:32 WITA"
+function fmtDateTimeID(ts){
+  if(!ts) return '-';
+  const d = new Date(ts);
+  const tgl = d.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric', timeZone:'Asia/Makassar' });
+  const jam = d.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', timeZone:'Asia/Makassar' }).replace(/\./g,':');
+  return `${tgl}, ${jam} WITA`;
+}
+
+// Cap status pembayaran (LUNAS / BELUM LUNAS) untuk PDF
+function statusBadge(paid){
+  return { table:{ body:[[
+    { text: paid ? 'LUNAS' : 'BELUM LUNAS', bold:true, fontSize:11,
+      color: paid ? THEME.paidInk : THEME.dueInk, margin:[10,4,10,4] }
+  ]]}, layout:{ fillColor:()=> paid ? THEME.paidBg : THEME.dueBg,
+      hLineWidth:()=>0, vLineWidth:()=>0 } };
+}
+
 function buildPdfDoc(inv, lines){
   const diskonTotal = Math.max(0, (Number(inv.subtotal)||0) - (Number(inv.total)||0));
+  const paid = inv.payment_status === 'lunas';
   return {
     pageMargins:[40,46,40,58],
     content:[
       { columns:[
-        { width:64, stack:[ logoNode() ] },
+        { width:66, stack:[ logoNode() ] },
         { width:'*', stack:[
             {text:BUSINESS.name, style:'biz'},
             {text:BUSINESS.address, style:'muted'},
@@ -423,9 +470,10 @@ function buildPdfDoc(inv, lines){
         { width:'auto', stack:[
             {text:'INVOICE', style:'title', alignment:'right'},
             {text:inv.invoice_number, style:'muted', alignment:'right'},
+            { columns:[ {width:'*', text:''}, statusBadge(paid) ], margin:[0,8,0,0] },
           ] },
       ]},
-      {canvas:[{type:'line', x1:0,y1:8,x2:515,y2:8, lineWidth:1, lineColor:'#047857'}], margin:[0,10,0,0]},
+      {canvas:[{type:'line', x1:0,y1:8,x2:515,y2:8, lineWidth:1, lineColor:THEME.accent}], margin:[0,10,0,0]},
 
       { columns:[
         [ {text:'DITAGIHKAN KEPADA', style:'eyebrow', margin:[0,14,0,4]},
@@ -433,7 +481,8 @@ function buildPdfDoc(inv, lines){
           inv.customer_email    ? {text:inv.customer_email, style:'muted'} : {},
           inv.customer_whatsapp ? {text:'WhatsApp: '+inv.customer_whatsapp, style:'muted'} : {} ],
         [ {text:'TANGGAL', style:'eyebrow', alignment:'right', margin:[0,14,0,4]},
-          {text:formatDateID(inv.invoice_date), alignment:'right'} ]
+          {text:formatDateID(inv.invoice_date), alignment:'right'},
+          {text:'Dibuat: '+fmtDateTimeID(inv.created_at), style:'stampTime', alignment:'right', margin:[0,4,0,0]} ]
       ]},
 
       { style:'tableWrap', table:{
@@ -457,7 +506,7 @@ function buildPdfDoc(inv, lines){
             [ {text:'Diskon', style:'muted', border:[false,false,false,false]},
               {text:(diskonTotal?'− ':'')+fmtRp(diskonTotal), alignment:'right', color:'#dc2626', border:[false,false,false,false]} ],
             [ {text:'TOTAL', bold:true, fontSize:12, border:[false,true,false,false], borderColor:['','#0f172a','',''], margin:[0,4,0,0]},
-              {text:fmtRp(inv.total), alignment:'right', bold:true, fontSize:12, color:'#065f46', border:[false,true,false,false], borderColor:['','#0f172a','',''], margin:[0,4,0,0]} ],
+              {text:fmtRp(inv.total), alignment:'right', bold:true, fontSize:12, color:THEME.green, border:[false,true,false,false], borderColor:['','#0f172a','',''], margin:[0,4,0,0]} ],
           ]}, layout:{ vLineWidth:()=>0, hLineWidth:(i)=> i===2?1:0, hLineColor:()=>'#0f172a', paddingTop:()=>4, paddingBottom:()=>4 } } ],
         margin:[0,10,0,0] },
 
@@ -472,11 +521,12 @@ function buildPdfDoc(inv, lines){
     }),
     styles:{
       biz:{fontSize:15, bold:true, color:'#0f172a', margin:[0,0,0,2]},
-      title:{fontSize:22, bold:true, color:'#047857'},
+      title:{fontSize:22, bold:true, color:THEME.accent},
       eyebrow:{fontSize:8, bold:true, color:'#94a3b8', characterSpacing:0.5},
       strong:{fontSize:12, bold:true, margin:[0,0,0,1]},
       muted:{fontSize:9.5, color:'#64748b'},
-      vision:{fontSize:9.5, italics:true, color:'#047857'},
+      stampTime:{fontSize:9, color:'#94a3b8'},
+      vision:{fontSize:9.5, italics:true, color:THEME.green},
       tableWrap:{margin:[0,18,0,0]},
     },
     defaultStyle:{fontSize:10, color:'#0f172a'}
@@ -492,6 +542,7 @@ async function generateInvoice(){
   const custWaRaw     = document.getElementById('custWa').value.trim();
   const customer_email= document.getElementById('custEmail').value.trim();
   const notes         = document.getElementById('notes').value.trim();
+  const payment_status= document.getElementById('statusBayar').value;
 
   if(!customer_name){ toast('Nama pelanggan wajib diisi.',false); return; }
   if(!LINES.length){ toast('Tambahkan minimal satu item.',false); return; }
@@ -501,6 +552,7 @@ async function generateInvoice(){
 
   const btn = document.getElementById('btnGenerate');
   btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Membuat…';
+  await preloadLogo();   // pastikan logo termuat untuk PDF
 
   try{
     // 1) Simpan header invoice (nomor invoice dibuat otomatis oleh database)
@@ -508,7 +560,8 @@ async function generateInvoice(){
       customer_name, invoice_date,
       customer_whatsapp: custWaRaw || null,
       customer_email: customer_email || null,
-      subtotal, total, notes: notes || null, status:'draft'
+      subtotal, total, notes: notes || null,
+      payment_status, status:'draft'
     }]).select().single();
     if(e1) throw e1;
 
@@ -554,14 +607,15 @@ async function generateInvoice(){
 /* Panel hasil dengan tombol kirim */
 function showResult(inv){
   const box = document.getElementById('result');
+  const paidTxt = inv.payment_status==='lunas' ? 'Lunas' : 'Belum Lunas';
   document.getElementById('resultTitle').textContent = `Invoice ${inv.invoice_number} siap`;
   document.getElementById('resultSub').textContent =
-    `${inv.customer_name} • ${fmtRp(inv.total)}`;
+    `${inv.customer_name} • ${fmtRp(inv.total)} • ${paidTxt}`;
   document.getElementById('resultActions').innerHTML = `
     <button class="btn btn-outline btn-sm" onclick="downloadPdf('${inv.pdf_path}')"><i class="fa-solid fa-download"></i> Unduh PDF</button>
     <button class="btn btn-blue btn-sm" onclick="kirimEmail('${inv.id}', this)"><i class="fa-solid fa-envelope"></i> Kirim Email</button>
     <button class="btn btn-primary btn-sm" onclick="kirimWhatsappApi('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i> Kirim WhatsApp</button>
-    <button class="btn btn-ghost btn-sm" onclick="waManual('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i> Buka WhatsApp (manual)</button>`;
+    <button class="btn btn-ghost btn-sm" onclick="waManual('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i> Bagikan PDF (WA)</button>`;
   box.classList.add('show');
 }
 
@@ -618,21 +672,41 @@ async function kirimWhatsappApi(invoiceId, btn){
   finally{ btn.disabled=false; btn.innerHTML=old; }
 }
 
-// Manual: tidak butuh API. Buat link unduh lalu buka wa.me
+// Bagikan PDF langsung ke WhatsApp.
+// HP (mendukung Web Share file): kirim FILE PDF langsung lewat share sheet.
+// Desktop (tak mendukung): unduh PDF + buka WhatsApp dengan pesan singkat untuk dilampirkan.
 async function waManual(invoiceId, btn){
   const old = btn.innerHTML;
   btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Menyiapkan…';
   try{
     const inv = HIST.find(x=>x.id===invoiceId);
     if(!inv) throw new Error('Invoice tidak ditemukan');
-    if(!inv.customer_whatsapp) throw new Error('Nomor WhatsApp kosong');
-    const url = await signedUrl(inv.pdf_path, 60*60*24*7); // link berlaku 7 hari
-    const wa = normalizeWa(inv.customer_whatsapp);
-    const msg = `Halo ${inv.customer_name}, berikut invoice *${inv.invoice_number}* dari ${BUSINESS.name}.\n`
-              + `Total: *${fmtRp(inv.total)}*\n\nUnduh PDF invoice:\n${url}\n\nTerima kasih 🙏`;
-    window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank');
-  }catch(err){ toast('Gagal: '+err.message,false); }
-  finally{ btn.disabled=false; btn.innerHTML=old; }
+    if(!inv.pdf_path) throw new Error('PDF belum tersedia');
+
+    // ambil file PDF dari Storage
+    const { data:blob, error } = await db.storage.from('invoices').download(inv.pdf_path);
+    if(error) throw error;
+    const file = new File([blob], `${inv.invoice_number}.pdf`, { type:'application/pdf' });
+    const pesan = `Halo ${inv.customer_name}, berikut invoice ${inv.invoice_number} dari ${BUSINESS.name}. `
+                + `Total: ${fmtRp(inv.total)} (${inv.payment_status==='lunas'?'Lunas':'Belum Lunas'}). Terima kasih 🙏`;
+
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      // kirim PDF langsung (biasanya di HP) — pengguna memilih WhatsApp di share sheet
+      await navigator.share({ files:[file], text:pesan, title:`Invoice ${inv.invoice_number}` });
+    }else{
+      // cadangan desktop: unduh PDF lalu buka WhatsApp dengan pesan singkat
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=`${inv.invoice_number}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      const wa = inv.customer_whatsapp ? normalizeWa(inv.customer_whatsapp) : '';
+      const teks = encodeURIComponent(pesan + '\n\n(PDF invoice sudah terunduh — silakan lampirkan pada chat WhatsApp.)');
+      window.open(`https://wa.me/${wa}?text=${teks}`, '_blank');
+      toast('Perangkat ini belum mendukung kirim file langsung. PDF diunduh — lampirkan di WhatsApp.');
+    }
+  }catch(err){
+    if(err && err.name==='AbortError') { /* pengguna membatalkan share */ }
+    else toast('Gagal: '+(err.message||err),false);
+  }finally{ btn.disabled=false; btn.innerHTML=old; }
 }
 
 /* ============================================================
@@ -652,24 +726,28 @@ async function loadHistory(){
   wrap.innerHTML = `
     <table class="hist">
       <thead><tr><th>No. Invoice</th><th>Tanggal</th><th>Pelanggan</th>
-        <th class="num">Total</th><th>Status</th><th></th></tr></thead>
+        <th class="num">Total</th><th>Bayar</th><th>Status</th><th></th></tr></thead>
       <tbody>${HIST.map(inv=>{
         const badges =
           (inv.email_sent_at    ? '<span class="badge b-mail"><i class="fa-solid fa-envelope"></i> Email</span>' : '') +
           (inv.whatsapp_sent_at ? '<span class="badge b-wa"><i class="fa-brands fa-whatsapp"></i> WA</span>' : '') ||
           '<span style="color:var(--ink-soft);font-size:.8rem">—</span>';
+        const payBadge = inv.payment_status==='lunas'
+          ? '<span class="badge b-paid"><i class="fa-solid fa-circle-check"></i> Lunas</span>'
+          : '<span class="badge b-due"><i class="fa-regular fa-clock"></i> Belum</span>';
         const canSend = !!inv.pdf_path;
         return `<tr>
           <td style="font-weight:600">${escapeHtml(inv.invoice_number)}</td>
           <td>${formatDateID(inv.invoice_date)}</td>
           <td>${escapeHtml(inv.customer_name)}</td>
           <td class="num">${fmtRp(inv.total)}</td>
+          <td>${payBadge}</td>
           <td>${badges}</td>
           <td><div class="hist-actions">
             <button title="Unduh PDF" ${canSend?'':'disabled'} onclick="downloadPdf('${inv.pdf_path}')"><i class="fa-solid fa-download"></i></button>
             <button title="Kirim Email" ${canSend?'':'disabled'} onclick="kirimEmail('${inv.id}', this)"><i class="fa-solid fa-envelope"></i></button>
             <button title="Kirim WhatsApp" ${canSend?'':'disabled'} onclick="kirimWhatsappApi('${inv.id}', this)"><i class="fa-brands fa-whatsapp"></i></button>
-            <button title="WhatsApp manual" ${canSend?'':'disabled'} onclick="waManual('${inv.id}', this)"><i class="fa-solid fa-share-from-square"></i></button>
+            <button title="Bagikan PDF via WhatsApp" ${canSend?'':'disabled'} onclick="waManual('${inv.id}', this)"><i class="fa-solid fa-share-from-square"></i></button>
             <button class="del" title="Hapus" onclick="hapusInvoice('${inv.id}','${escapeHtml(inv.invoice_number)}','${inv.pdf_path||''}')"><i class="fa-solid fa-trash-can"></i></button>
           </div></td>
         </tr>`;
@@ -696,6 +774,7 @@ function resetBuilderFields(){
   document.getElementById('custWa').value='';
   document.getElementById('custEmail').value='';
   document.getElementById('notes').value='';
+  document.getElementById('statusBayar').value='belum_lunas';
   document.getElementById('tanggal').value = new Date().toLocaleDateString('en-CA');
   LINES = []; renderLines();
 }
@@ -704,6 +783,7 @@ function resetBuilder(){
   document.getElementById('result').classList.remove('show');
 }
 
+preloadLogo();
 loadItemsDropdown();
 loadHistory();
 </script>

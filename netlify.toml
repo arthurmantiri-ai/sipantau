@@ -1,5 +1,5 @@
-# Konfigurasi Netlify untuk situs statis + Functions
-# Situs Anda tetap statik (tanpa build step); Functions dibundel otomatis.
+# Konfigurasi Netlify — Klinik Imanuel
+# Situs statis (tanpa build step) + Netlify Functions untuk kirim Email/WhatsApp invoice.
 
 [build]
   publish = "."                      # root repo (file .html disajikan apa adanya)
@@ -7,3 +7,10 @@
 
 [functions]
   node_bundler = "esbuild"           # bundel dependency function otomatis
+
+# Security headers (dipertahankan dari konfigurasi asli Anda)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

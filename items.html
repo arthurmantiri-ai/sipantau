@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#f4f6f8; --card:#ffffff; --ink:#0f172a; --ink-soft:#64748b;
-    --line:#e2e8f0; --brand:#047857; --brand-soft:#ecfdf5; --brand-ink:#065f46;
+    --line:#e2e8f0; --brand:#004d40; --brand-soft:#e0f2f1; --brand-ink:#00352c;
     --danger:#dc2626; --danger-soft:#fef2f2; --radius:14px;
     --shadow:0 1px 2px rgba(15,23,42,.04), 0 6px 20px rgba(15,23,42,.06);
     font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
@@ -22,6 +22,7 @@
     display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
   .topbar .logo{width:36px;height:36px;border-radius:10px;background:var(--brand-soft);
     color:var(--brand);display:grid;place-items:center;font-size:1.05rem}
+  .topbar-logo{width:42px;height:42px;object-fit:contain;flex:none}
   .topbar h1{font-size:1.02rem;margin:0}
   .topbar .sub{font-size:.78rem;color:var(--ink-soft)}
   .topbar nav{margin-left:auto;display:flex;gap:8px}
@@ -108,12 +109,13 @@
 <body>
 
 <header class="topbar">
-  <div class="logo"><i class="fa-solid fa-tags"></i></div>
+  <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="topbar-logo" onerror="this.style.display='none'">
   <div>
     <h1>Manajemen Item &amp; Harga</h1>
     <div class="sub">Daftar barang/jasa yang bisa dipakai saat membuat invoice</div>
   </div>
   <nav>
+    <a class="navlink" href="index.html"><i class="fa-solid fa-house"></i> Home</a>
     <a class="navlink active" href="items.html"><i class="fa-solid fa-tags"></i> Item</a>
     <a class="navlink" href="generate.html"><i class="fa-solid fa-file-invoice-dollar"></i> Buat Invoice</a>
   </nav>
