@@ -265,6 +265,7 @@
 
         <div class="sidebar-label">Pencarian Data</div>
         <div class="sidebar-item" onclick="showPanel('obat_kronis')"><i class="fa-solid fa-capsules"></i> Obat Kronis</div>
+        <div class="sidebar-item" onclick="showPanel('belum_ambil')"><i class="fa-solid fa-user-clock"></i> Belum Ambil Obat</div>
         <div class="sidebar-item" onclick="showPanel('rujukan')"><i class="fa-solid fa-file-medical"></i> Rujukan</div>
         <div class="sidebar-item" onclick="showPanel('pasien_kontrol')"><i class="fa-solid fa-calendar-check"></i> Pasien Kontrol</div>
 
@@ -322,7 +323,29 @@
             </div>
             <div id="obatKronisContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Ketik untuk mulai pencarian.</p></div></div>
         </div>
-
+<div class="panel" id="panel-belum_ambil">
+    <div class="section-header">
+        <div class="section-title">
+            <div class="section-icon" style="background:#ffebee;color:#c62828"><i class="fa-solid fa-user-clock"></i></div>
+            <div><h2>Belum Ambil Obat Bulan Ini</h2><p>Pasien obat kronis yang belum mengambil obat pada bulan berjalan</p></div>
+        </div>
+    </div>
+    <div class="filter-bar">
+        <div class="filter-group"><label>Nama Pasien</label><input type="text" class="filter-control debounce-input" id="ba_nama" placeholder="Cari nama..." data-target="loadBelumAmbil"></div>
+        <div class="filter-group"><label>Riwayat yang Dicek</label>
+            <select class="filter-control" id="ba_lookback" onchange="loadBelumAmbil()">
+                <option value="3">3 bulan terakhir</option>
+                <option value="6" selected>6 bulan terakhir</option>
+                <option value="12">12 bulan terakhir</option>
+                <option value="0">Semua riwayat</option>
+            </select>
+        </div>
+        <button class="btn-search" onclick="loadBelumAmbil()"><i class="fa-solid fa-magnifying-glass"></i> Cari</button>
+        <button class="btn-export" onclick="exportBelumAmbil()"><i class="fa-solid fa-file-excel"></i></button>
+        <button class="btn-reset" onclick="document.getElementById('ba_nama').value='';document.getElementById('ba_lookback').value='6';loadBelumAmbil()"><i class="fa-solid fa-rotate"></i></button>
+    </div>
+    <div id="belumAmbilContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Memuat data...</p></div></div>
+</div>
         <div class="panel" id="panel-rujukan">
             <div class="section-header">
                 <div class="section-title">
@@ -511,6 +534,7 @@ function showPanel(name) {
 
     if (name === 'overview') loadOverview();
     if (name === 'followup') loadFollowup();
+    if (name === 'belum_ambil') loadBelumAmbil()
 }
 
 function showSkeleton(containerId, type = 'table') {
@@ -1296,7 +1320,103 @@ async function searchObatKronis(resetPage = true) {
         ${renderPagination('obat_kronis', count)}
     </div>`;
 }
+// 5b. BELUM AMBIL OBAT BULAN INI
+let belumAmbilData = [];
 
+async function loadBelumAmbil() {
+    showSkeleton('belumAmbilContent');
+
+    const now = new Date();
+    const awalBulanIni = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const lookback = parseInt(document.getElementById('ba_lookback').value);
+    const namaFilter = document.getElementById('ba_nama').value.trim().toLowerCase();
+
+    // Ambil riwayat obat kronis per 1000 baris (batas default Supabase)
+    let all = [], from = 0;
+    const CHUNK = 1000;
+    while (true) {
+        let q = db.from('obat_kronis')
+            .select('nama_pasien,no_bpjs,no_telp,diagnosis,resep_obat,tanggal_ambil')
+            .order('tanggal_ambil', {ascending: false})
+            .range(from, from + CHUNK - 1);
+        if (lookback > 0) {
+            const d = new Date(now.getFullYear(), now.getMonth() - lookback, 1);
+            q = q.gte('tanggal_ambil', `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`);
+        }
+        const { data, error } = await q;
+        if (error || !data || !data.length) break;
+        all = all.concat(data);
+        if (data.length < CHUNK) break;
+        from += CHUNK;
+    }
+
+    if (!all.length) { empty('belumAmbilContent'); belumAmbilData = []; return; }
+
+    // Kelompokkan per pasien: kunci = No BPJS bila ada, kalau kosong pakai nama
+    // Simpan record dengan tanggal_ambil PALING BARU per pasien
+    const map = new Map();
+    for (const r of all) {
+        const key = (r.no_bpjs && r.no_bpjs.trim())
+            ? 'b:' + r.no_bpjs.trim()
+            : 'n:' + (r.nama_pasien || '').trim().toLowerCase();
+        const prev = map.get(key);
+        if (!prev || (r.tanggal_ambil || '') > (prev.tanggal_ambil || '')) map.set(key, r);
+    }
+
+    // Pasien yang tanggal ambil terakhirnya SEBELUM tanggal 1 bulan ini = belum ambil bulan ini
+    let list = [...map.values()].filter(r => (r.tanggal_ambil || '') < awalBulanIni);
+    if (namaFilter) list = list.filter(r => (r.nama_pasien || '').toLowerCase().includes(namaFilter));
+    list.sort((a, b) => (a.tanggal_ambil || '') < (b.tanggal_ambil || '') ? -1 : 1); // paling lama menunggak di atas
+
+    belumAmbilData = list;
+
+    if (!list.length) {
+        document.getElementById('belumAmbilContent').innerHTML =
+            `<div class="empty"><i class="fa-solid fa-circle-check"></i><p>Semua pasien sudah mengambil obat bulan ini.</p></div>`;
+        return;
+    }
+
+    const rows = list.map(r => {
+        const telp = (r.no_telp || '').replace(/[^0-9]/g, '');
+        const wa = telp ? `https://wa.me/${telp.replace(/^0/, '62')}` : '';
+        return `<tr>
+            <td class="td-name">${r.nama_pasien}</td>
+            <td>${r.no_telp || '-'}${wa ? ` <a href="${wa}" target="_blank" title="Chat WhatsApp" style="color:#25d366;margin-left:6px"><i class="fa-brands fa-whatsapp"></i></a>` : ''}</td>
+            <td style="white-space:normal;min-width:220px">${r.resep_obat || '-'}</td>
+            <td><span class="badge badge-teal">${r.diagnosis || '-'}</span></td>
+            <td class="td-date">${fmtDate(r.tanggal_ambil)}</td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('belumAmbilContent').innerHTML = `
+    <div style="margin-bottom:12px;font-size:0.9rem;color:var(--text-mid)">
+        <span class="badge badge-red">${list.length} pasien</span>
+        belum mengambil obat pada bulan ${now.toLocaleDateString('id-ID', {month:'long', year:'numeric'})}.
+    </div>
+    <div class="table-wrap">
+        <div class="table-scroll">
+            <table id="tblBelumAmbil">
+                <thead><tr>
+                    <th>Nama Pasien</th><th>No. Telp</th><th>Obat</th><th>Diagnosa</th><th>Tgl Terakhir Ambil</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+function exportBelumAmbil() {
+    if (!belumAmbilData.length) { alert('Tidak ada data untuk diexport. Buka panel dan jalankan pencarian dulu.'); return; }
+    const now = new Date();
+    const rows = belumAmbilData.map(r => ({
+        'Nama Pasien': r.nama_pasien,
+        'No. Telp': r.no_telp || '-',
+        'Obat': r.resep_obat || '-',
+        'Diagnosa': r.diagnosis || '-',
+        'Tanggal Terakhir Ambil': fmtDate(r.tanggal_ambil)
+    }));
+    exportToXlsx(rows, `belum_ambil_obat_${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+}
 // 6. RUJUKAN
 async function searchRujukan(resetPage = true) {
     if(resetPage) pageState['rujukan'] = 1;
