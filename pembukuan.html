@@ -450,7 +450,7 @@ async function loadData(){
   if(i.error) toast('Gagal memuat inventaris: '+i.error.message,false);
   DB.jurnal = (j.data||[]).map(r=>({id:r.id, tgl:r.tgl, uraian:r.uraian, kategori:r.kategori, debet:+r.debet, kredit:+r.kredit}));
   DB.inventaris = (i.data||[]).map(r=>({id:r.id, jenis:r.jenis, jumlah:r.jumlah, tahun:r.tahun, nilaiBeli:+r.nilai_beli, manfaat:r.manfaat}));
-  DB.bank = (bk&&bk.data?bk.data:[]).map(r=>({id:r.id, tgl:r.tgl, akun:r.akun, uraian:r.uraian, debet:+r.debet, kredit:+r.kredit}));
+  DB.bank = (bk&&bk.data?bk.data:[]).map(r=>({id:r.id, tgl:r.tgl, akun:r.akun, uraian:r.uraian, debet:+r.debet, kredit:+r.kredit, refJurnal:r.ref_jurnal||null}));
 }
 async function saveConfig(){
   const cfg = { meta:DB.meta, saldoAwal:DB.saldoAwal, modalAwal:DB.modalAwal,
@@ -789,17 +789,18 @@ function viewBank(){
   const masuk=all.reduce((a,b)=>a+(+b.debet||0),0), keluar=all.reduce((a,b)=>a+(+b.kredit||0),0);
   const body = rows.length ? rows.map(b=>`<tr>
       <td class="mono" style="white-space:nowrap">${b.tgl.slice(8,10)}/${b.tgl.slice(5,7)}</td>
-      <td><div>${esc(b.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(b.akun)}</div></td>
+      <td><div>${esc(b.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(b.akun)}${b.refJurnal?' · <span style="color:var(--primary);font-weight:600">tersinkron dari Jurnal Kas</span>':''}</div></td>
       <td class="num pos">${b.debet?fmt0(b.debet):"—"}</td>
       <td class="num neg">${b.kredit?fmt0(b.kredit):"—"}</td>
       <td class="num saldo-cell">${fmt0(b.saldo)}</td>
-      <td><div class="row-actions">
+      <td><div class="row-actions">${b.refJurnal?`
+        <button class="ico-btn" title="Otomatis dari Jurnal Kas — ubah lewat menu Jurnal" onclick="toast('Mutasi ini otomatis dari Jurnal Kas. Ubah atau hapus lewat menu Jurnal Kas.', false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>`:`
         <button class="ico-btn" title="Edit" onclick="openBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-        <button class="ico-btn del" title="Hapus" onclick="delBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+        <button class="ico-btn del" title="Hapus" onclick="delBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>`}
       </div></td></tr>`).join("") : emptyRow(6, q?"Tidak ada mutasi yang cocok":"Belum ada mutasi bank di bulan ini","Catat setoran/tarikan ke rekening di sini agar Neraca akurat.");
   return `
   <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-  <div>Saldo bank di <b>Neraca</b> dihitung dari saldo awal + mutasi di sini. <b>Debet</b> = uang masuk ke rekening (setoran), <b>Kredit</b> = uang keluar dari rekening (tarik tunai).</div></div>
+  <div>Saldo bank di <b>Neraca</b> dihitung dari saldo awal + mutasi di sini. Setoran &amp; tarik tunai kas <b>otomatis tersinkron dari Jurnal Kas</b> — jangan diinput ulang di sini. Input manual hanya untuk transaksi yang tidak lewat kas: bunga bank, biaya admin/pajak bank, transfer masuk langsung ke rekening, atau pindah dana Bank ↔ Deposito. <b>Debet</b> = uang masuk ke rekening, <b>Kredit</b> = uang keluar dari rekening.</div></div>
   <div class="grid-stats" style="margin-bottom:18px">
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri",p))}</div></div>
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Deposito — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri Deposito",p))}</div></div>
@@ -826,6 +827,7 @@ function viewBank(){
 }
 function openBank(id){
   const b = id? DB.bank.find(x=>String(x.id)===String(id)) : null;
+  if(b && b.refJurnal){ toast("Mutasi ini otomatis dari Jurnal Kas. Ubah atau hapus lewat menu Jurnal Kas.", false); return; }
   const isEdit=!!b;
   const today=new Date().toISOString().slice(0,10);
   openModal(`
@@ -869,6 +871,8 @@ async function saveBank(id){
   render();
 }
 async function delBank(id){
+  const rec=DB.bank.find(x=>String(x.id)===String(id));
+  if(rec && rec.refJurnal){ toast("Mutasi ini otomatis dari Jurnal Kas. Hapus lewat menu Jurnal Kas.", false); return; }
   if(!confirm("Hapus mutasi bank ini?")) return;
   const {error}=await supa.from('keu_bank').delete().eq('id',id);
   if(error){toast('Gagal menghapus: '+error.message,false);return;}
@@ -1064,6 +1068,11 @@ function openJurnal(id){
           <div class="field"><label>Kategori</label><select id="jKat" onchange="syncJenisFromCat()">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
           <div class="field"><label>Jumlah (Rp)</label><input type="number" id="jAmt" placeholder="0" value="${amt}"></div>
         </div>
+        <div class="field one hidden" id="jBankWrap">
+          <label>Rekening bank</label>
+          <select id="jBankAkun"><option>Bank Mandiri</option><option>Bank Mandiri Deposito</option></select>
+          <div class="help">Mutasi ini akan <b>otomatis dicatat juga di Buku Bank</b> — tidak perlu input dua kali.</div>
+        </div>
       </div>
       <div class="modal-foot">
         ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delJurnal('${it.id}')">Hapus</button>`:""}
@@ -1071,7 +1080,9 @@ function openJurnal(id){
         <button class="btn" onclick="saveJurnal('${it?it.id:""}')">${isEdit?"Simpan perubahan":"Simpan transaksi"}</button>
       </div>
     </div>`);
+  jurnalEditId = it ? it.id : null;
   if(!isEdit) syncJenisFromCat(); else updateJenisHelp();
+  toggleBankField();
 }
 function setJenis(j){
   jurnalJenis=j;
@@ -1086,37 +1097,112 @@ function syncJenisFromCat(){
   let j = info.jenis==="in" ? "in" : "out";
   if(kat==="Tarik Tunai dari Bank") j="in";   // tarik tunai menambah kas
   setJenis(j);
+  toggleBankField();
 }
 function updateJenisHelp(){
   const h=document.getElementById("jKatHelp"); if(!h) return;
   h.textContent = jurnalJenis==="in" ? "Tercatat sebagai kas MASUK (+)" : "Tercatat sebagai kas KELUAR (−)";
 }
+/* ===== SINKRONISASI OTOMATIS: Jurnal Kas -> Buku Bank ===== */
+const KAT_SETOR="Setoran/Transfer ke Bank", KAT_TARIK="Tarik Tunai dari Bank";
+function isMutasiBankKat(k){ return k===KAT_SETOR || k===KAT_TARIK; }
+let jurnalEditId=null;
+
+function toggleBankField(){
+  const w=document.getElementById("jBankWrap"); if(!w) return;
+  const kat=document.getElementById("jKat").value;
+  const show=isMutasiBankKat(kat);
+  w.classList.toggle("hidden", !show);
+  if(show && jurnalEditId){
+    const linked=DB.bank.find(b=>String(b.refJurnal)===String(jurnalEditId));
+    if(linked) document.getElementById("jBankAkun").value=linked.akun;
+  }
+}
+
+async function syncBankFromJurnal(j, akun){
+  const linked=DB.bank.find(b=>String(b.refJurnal)===String(j.id));
+  // kategori bukan mutasi bank -> hapus pasangan lama jika ada (mis. kategori diganti saat edit)
+  if(!isMutasiBankKat(j.kategori)){
+    if(linked){
+      await supa.from('keu_bank').delete().eq('id',linked.id);
+      DB.bank=DB.bank.filter(b=>String(b.id)!==String(linked.id));
+    }
+    return;
+  }
+  const amt=(+j.debet||0)+(+j.kredit||0);
+  const rec={
+    tgl:j.tgl,
+    akun:akun||(linked?linked.akun:"Bank Mandiri"),
+    uraian:(j.kategori===KAT_SETOR?"[Otomatis] Setoran dari kas — ":"[Otomatis] Tarik tunai ke kas — ")+j.uraian,
+    debet:j.kategori===KAT_SETOR?amt:0,          // setor: uang MASUK ke bank
+    kredit:j.kategori===KAT_SETOR?0:amt,         // tarik: uang KELUAR dari bank
+    ref_jurnal:String(j.id)
+  };
+  if(linked){
+    const {error}=await supa.from('keu_bank').update(rec).eq('id',linked.id);
+    if(error){ toast('Jurnal tersimpan, tapi sinkron ke Buku Bank gagal: '+error.message,false); return; }
+    Object.assign(linked,{tgl:rec.tgl,akun:rec.akun,uraian:rec.uraian,debet:rec.debet,kredit:rec.kredit});
+  }else{
+    const {data,error}=await supa.from('keu_bank').insert(rec).select().single();
+    if(error){ toast('Jurnal tersimpan, tapi sinkron ke Buku Bank gagal: '+error.message,false); return; }
+    DB.bank.push({id:data.id,tgl:rec.tgl,akun:rec.akun,uraian:rec.uraian,debet:rec.debet,kredit:rec.kredit,refJurnal:String(j.id)});
+  }
+}
+
 async function saveJurnal(id){
   const tgl=document.getElementById("jTgl").value;
   const uraian=document.getElementById("jUraian").value.trim();
   const kat=document.getElementById("jKat").value;
   const amt=Math.abs(+document.getElementById("jAmt").value||0);
   if(!tgl||!uraian||!amt){ toast("Lengkapi tanggal, uraian, dan jumlah.",false); return; }
+  const akunBankEl=document.getElementById("jBankAkun");
+  const akunBank=akunBankEl?akunBankEl.value:"Bank Mandiri";
   const debet = jurnalJenis==="in" ? amt : 0;
   const kredit = jurnalJenis==="in" ? 0 : amt;
   const payload={tgl,uraian,kategori:kat,debet,kredit};
+  let saved=null;
   if(id){
     const { error } = await supa.from('keu_jurnal').update(payload).eq('id', id);
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
-    Object.assign(DB.jurnal.find(x=>String(x.id)===String(id)), payload);
+    saved=DB.jurnal.find(x=>String(x.id)===String(id));
+    Object.assign(saved, payload);
     toast("Transaksi diperbarui.");
   }else{
     const { data, error } = await supa.from('keu_jurnal').insert(payload).select().single();
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
-    DB.jurnal.push({id:data.id, tgl:data.tgl, uraian:data.uraian, kategori:data.kategori, debet:+data.debet, kredit:+data.kredit});
+    saved={id:data.id, tgl:data.tgl, uraian:data.uraian, kategori:data.kategori, debet:+data.debet, kredit:+data.kredit};
+    DB.jurnal.push(saved);
     toast("Transaksi tersimpan.");
   }
+
+  /* SINKRON OTOMATIS ke Buku Bank */
+  await syncBankFromJurnal(saved, akunBank);
+
   closeModal();
   const m=monthOf(tgl); if(m!==state.period){ state.period=m; document.getElementById("periodSel").value=m; }
   render();
+
+  /* Pengingat otomatis: pembelian inventaris ikut dicatat ke daftar Inventaris */
+  if(kat==="Pembelian Inventaris" && !id){
+    setTimeout(()=>{
+      if(confirm("Transaksi kas tersimpan.\n\nCatat juga barang ini ke daftar Inventaris (agar masuk Neraca & penyusutan otomatis)?")){
+        openInventaris();
+        const je=document.getElementById("iJenis"), ne=document.getElementById("iNilai");
+        if(je) je.value=uraian;
+        if(ne) ne.value=amt;
+      }
+    },250);
+  }
 }
 async function delJurnal(id){
   if(!confirm("Hapus transaksi ini?")) return;
+  /* hapus juga mutasi bank pasangannya (jika ada) */
+  const linked=DB.bank.find(b=>String(b.refJurnal)===String(id));
+  if(linked){
+    const {error:e2}=await supa.from('keu_bank').delete().eq('id',linked.id);
+    if(e2){ toast('Gagal menghapus mutasi bank terkait: '+e2.message,false); return; }
+    DB.bank=DB.bank.filter(b=>String(b.id)!==String(linked.id));
+  }
   const { error } = await supa.from('keu_jurnal').delete().eq('id', id);
   if(error){ toast('Gagal menghapus: '+error.message,false); return; }
   DB.jurnal=DB.jurnal.filter(x=>String(x.id)!==String(id)); closeModal(); render(); toast("Transaksi dihapus.");
