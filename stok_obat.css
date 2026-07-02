@@ -168,6 +168,22 @@ tr.batch-row.show { display: table-row; }
 .import-preview-table { max-height: 260px; overflow-y: auto; margin-bottom: 5px; }
 .import-preview-table table { min-width: 700px; }
 
+/* ============ KONFIRMASI (Ya/Tidak) ============ */
+.modal-top { z-index: 1100; }
+.confirm-content { max-width: 420px; }
+.confirm-body { text-align: center; padding: 30px 28px; }
+.confirm-icon { width: 62px; height: 62px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin: 0 auto 15px; background: #fef3c7; color: #b45309; }
+.confirm-icon.danger { background: #fee2e2; color: var(--danger); }
+.confirm-body h3 { font-size: 1.1rem; margin-bottom: 8px; }
+.confirm-body p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 22px; white-space: pre-line; }
+.confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ============ TOMBOL AKSI BARIS ============ */
+.row-actions { display: inline-flex; gap: 4px; }
+.btn-edit-row, .btn-delete-row { background: transparent; color: var(--text-muted); border: 1px solid transparent; padding: 8px 11px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.88rem; }
+.btn-edit-row:hover { background: #fff7ed; color: #ea580c; border-color: #fed7aa; }
+.btn-delete-row:hover { background: #fef2f2; color: var(--danger); border-color: #fee2e2; }
+
 /* ============ MISC ============ */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }

@@ -241,7 +241,10 @@ function renderTabelStok() {
                 <td class="text-right">${formatRp(b.stok_sisa * parseFloat(b.harga_satuan || 0))}</td>
                 <td>${badge}</td>
                 <td class="text-center">
-                    <button type="button" class="btn-delete-row" onclick="hapusBatch('${b.id}', '${esc(b.nama_obat).replace(/'/g, "\\'")}')" title="Hapus batch (koreksi salah input)"><i class="fa-solid fa-trash"></i></button>
+                    <span class="row-actions">
+                        <button type="button" class="btn-edit-row" onclick="event.stopPropagation(); editBatch('${b.id}')" title="Edit / koreksi batch ini"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button type="button" class="btn-delete-row" onclick="event.stopPropagation(); hapusBatch('${b.id}', '${esc(b.nama_obat).replace(/'/g, "\\'")}')" title="Hapus batch (koreksi salah input)"><i class="fa-solid fa-trash"></i></button>
+                    </span>
                 </td>
             </tr>`;
         });
@@ -261,16 +264,50 @@ function renderTabelStok() {
     });
 }
 
-// Gaya tombol hapus (dipakai render di atas)
-const styleDel = document.createElement('style');
-styleDel.textContent = `.btn-delete-row{background:transparent;color:var(--text-muted);border:1px solid transparent;padding:8px 11px;border-radius:8px;cursor:pointer;transition:all .2s}.btn-delete-row:hover{background:#fef2f2;color:var(--danger);border-color:#fee2e2}`;
-document.head.appendChild(styleDel);
+/* ============================================================
+   DIALOG KONFIRMASI "APAKAH ANDA YAKIN?" (Ya / Tidak)
+   ============================================================ */
+function konfirmasi(judul, pesan, tipe = 'danger') {
+    return new Promise(resolve => {
+        const modal = document.getElementById('modalKonfirm');
+        const icon = document.getElementById('konfirmIcon');
+        const btnYa = document.getElementById('konfirmYa');
+        const btnTidak = document.getElementById('konfirmTidak');
+
+        document.getElementById('konfirmJudul').innerText = judul;
+        document.getElementById('konfirmPesan').innerText = pesan;
+        icon.className = 'confirm-icon' + (tipe === 'danger' ? ' danger' : '');
+        icon.innerHTML = tipe === 'danger'
+            ? '<i class="fa-solid fa-triangle-exclamation"></i>'
+            : '<i class="fa-solid fa-circle-question"></i>';
+        btnYa.className = tipe === 'danger' ? 'btn btn-danger' : 'btn btn-primary';
+
+        modal.classList.add('show');
+
+        const selesai = (jawaban) => {
+            modal.classList.remove('show');
+            btnYa.onclick = null;
+            btnTidak.onclick = null;
+            modal.onclick = null;
+            resolve(jawaban);
+        };
+        btnYa.onclick = () => selesai(true);
+        btnTidak.onclick = () => selesai(false);
+        modal.onclick = e => { if (e.target === modal) selesai(false); };
+    });
+}
 
 /* ============================================================
-   HAPUS BATCH (koreksi salah input)
+   HAPUS BATCH (koreksi salah input) — dengan konfirmasi Ya/Tidak
    ============================================================ */
 async function hapusBatch(id, nama) {
-    const ok = confirm(`KOREKSI DATA\n\nHapus batch "${nama}" ini beserta seluruh riwayat transaksinya?\n\nGunakan hanya untuk memperbaiki kesalahan input. Nilai aset & laporan bulanan akan ikut terkoreksi otomatis.`);
+    const b = batchData.find(x => x.id === id);
+    const detail = b ? `\n\nBatch: exp ${formatTgl(b.tgl_expired)} · ${b.pbf || '-'} · Faktur ${b.no_faktur || '-'} · sisa ${b.stok_sisa} ${b.satuan || ''}` : '';
+    const ok = await konfirmasi(
+        'Apakah Anda yakin?',
+        `Batch "${nama}" akan DIHAPUS PERMANEN beserta seluruh riwayat transaksinya.${detail}\n\nNilai aset & laporan bulanan akan ikut terkoreksi otomatis. Tindakan ini tidak dapat dibatalkan.`,
+        'danger'
+    );
     if (!ok) return;
 
     // Hapus transaksi terkait dulu, lalu batch-nya
@@ -280,6 +317,122 @@ async function hapusBatch(id, nama) {
     await muatSemuaData();
 }
 window.hapusBatch = hapusBatch;
+
+/* ============================================================
+   EDIT BATCH (koreksi salah input) — dengan konfirmasi Ya/Tidak
+   ============================================================ */
+function editBatch(id) {
+    const b = batchData.find(x => x.id === id);
+    if (!b) { alert('Batch tidak ditemukan.'); return; }
+
+    document.getElementById('ed_id').value = b.id;
+    document.getElementById('ed_nama').value = b.nama_obat;
+    document.getElementById('ed_satuan').value = b.satuan || '';
+    document.getElementById('ed_stok_awal').value = b.stok_awal;
+    document.getElementById('ed_harga').value = b.harga_satuan;
+    document.getElementById('ed_expired').value = b.tgl_expired;
+    document.getElementById('ed_tglmasuk').value = b.tgl_masuk;
+    document.getElementById('ed_faktur').value = b.no_faktur || '';
+    document.getElementById('ed_pbf').value = b.pbf || '';
+    document.getElementById('ed_keterangan').value = b.keterangan || '';
+
+    const terpakai = b.stok_awal - b.stok_sisa;
+    document.getElementById('ed_stok_hint').innerText =
+        `Sisa stok saat ini: ${b.stok_sisa}. Sudah terpakai/keluar: ${terpakai}. Jika jumlah awal diubah, sisa stok menyesuaikan otomatis (minimal ${terpakai}).`;
+    document.getElementById('ed_stok_awal').min = Math.max(terpakai, 1);
+
+    document.getElementById('modalEdit').classList.add('show');
+}
+window.editBatch = editBatch;
+
+function setupFormEdit() {
+    document.getElementById('formEdit').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const id = document.getElementById('ed_id').value;
+        const b = batchData.find(x => x.id === id);
+        if (!b) { alert('Batch tidak ditemukan.'); return; }
+
+        const baru = {
+            nama_obat: document.getElementById('ed_nama').value.trim(),
+            satuan: document.getElementById('ed_satuan').value.trim(),
+            stok_awal: parseInt(document.getElementById('ed_stok_awal').value),
+            harga_satuan: parseFloat(document.getElementById('ed_harga').value),
+            tgl_expired: document.getElementById('ed_expired').value,
+            tgl_masuk: document.getElementById('ed_tglmasuk').value,
+            no_faktur: document.getElementById('ed_faktur').value.trim() || null,
+            pbf: document.getElementById('ed_pbf').value.trim(),
+            keterangan: document.getElementById('ed_keterangan').value.trim() || null,
+        };
+
+        // Sisa stok menyesuaikan perubahan jumlah awal (tidak boleh negatif)
+        const terpakai = b.stok_awal - b.stok_sisa;
+        if (baru.stok_awal < terpakai) {
+            alert(`Jumlah stok awal tidak boleh kurang dari yang sudah terpakai (${terpakai}).`);
+            return;
+        }
+        const stokSisaBaru = baru.stok_awal - terpakai;
+
+        // Ringkasan perubahan untuk konfirmasi
+        const perubahan = [];
+        if (baru.nama_obat !== b.nama_obat) perubahan.push(`Nama: "${b.nama_obat}" → "${baru.nama_obat}"`);
+        if (baru.satuan !== (b.satuan || '')) perubahan.push(`Satuan: "${b.satuan || '-'}" → "${baru.satuan}"`);
+        if (baru.stok_awal !== b.stok_awal) perubahan.push(`Jumlah awal: ${b.stok_awal} → ${baru.stok_awal} (sisa jadi ${stokSisaBaru})`);
+        if (baru.harga_satuan !== parseFloat(b.harga_satuan)) perubahan.push(`Harga: ${formatRp(b.harga_satuan)} → ${formatRp(baru.harga_satuan)}`);
+        if (baru.tgl_expired !== b.tgl_expired) perubahan.push(`Expired: ${formatTgl(b.tgl_expired)} → ${formatTgl(baru.tgl_expired)}`);
+        if (baru.tgl_masuk !== b.tgl_masuk) perubahan.push(`Tgl masuk: ${formatTgl(b.tgl_masuk)} → ${formatTgl(baru.tgl_masuk)}`);
+        if ((baru.no_faktur || '') !== (b.no_faktur || '')) perubahan.push(`Faktur: "${b.no_faktur || '-'}" → "${baru.no_faktur || '-'}"`);
+        if ((baru.pbf || '') !== (b.pbf || '')) perubahan.push(`PBF: "${b.pbf || '-'}" → "${baru.pbf || '-'}"`);
+        if ((baru.keterangan || '') !== (b.keterangan || '')) perubahan.push(`Keterangan diubah`);
+
+        if (perubahan.length === 0) {
+            document.getElementById('modalEdit').classList.remove('show');
+            return;
+        }
+
+        const ok = await konfirmasi(
+            'Apakah Anda yakin?',
+            `Perubahan berikut akan disimpan:\n\n• ${perubahan.join('\n• ')}\n\nCatatan pembelian di laporan bulanan akan ikut terkoreksi.`,
+            'primary'
+        );
+        if (!ok) return;
+
+        const btn = this.querySelector('button[type=submit]');
+        btn.disabled = true;
+        try {
+            // 1. Update batch
+            const { error: e1 } = await db.from('apotek_batch').update({
+                ...baru, stok_sisa: stokSisaBaru, updated_at: new Date().toISOString()
+            }).eq('id', id);
+            if (e1) throw e1;
+
+            // 2. Koreksi transaksi MASUK terkait agar laporan bulanan konsisten
+            const { error: e2 } = await db.from('apotek_transaksi').update({
+                nama_obat: baru.nama_obat, satuan: baru.satuan,
+                jumlah: baru.stok_awal, harga_satuan: baru.harga_satuan,
+                total_nilai: baru.stok_awal * baru.harga_satuan,
+                no_faktur: baru.no_faktur, pbf: baru.pbf,
+                tanggal: baru.tgl_masuk, keterangan: baru.keterangan
+            }).eq('batch_id', id).eq('jenis', 'MASUK');
+            if (e2) throw e2;
+
+            // 3. Sinkronkan nama/satuan/faktur/pbf di transaksi KELUAR batch ini
+            //    (nilai & jumlah keluar TIDAK diubah karena sudah terjadi)
+            const { error: e3 } = await db.from('apotek_transaksi').update({
+                nama_obat: baru.nama_obat, satuan: baru.satuan,
+                no_faktur: baru.no_faktur, pbf: baru.pbf
+            }).eq('batch_id', id).eq('jenis', 'KELUAR');
+            if (e3) throw e3;
+
+            document.getElementById('modalEdit').classList.remove('show');
+            await muatSemuaData();
+            alert('Perubahan berhasil disimpan & laporan telah terkoreksi.');
+        } catch (err) {
+            alert('Gagal menyimpan perubahan: ' + err.message);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+}
 
 /* ============================================================
    MODAL HANDLING
@@ -298,7 +451,9 @@ function setupModals() {
         });
     });
     document.querySelectorAll('.modal').forEach(m => {
-        m.querySelector('.close-modal').addEventListener('click', () => m.classList.remove('show'));
+        if (m.id === 'modalKonfirm') return; // dialog konfirmasi punya handler sendiri
+        const closeBtn = m.querySelector('.close-modal');
+        if (closeBtn) closeBtn.addEventListener('click', () => m.classList.remove('show'));
         m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
     });
 }
@@ -347,6 +502,7 @@ function setupForms() {
     });
 
     setupFormKeluar();
+    setupFormEdit();
 }
 
 // Insert batch + transaksi MASUK. Jika batch identik (nama+harga+expired+faktur+pbf) sudah ada, stoknya ditambah.

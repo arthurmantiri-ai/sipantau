@@ -426,6 +426,87 @@
         </div>
     </div>
 
+    <!-- ================= MODAL: EDIT BATCH ================= -->
+    <div id="modalEdit" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-pen-to-square" style="color:var(--warn);"></i> Edit / Koreksi Batch</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="formEdit" class="modal-body">
+                <p class="modal-info" style="background:#fef3c7;border-color:#f59e0b;color:#b45309;">Gunakan fitur ini untuk <strong>memperbaiki kesalahan input</strong>. Perubahan akan otomatis mengoreksi catatan pembelian di laporan bulanan.</p>
+                <input type="hidden" id="ed_id">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nama Obat *</label>
+                        <input type="text" id="ed_nama" class="form-control" list="namaObatList" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Satuan *</label>
+                        <input type="text" id="ed_satuan" class="form-control" list="satuanList" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Jumlah Stok Awal Batch *</label>
+                        <input type="number" id="ed_stok_awal" class="form-control" min="1" required>
+                        <div class="field-hint" id="ed_stok_hint"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Harga per Satuan (Rp) *</label>
+                        <input type="number" id="ed_harga" class="form-control" step="any" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal Expired *</label>
+                        <input type="date" id="ed_expired" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tanggal Masuk *</label>
+                        <input type="date" id="ed_tglmasuk" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>No. Faktur Pemesanan</label>
+                        <input type="text" id="ed_faktur" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>PBF / Distributor *</label>
+                        <input type="text" id="ed_pbf" class="form-control" list="pbfList" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Keterangan</label>
+                    <input type="text" id="ed_keterangan" class="form-control">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: KONFIRMASI (Ya / Tidak) ================= -->
+    <div id="modalKonfirm" class="modal modal-top">
+        <div class="modal-content confirm-content">
+            <div class="modal-body confirm-body">
+                <div class="confirm-icon" id="konfirmIcon"><i class="fa-solid fa-circle-question"></i></div>
+                <h3 id="konfirmJudul">Apakah Anda yakin?</h3>
+                <p id="konfirmPesan"></p>
+                <div class="confirm-actions">
+                    <button type="button" id="konfirmTidak" class="btn btn-outline">Tidak, Batalkan</button>
+                    <button type="button" id="konfirmYa" class="btn btn-danger">Ya, Lanjutkan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="stok_obat.js"></script>
 </body>
 </html>
