@@ -268,6 +268,7 @@
         <div class="sidebar-item" onclick="showPanel('belum_ambil')"><i class="fa-solid fa-user-clock"></i> Belum Ambil Obat</div>
         <div class="sidebar-item" onclick="showPanel('rujukan')"><i class="fa-solid fa-file-medical"></i> Rujukan</div>
         <div class="sidebar-item" onclick="showPanel('pasien_kontrol')"><i class="fa-solid fa-calendar-check"></i> Pasien Kontrol</div>
+	<div class="sidebar-item" onclick="showPanel('lab_rutin'); loadLabRutin();"><i class="fa-solid fa-flask-vial"></i> Lab Rutin</div>
 
         <div class="sidebar-label">Register Poli</div>
         <div class="sidebar-item" onclick="showPanel('poli_umum')"><i class="fa-solid fa-stethoscope"></i> Poli Umum</div>
@@ -346,6 +347,7 @@
     </div>
     <div id="belumAmbilContent"><div class="empty"><i class="fa-solid fa-magnifying-glass"></i><p>Memuat data...</p></div></div>
 </div>
+<div class="panel" id="panel-lab_rutin"></div>
         <div class="panel" id="panel-rujukan">
             <div class="section-header">
                 <div class="section-title">
@@ -1643,5 +1645,7 @@ async function searchAdmin(resetPage = true) {
 loadOverview();
 
 </script>
+<script src="lab_core.js"></script>
+<script src="lab_dashboard.js"></script>
 </body>
 </html>

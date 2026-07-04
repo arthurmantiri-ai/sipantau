@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Lab Rutin - Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="lab_rutin.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div class="form-container">
+
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali ke Beranda">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="header-text">
+                <h2>Input Pemeriksaan Lab Rutin</h2>
+                <p class="header-sub">Pasien kronis DM / HPT &mdash; jadwal kontrol berikutnya dihitung otomatis</p>
+            </div>
+            <a href="dashboard.html#lab_rutin" class="btn-pantauan" title="Buka panel pantauan di Dashboard">
+                <i class="fa-solid fa-chart-line"></i> Lihat Pantauan
+            </a>
+        </div>
+
+        <div class="info-box">
+            <i class="fa-solid fa-circle-info fa-lg"></i>
+            <p>
+                Setelah tanggal lab diisi, sistem otomatis menghitung jadwal berikutnya:
+                <strong>kontrol 6 bulan</strong> untuk semua pasien, ditambah <strong>kontrol 3 bulan</strong>
+                khusus diagnosa <strong>DM</strong> dan <strong>HPT+DM</strong>.
+                Jadwal ini dipantau di panel <strong>Lab Rutin</strong> pada Dashboard (pengingat WA H-7 &amp; H-1 puasa).
+            </p>
+        </div>
+
+        <!-- ===== TAB ===== -->
+        <div class="tab-bar">
+            <button type="button" class="tab-btn active" data-tab="satuan">
+                <i class="fa-solid fa-user-pen"></i> Input Satuan
+            </button>
+            <button type="button" class="tab-btn" data-tab="batch">
+                <i class="fa-solid fa-users-viewfinder"></i> Input Batch (Event)
+            </button>
+        </div>
+
+        <!-- ===== TAB: INPUT SATUAN ===== -->
+        <section id="tab-satuan" class="tab-pane active">
+            <form id="formLab" autocomplete="off">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="nama_pasien">Nama Pasien <span class="req">*</span></label>
+                        <input type="text" id="nama_pasien" class="form-control" list="dlNama"
+                               placeholder="Nama lengkap (ketik untuk cari pasien lama)" required>
+                        <span class="hint">Pilih nama dari daftar untuk mengisi data pasien lama secara otomatis.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="no_bpjs">No. BPJS</label>
+                        <input type="text" id="no_bpjs" class="form-control" list="dlBpjs" placeholder="Nomor kartu BPJS (opsional)">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="no_telp">No. Telp / WhatsApp</label>
+                        <input type="tel" id="no_telp" class="form-control" placeholder="08xxxxxxxxxx">
+                        <span class="hint">Dipakai untuk pengingat WhatsApp H-7 dan H-1 (puasa).</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="lab_pemeriksa">Lab Pemeriksa <span class="req">*</span></label>
+                        <input type="text" id="lab_pemeriksa" class="form-control" list="dlLab"
+                               placeholder="Contoh: Lab Prodia / Lab Klinik Imanuel" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="diagnosa">Diagnosa <span class="req">*</span></label>
+                        <select id="diagnosa" class="form-control" required>
+                            <option value="" disabled selected>Pilih diagnosa...</option>
+                            <option value="DM">DM (Diabetes Melitus)</option>
+                            <option value="HPT">HPT (Hipertensi)</option>
+                            <option value="HPT+DM">HPT + DM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tanggal_lab">Tanggal Pemeriksaan Lab <span class="req">*</span></label>
+                        <input type="date" id="tanggal_lab" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="next3_tampil">Jadwal Kontrol 3 Bulan <small style="font-weight:400;color:var(--text-muted)">(otomatis, khusus DM &amp; HPT+DM)</small></label>
+                        <div class="auto-field" id="grup3">
+                            <i class="fa-solid fa-calendar-plus auto-icon"></i>
+                            <input type="text" id="next3_tampil" class="form-control" readonly placeholder="&mdash;" tabindex="-1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="next6_tampil">Jadwal Kontrol 6 Bulan <small style="font-weight:400;color:var(--text-muted)">(otomatis, semua diagnosa)</small></label>
+                        <div class="auto-field" id="grup6">
+                            <i class="fa-solid fa-calendar-check auto-icon"></i>
+                            <input type="text" id="next6_tampil" class="form-control" readonly placeholder="&mdash;" tabindex="-1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="catatan">Catatan <small style="font-weight:400;color:var(--text-muted)">(opsional)</small></label>
+                    <textarea id="catatan" class="form-control" placeholder="Contoh: hasil GDP 180, dianjurkan kontrol gula lebih ketat."></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnSimpanSatuan">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Pemeriksaan
+                </button>
+            </form>
+
+            <div id="hasilSatuan"></div>
+        </section>
+
+        <!-- ===== TAB: INPUT BATCH (EVENT) ===== -->
+        <section id="tab-batch" class="tab-pane">
+
+            <div class="batch-shared">
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label for="batch_tanggal">Tanggal Pemeriksaan (Event) <span class="req">*</span></label>
+                        <input type="date" id="batch_tanggal" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="batch_lab">Lab Pemeriksa (untuk semua baris) <span class="req">*</span></label>
+                        <input type="text" id="batch_lab" class="form-control" list="dlLab" placeholder="Contoh: Lab Prodia">
+                    </div>
+                    <div class="loader-group">
+                        <div class="form-group">
+                            <label for="batch_bulan">Muat Pasien dengan Jadwal Bulan</label>
+                            <input type="month" id="batch_bulan" class="form-control">
+                        </div>
+                        <button type="button" class="btn-sekunder" id="btnMuatTerjadwal" title="Isi tabel dengan pasien yang jadwal labnya jatuh pada bulan terpilih">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> Muat
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="batch-toolbar">
+                <span class="kiri"><i class="fa-solid fa-circle-info"></i>
+                    Baris dari jadwal bisa diedit. Hilangkan centang bila pasien tidak hadir.</span>
+                <button type="button" class="btn-sekunder" id="btnTambahBaris">
+                    <i class="fa-solid fa-plus"></i> Tambah Baris Manual
+                </button>
+            </div>
+
+            <div class="table-wrap">
+                <div class="table-scroll">
+                    <table class="batch">
+                        <thead>
+                            <tr>
+                                <th style="width:36px"><input type="checkbox" id="cekSemua" title="Pilih / batal pilih semua" checked></th>
+                                <th>Nama Pasien *</th>
+                                <th>No. BPJS</th>
+                                <th>No. Telp / WA</th>
+                                <th style="width:130px">Diagnosa *</th>
+                                <th>Info Jadwal</th>
+                                <th style="width:44px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="batch-footer">
+                <span id="batchInfo">Belum ada baris.</span>
+                <button type="button" class="btn-submit-inline" id="btnSimpanBatch" disabled>
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Semua
+                </button>
+            </div>
+
+            <div id="hasilBatch"></div>
+        </section>
+
+        <datalist id="dlNama"></datalist>
+        <datalist id="dlBpjs"></datalist>
+        <datalist id="dlLab"></datalist>
+
+    </div>
+
+    <script src="lab_core.js"></script>
+    <script src="lab_rutin.js"></script>
+</body>
+</html>

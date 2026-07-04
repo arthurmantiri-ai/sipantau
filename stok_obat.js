@@ -82,6 +82,10 @@ function initApp() {
 
     document.getElementById('searchInput').addEventListener('input', renderTabelStok);
     document.getElementById('laporanBulan').addEventListener('change', renderLaporanBulanan);
+    document.getElementById('btnBulanPrev').addEventListener('click', () => geserBulanLaporan(-1));
+    document.getElementById('btnBulanNext').addEventListener('click', () => geserBulanLaporan(1));
+    document.getElementById('btnExportBulan').addEventListener('click', exportLaporanBulan);
+    document.getElementById('lapDetailJenis').addEventListener('change', renderLaporanBulanan);
     document.getElementById('riwayatFilterJenis').addEventListener('change', renderRiwayat);
     document.getElementById('riwayatFilterBulan').addEventListener('change', renderRiwayat);
     document.getElementById('btnResetRiwayat').addEventListener('click', () => {
@@ -713,6 +717,14 @@ function trxBulan(ym) {
     return transaksiData.filter(t => (t.tanggal || '').startsWith(ym));
 }
 
+// Navigasi cepat bulan laporan (tombol ‹ dan ›)
+function geserBulanLaporan(delta) {
+    const el = document.getElementById('laporanBulan');
+    const [y, m] = (el.value || monthStr()).split('-').map(Number);
+    el.value = monthStr(new Date(y, m - 1 + delta, 1));
+    renderLaporanBulanan();
+}
+
 function renderLaporanBulanan() {
     const ym = document.getElementById('laporanBulan').value || monthStr();
     const trx = trxBulan(ym);
@@ -732,15 +744,20 @@ function renderLaporanBulanan() {
     document.getElementById('lapKeluarQty').innerText = `${keluarQty} item · ${keluar.length} transaksi`;
     document.getElementById('lapSelisihRp').innerText = formatRp(beliRp - keluarRp);
 
+    const katTotal = {};
+    KATEGORI_KELUAR.forEach(kat => katTotal[kat] = { qty: 0, rp: 0 });
+    keluar.forEach(t => {
+        const kat = KATEGORI_KELUAR.includes(t.kategori) ? t.kategori : 'Lainnya';
+        katTotal[kat].qty += t.jumlah || 0;
+        katTotal[kat].rp += parseFloat(t.total_nilai || 0);
+    });
+
     const ul = document.getElementById('lapKategoriList');
     let html = '';
     KATEGORI_KELUAR.forEach(kat => {
-        const rows = keluar.filter(t => t.kategori === kat);
-        const rp = rows.reduce((s, t) => s + parseFloat(t.total_nilai || 0), 0);
-        const qty = rows.reduce((s, t) => s + (t.jumlah || 0), 0);
         html += `<li>
-            <span class="k-left"><span class="k-dot" style="background:${KATEGORI_WARNA[kat]}"></span>${kat} <span class="k-qty">(${qty} item)</span></span>
-            <span class="k-rp">${formatRp(rp)}</span>
+            <span class="k-left"><span class="k-dot" style="background:${KATEGORI_WARNA[kat]}"></span>${kat} <span class="k-qty">(${katTotal[kat].qty} item)</span></span>
+            <span class="k-rp">${formatRp(katTotal[kat].rp)}</span>
         </li>`;
     });
     html += `<li class="total-row"><span class="k-left">TOTAL KELUAR ${labelBulan(ym).toUpperCase()}</span><span class="k-rp">${formatRp(keluarRp)}</span></li>`;
@@ -759,6 +776,68 @@ function renderLaporanBulanan() {
     beliBody.innerHTML = beliKeys.length === 0
         ? '<tr><td colspan="3" class="text-center">Tidak ada pembelian pada bulan ini</td></tr>'
         : beliKeys.map(k => `<tr><td>${esc(k)}</td><td class="text-right">${beliMap[k].qty} ${esc(beliMap[k].satuan || '')}</td><td class="text-right">${formatRp(beliMap[k].rp)}</td></tr>`).join('');
+
+    // --- Label bulan terpilih pada judul-judul panel ---
+    document.querySelectorAll('.lap-bulan-label').forEach(el => el.innerText = labelBulan(ym));
+
+    // --- Rincian obat keluar per obat (lengkap per kategori) ---
+    const keluarMap = {};
+    keluar.forEach(t => {
+        const k = t.nama_obat;
+        if (!keluarMap[k]) keluarMap[k] = { qty: 0, rp: 0, satuan: t.satuan, kat: {} };
+        keluarMap[k].qty += t.jumlah || 0;
+        keluarMap[k].rp += parseFloat(t.total_nilai || 0);
+        const kat = KATEGORI_KELUAR.includes(t.kategori) ? t.kategori : 'Lainnya';
+        keluarMap[k].kat[kat] = (keluarMap[k].kat[kat] || 0) + parseFloat(t.total_nilai || 0);
+    });
+    const keluarBody = document.getElementById('lapKeluarBody');
+    const keluarKeys = Object.keys(keluarMap).sort((a, b) => keluarMap[b].rp - keluarMap[a].rp);
+    if (keluarKeys.length === 0) {
+        keluarBody.innerHTML = '<tr><td colspan="7" class="text-center">Tidak ada obat keluar pada bulan ini</td></tr>';
+    } else {
+        keluarBody.innerHTML = keluarKeys.map(k => {
+            const d = keluarMap[k];
+            return `<tr>
+                <td><strong>${esc(k)}</strong></td>
+                <td class="text-right">${d.qty} <small>${esc(d.satuan || '')}</small></td>
+                <td class="text-right">${formatRp(d.kat['Resep Dokter'] || 0)}</td>
+                <td class="text-right">${formatRp(d.kat['Obat Expired'] || 0)}</td>
+                <td class="text-right">${formatRp(d.kat['Obat Rusak'] || 0)}</td>
+                <td class="text-right">${formatRp(d.kat['Lainnya'] || 0)}</td>
+                <td class="text-right" style="font-weight:700;color:var(--danger)">${formatRp(d.rp)}</td>
+            </tr>`;
+        }).join('') + `
+            <tr style="background:var(--bg);font-weight:800">
+                <td>TOTAL</td>
+                <td class="text-right">${keluarQty}</td>
+                <td class="text-right">${formatRp(katTotal['Resep Dokter'].rp)}</td>
+                <td class="text-right">${formatRp(katTotal['Obat Expired'].rp)}</td>
+                <td class="text-right">${formatRp(katTotal['Obat Rusak'].rp)}</td>
+                <td class="text-right">${formatRp(katTotal['Lainnya'].rp)}</td>
+                <td class="text-right" style="color:var(--danger)">${formatRp(keluarRp)}</td>
+            </tr>`;
+    }
+
+    // --- Detail semua transaksi bulan terpilih (data lengkap) ---
+    const jenisFilter = document.getElementById('lapDetailJenis').value;
+    let detail = jenisFilter ? trx.filter(t => t.jenis === jenisFilter) : trx;
+    document.getElementById('lapDetailCount').innerText = `${detail.length} transaksi`;
+    detail = detail.slice(0, 500); // pengaman tampilan
+    const detailBody = document.getElementById('lapDetailBody');
+    detailBody.innerHTML = detail.length === 0
+        ? '<tr><td colspan="9" class="text-center">Tidak ada transaksi pada bulan ini</td></tr>'
+        : detail.map(t => `
+            <tr>
+                <td style="font-family:monospace">${formatTgl(t.tanggal)}</td>
+                <td><span class="badge ${t.jenis === 'MASUK' ? 'badge-masuk' : 'badge-keluar'}">${t.jenis}</span></td>
+                <td>${esc(t.kategori)}</td>
+                <td><strong>${esc(t.nama_obat)}</strong></td>
+                <td class="text-right">${t.jumlah} <small>${esc(t.satuan || '')}</small></td>
+                <td class="text-right">${formatRp(t.harga_satuan)}</td>
+                <td class="text-right" style="font-weight:600;color:${t.jenis === 'MASUK' ? 'var(--success)' : 'var(--danger)'}">${formatRp(t.total_nilai)}</td>
+                <td><small>${esc(t.no_faktur) || '-'}<br>${esc(t.pbf) || '-'}</small></td>
+                <td><small>${esc(t.keterangan) || '-'}</small></td>
+            </tr>`).join('');
 }
 
 // Rekap 12 bulan terakhir untuk perbandingan (poin 8)
@@ -1019,15 +1098,242 @@ async function prosesImport() {
     }
 }
 
-// --- EXPORT KE EXCEL: 3 sheet (poin 9) ---
-function exportToExcel() {
-    const tglMulai = document.getElementById('exportMulai').value;
-    const tglSelesai = document.getElementById('exportSelesai').value;
-    if (!tglMulai || !tglSelesai) { alert('Pilih rentang tanggal terlebih dahulu!'); return; }
+/* ============================================================
+   EXPORT KE EXCEL — DATA MENTAH + DATA OLAHAN SIAP PRESENTASI
+   • Export rentang tanggal (tombol "Export Excel") : 5 sheet
+     1. Ringkasan (eksekutif)   3. Rekap Bulanan       5. Riwayat Transaksi (mentah)
+     2. Rekap per Obat          4. Stok Saat Ini (mentah)
+   • Export laporan bulanan (tombol di tab Laporan) : 3 sheet
+     1. Ringkasan   2. Rekap per Obat   3. Detail Transaksi (mentah)
+   ============================================================ */
 
-    const wb = XLSX.utils.book_new();
+// Hitung agregat sekumpulan transaksi (dipakai sheet Ringkasan, Rekap per Obat, Rekap Bulanan)
+function ringkasanTransaksi(trx) {
+    const masuk = trx.filter(t => t.jenis === 'MASUK');
+    const keluar = trx.filter(t => t.jenis === 'KELUAR');
 
-    // Sheet 1: Stok saat ini (per batch, urutan FIFO)
+    const perKat = {};
+    KATEGORI_KELUAR.forEach(k => perKat[k] = { qty: 0, rp: 0 });
+    keluar.forEach(t => {
+        const k = KATEGORI_KELUAR.includes(t.kategori) ? t.kategori : 'Lainnya';
+        perKat[k].qty += t.jumlah || 0;
+        perKat[k].rp += parseFloat(t.total_nilai || 0);
+    });
+
+    const perObat = {};
+    trx.forEach(t => {
+        const n = t.nama_obat;
+        if (!perObat[n]) perObat[n] = { satuan: t.satuan, beliQty: 0, beliRp: 0, keluarQty: 0, keluarRp: 0, kat: {} };
+        if (t.jenis === 'MASUK') {
+            perObat[n].beliQty += t.jumlah || 0;
+            perObat[n].beliRp += parseFloat(t.total_nilai || 0);
+        } else {
+            perObat[n].keluarQty += t.jumlah || 0;
+            perObat[n].keluarRp += parseFloat(t.total_nilai || 0);
+            const k = KATEGORI_KELUAR.includes(t.kategori) ? t.kategori : 'Lainnya';
+            perObat[n].kat[k] = (perObat[n].kat[k] || 0) + parseFloat(t.total_nilai || 0);
+        }
+    });
+
+    return {
+        masuk, keluar, perKat, perObat,
+        beliRp: masuk.reduce((s, t) => s + parseFloat(t.total_nilai || 0), 0),
+        beliQty: masuk.reduce((s, t) => s + (t.jumlah || 0), 0),
+        keluarRp: keluar.reduce((s, t) => s + parseFloat(t.total_nilai || 0), 0),
+        keluarQty: keluar.reduce((s, t) => s + (t.jumlah || 0), 0)
+    };
+}
+
+// Terapkan format ribuan (#,##0) ke semua sel angka agar rapi saat dibuka di Excel
+function formatAngkaSheet(ws) {
+    if (!ws['!ref']) return ws;
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+        for (let C = range.s.c; C <= range.e.c; C++) {
+            const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+            if (cell && cell.t === 'n') cell.z = '#,##0';
+        }
+    }
+    return ws;
+}
+
+function pctStr(bagian, total) {
+    if (!total) return '0%';
+    return (bagian / total * 100).toFixed(1).replace('.', ',') + '%';
+}
+
+// SHEET 1: Ringkasan eksekutif — data olahan siap presentasi
+function buatSheetRingkasan(judulPeriode, trx) {
+    const r = ringkasanTransaksi(trx);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const h30 = new Date(today); h30.setDate(h30.getDate() + 30);
+    const aktif = batchData.filter(b => b.stok_sisa > 0);
+    const nilaiAset = aktif.reduce((s, b) => s + b.stok_sisa * parseFloat(b.harga_satuan || 0), 0);
+    const jenisObat = new Set(aktif.map(b => b.nama_obat)).size;
+    const menipis = aktif.filter(b => b.stok_sisa < 10);
+    const expired = aktif.filter(b => new Date(b.tgl_expired) <= today);
+    const segera = aktif.filter(b => { const e = new Date(b.tgl_expired); return e > today && e <= h30; });
+    const nilaiBatch = list => list.reduce((s, b) => s + b.stok_sisa * parseFloat(b.harga_satuan || 0), 0);
+
+    const rows = [];
+    rows.push(['LAPORAN STOK OBAT — FARMASI KLINIK IMANUEL']);
+    rows.push([`Periode: ${judulPeriode}`]);
+    rows.push([`Dicetak: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`]);
+    rows.push([]);
+
+    rows.push(['A. RINGKASAN TRANSAKSI PERIODE']);
+    rows.push(['Uraian', 'Qty', 'Jml Transaksi', 'Nilai (Rp)']);
+    rows.push(['Total Pembelian Obat (Masuk)', r.beliQty, r.masuk.length, r.beliRp]);
+    rows.push(['Total Obat Keluar', r.keluarQty, r.keluar.length, r.keluarRp]);
+    rows.push(['Selisih (Masuk − Keluar)', '', '', r.beliRp - r.keluarRp]);
+    rows.push([]);
+
+    rows.push(['B. OBAT KELUAR PER KATEGORI']);
+    rows.push(['Kategori', 'Qty', 'Nilai (Rp)', '% dari Total Keluar']);
+    KATEGORI_KELUAR.forEach(k => {
+        const d = r.perKat[k];
+        rows.push([k, d.qty, d.rp, pctStr(d.rp, r.keluarRp)]);
+    });
+    rows.push(['TOTAL KELUAR', r.keluarQty, r.keluarRp, r.keluarRp ? '100%' : '0%']);
+    rows.push([]);
+
+    const topBy = field => Object.keys(r.perObat)
+        .filter(n => r.perObat[n][field] > 0)
+        .sort((a, b) => r.perObat[b][field] - r.perObat[a][field])
+        .slice(0, 10);
+
+    rows.push(['C. TOP 10 PEMBELIAN OBAT (BERDASARKAN NILAI)']);
+    rows.push(['Nama Obat', 'Satuan', 'Qty', 'Nilai (Rp)', '% dari Pembelian']);
+    const topBeli = topBy('beliRp');
+    if (topBeli.length === 0) rows.push(['Tidak ada pembelian pada periode ini']);
+    topBeli.forEach(n => { const d = r.perObat[n]; rows.push([n, d.satuan || '-', d.beliQty, d.beliRp, pctStr(d.beliRp, r.beliRp)]); });
+    rows.push([]);
+
+    rows.push(['D. TOP 10 OBAT KELUAR (BERDASARKAN NILAI)']);
+    rows.push(['Nama Obat', 'Satuan', 'Qty', 'Nilai (Rp)', '% dari Keluar']);
+    const topKeluar = topBy('keluarRp');
+    if (topKeluar.length === 0) rows.push(['Tidak ada obat keluar pada periode ini']);
+    topKeluar.forEach(n => { const d = r.perObat[n]; rows.push([n, d.satuan || '-', d.keluarQty, d.keluarRp, pctStr(d.keluarRp, r.keluarRp)]); });
+    rows.push([]);
+
+    rows.push(['E. POSISI STOK SAAT INI & PERHATIAN']);
+    rows.push(['Uraian', 'Jumlah', '', 'Nilai (Rp)']);
+    rows.push(['Nilai Aset Obat Saat Ini', '', '', nilaiAset]);
+    rows.push(['Jenis Obat Aktif', jenisObat, '', '']);
+    rows.push(['Batch Aktif', aktif.length, '', '']);
+    rows.push(['Batch Stok Menipis (< 10)', menipis.length, '', nilaiBatch(menipis)]);
+    rows.push(['Batch Kadaluarsa (masih ada stok)', expired.length, '', nilaiBatch(expired)]);
+    rows.push(['Batch Segera Expired (≤ 30 hari)', segera.length, '', nilaiBatch(segera)]);
+
+    const perhatian = [...expired.map(b => [b, 'KADALUARSA']), ...segera.map(b => [b, 'Segera Exp'])];
+    if (perhatian.length > 0) {
+        rows.push([]);
+        rows.push(['DAFTAR BATCH PERLU PERHATIAN (maks. 20 teratas)']);
+        rows.push(['Nama Obat', 'Status', 'Tgl Expired', 'Sisa Stok', 'Nilai (Rp)']);
+        perhatian.slice(0, 20).forEach(([b, st]) =>
+            rows.push([b.nama_obat, st, b.tgl_expired, b.stok_sisa, b.stok_sisa * parseFloat(b.harga_satuan || 0)]));
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 38 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 4 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 4 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 4 } }
+    ];
+    return formatAngkaSheet(ws);
+}
+
+// SHEET 2: Rekap per Obat — data olahan (pembelian, keluar per kategori, posisi stok)
+function buatSheetRekapObat(trx) {
+    const r = ringkasanTransaksi(trx);
+
+    const stokMap = {};
+    batchData.forEach(b => {
+        if (!stokMap[b.nama_obat]) stokMap[b.nama_obat] = { sisa: 0, nilai: 0 };
+        stokMap[b.nama_obat].sisa += b.stok_sisa;
+        stokMap[b.nama_obat].nilai += b.stok_sisa * parseFloat(b.harga_satuan || 0);
+    });
+
+    const names = Object.keys(r.perObat).sort((a, b) =>
+        (r.perObat[b].beliRp + r.perObat[b].keluarRp) - (r.perObat[a].beliRp + r.perObat[a].keluarRp));
+
+    const rows = names.map((n, i) => {
+        const d = r.perObat[n];
+        return {
+            'No': i + 1, 'Nama Obat': n, 'Satuan': d.satuan || '-',
+            'Pembelian (Qty)': d.beliQty, 'Pembelian (Rp)': d.beliRp,
+            'Keluar Resep Dokter (Rp)': d.kat['Resep Dokter'] || 0,
+            'Keluar Obat Expired (Rp)': d.kat['Obat Expired'] || 0,
+            'Keluar Obat Rusak (Rp)': d.kat['Obat Rusak'] || 0,
+            'Keluar Lainnya (Rp)': d.kat['Lainnya'] || 0,
+            'Keluar (Qty)': d.keluarQty, 'Total Keluar (Rp)': d.keluarRp,
+            'Sisa Stok Saat Ini': stokMap[n] ? stokMap[n].sisa : 0,
+            'Nilai Stok Saat Ini (Rp)': stokMap[n] ? stokMap[n].nilai : 0
+        };
+    });
+
+    if (rows.length > 0) {
+        const tot = f => rows.reduce((s, x) => s + (x[f] || 0), 0);
+        rows.push({}, {
+            'Nama Obat': 'TOTAL',
+            'Pembelian (Qty)': tot('Pembelian (Qty)'), 'Pembelian (Rp)': tot('Pembelian (Rp)'),
+            'Keluar Resep Dokter (Rp)': tot('Keluar Resep Dokter (Rp)'),
+            'Keluar Obat Expired (Rp)': tot('Keluar Obat Expired (Rp)'),
+            'Keluar Obat Rusak (Rp)': tot('Keluar Obat Rusak (Rp)'),
+            'Keluar Lainnya (Rp)': tot('Keluar Lainnya (Rp)'),
+            'Keluar (Qty)': tot('Keluar (Qty)'), 'Total Keluar (Rp)': tot('Total Keluar (Rp)'),
+            'Sisa Stok Saat Ini': tot('Sisa Stok Saat Ini'),
+            'Nilai Stok Saat Ini (Rp)': tot('Nilai Stok Saat Ini (Rp)')
+        });
+    }
+
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Info': 'Tidak ada transaksi pada periode ini' }]);
+    ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 20 }];
+    return formatAngkaSheet(ws);
+}
+
+// SHEET 3: Rekap Bulanan 12 bulan terakhir + baris TOTAL & Selisih
+function buatSheetRekapBulanan() {
+    const rekapRows = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const ym = monthStr(d);
+        const trx = trxBulan(ym);
+        if (trx.length === 0) continue;
+        const r = ringkasanTransaksi(trx);
+        rekapRows.push({
+            'Bulan': labelBulan(ym),
+            'Pembelian (Rp)': r.beliRp, 'Pembelian (Qty)': r.beliQty,
+            'Keluar Resep Dokter (Rp)': r.perKat['Resep Dokter'].rp,
+            'Keluar Obat Expired (Rp)': r.perKat['Obat Expired'].rp,
+            'Keluar Obat Rusak (Rp)': r.perKat['Obat Rusak'].rp,
+            'Keluar Lainnya (Rp)': r.perKat['Lainnya'].rp,
+            'Keluar (Qty)': r.keluarQty, 'Total Keluar (Rp)': r.keluarRp,
+            'Selisih (Rp)': r.beliRp - r.keluarRp
+        });
+    }
+    if (rekapRows.length > 0) {
+        const tot = f => rekapRows.reduce((s, x) => s + (x[f] || 0), 0);
+        rekapRows.push({}, {
+            'Bulan': 'TOTAL',
+            'Pembelian (Rp)': tot('Pembelian (Rp)'), 'Pembelian (Qty)': tot('Pembelian (Qty)'),
+            'Keluar Resep Dokter (Rp)': tot('Keluar Resep Dokter (Rp)'),
+            'Keluar Obat Expired (Rp)': tot('Keluar Obat Expired (Rp)'),
+            'Keluar Obat Rusak (Rp)': tot('Keluar Obat Rusak (Rp)'),
+            'Keluar Lainnya (Rp)': tot('Keluar Lainnya (Rp)'),
+            'Keluar (Qty)': tot('Keluar (Qty)'), 'Total Keluar (Rp)': tot('Total Keluar (Rp)'),
+            'Selisih (Rp)': tot('Selisih (Rp)')
+        });
+    }
+    const ws = XLSX.utils.json_to_sheet(rekapRows.length ? rekapRows : [{ 'Info': 'Belum ada transaksi' }]);
+    ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 16 }, { wch: 14 }];
+    return formatAngkaSheet(ws);
+}
+
+// SHEET 4 (data mentah): Stok saat ini per batch, urutan FIFO
+function buatSheetStok() {
     const stokRows = [];
     const groups = {};
     batchData.filter(b => b.stok_sisa > 0).forEach(b => {
@@ -1046,54 +1352,56 @@ function exportToExcel() {
         });
     });
     const totalAset = stokRows.reduce((s, r) => s + r['Nilai (Rp)'], 0);
-    stokRows.push({}, { 'Nama Obat': 'TOTAL NILAI ASET OBAT', 'Nilai (Rp)': totalAset });
-    const ws1 = XLSX.utils.json_to_sheet(stokRows);
-    ws1['!cols'] = [{ wch: 28 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 24 }];
-    XLSX.utils.book_append_sheet(wb, ws1, 'Stok Saat Ini');
+    if (stokRows.length > 0) stokRows.push({}, { 'Nama Obat': 'TOTAL NILAI ASET OBAT', 'Nilai (Rp)': totalAset });
+    const ws = XLSX.utils.json_to_sheet(stokRows.length ? stokRows : [{ 'Info': 'Belum ada stok aktif' }]);
+    ws['!cols'] = [{ wch: 28 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 24 }];
+    return formatAngkaSheet(ws);
+}
 
-    // Sheet 2: Riwayat transaksi (rentang tanggal)
-    const trxFiltered = transaksiData.filter(t => t.tanggal >= tglMulai && t.tanggal <= tglSelesai);
-    const trxRows = trxFiltered.map(t => ({
+// SHEET 5 (data mentah): daftar transaksi apa adanya
+function buatSheetTransaksi(trxList) {
+    const trxRows = trxList.map(t => ({
         'Tanggal': t.tanggal, 'Jenis': t.jenis, 'Kategori': t.kategori,
         'Nama Obat': t.nama_obat, 'Satuan': t.satuan || '-', 'Jumlah': t.jumlah,
         'Harga Satuan (Rp)': parseFloat(t.harga_satuan || 0), 'Total Nilai (Rp)': parseFloat(t.total_nilai || 0),
         'No Faktur': t.no_faktur || '-', 'PBF': t.pbf || '-', 'Keterangan': t.keterangan || '-'
     }));
-    const ws2 = XLSX.utils.json_to_sheet(trxRows.length ? trxRows : [{ 'Info': 'Tidak ada transaksi pada rentang tanggal ini' }]);
-    ws2['!cols'] = [{ wch: 12 }, { wch: 9 }, { wch: 17 }, { wch: 28 }, { wch: 10 }, { wch: 9 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 24 }];
-    XLSX.utils.book_append_sheet(wb, ws2, 'Riwayat Transaksi');
+    const ws = XLSX.utils.json_to_sheet(trxRows.length ? trxRows : [{ 'Info': 'Tidak ada transaksi pada periode ini' }]);
+    ws['!cols'] = [{ wch: 12 }, { wch: 9 }, { wch: 17 }, { wch: 28 }, { wch: 10 }, { wch: 9 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 24 }];
+    return formatAngkaSheet(ws);
+}
 
-    // Sheet 3: Rekap bulanan (12 bulan)
-    const rekapRows = [];
-    const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const ym = monthStr(d);
-        const trx = trxBulan(ym);
-        if (trx.length === 0) continue;
-        const beliT = trx.filter(t => t.jenis === 'MASUK');
-        const perKat = {}; KATEGORI_KELUAR.forEach(k => perKat[k] = 0);
-        let totKeluar = 0;
-        trx.filter(t => t.jenis === 'KELUAR').forEach(t => {
-            const k = KATEGORI_KELUAR.includes(t.kategori) ? t.kategori : 'Lainnya';
-            perKat[k] += parseFloat(t.total_nilai || 0);
-            totKeluar += parseFloat(t.total_nilai || 0);
-        });
-        rekapRows.push({
-            'Bulan': labelBulan(ym),
-            'Pembelian (Rp)': beliT.reduce((s, t) => s + parseFloat(t.total_nilai || 0), 0),
-            'Pembelian (Qty)': beliT.reduce((s, t) => s + (t.jumlah || 0), 0),
-            'Keluar - Resep Dokter (Rp)': perKat['Resep Dokter'],
-            'Keluar - Obat Expired (Rp)': perKat['Obat Expired'],
-            'Keluar - Obat Rusak (Rp)': perKat['Obat Rusak'],
-            'Keluar - Lainnya (Rp)': perKat['Lainnya'],
-            'Total Keluar (Rp)': totKeluar
-        });
-    }
-    const ws3 = XLSX.utils.json_to_sheet(rekapRows.length ? rekapRows : [{ 'Info': 'Belum ada transaksi' }]);
-    ws3['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 24 }, { wch: 24 }, { wch: 22 }, { wch: 20 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, ws3, 'Rekap Bulanan');
+// EXPORT UTAMA (tombol "Export Excel" — rentang tanggal): 5 sheet
+function exportToExcel() {
+    const tglMulai = document.getElementById('exportMulai').value;
+    const tglSelesai = document.getElementById('exportSelesai').value;
+    if (!tglMulai || !tglSelesai) { alert('Pilih rentang tanggal terlebih dahulu!'); return; }
+
+    const trxFiltered = transaksiData.filter(t => t.tanggal >= tglMulai && t.tanggal <= tglSelesai);
+    const wb = XLSX.utils.book_new();
+
+    // Data olahan — siap presentasi
+    XLSX.utils.book_append_sheet(wb, buatSheetRingkasan(`${formatTgl(tglMulai)} s/d ${formatTgl(tglSelesai)}`, trxFiltered), 'Ringkasan');
+    XLSX.utils.book_append_sheet(wb, buatSheetRekapObat(trxFiltered), 'Rekap per Obat');
+    XLSX.utils.book_append_sheet(wb, buatSheetRekapBulanan(), 'Rekap Bulanan');
+
+    // Data mentah
+    XLSX.utils.book_append_sheet(wb, buatSheetStok(), 'Stok Saat Ini (Data)');
+    XLSX.utils.book_append_sheet(wb, buatSheetTransaksi(trxFiltered), 'Riwayat Transaksi (Data)');
 
     XLSX.writeFile(wb, `Laporan_Stok_Farmasi_${tglMulai}_sd_${tglSelesai}.xlsx`);
     document.getElementById('modalExport').classList.remove('show');
+}
+
+// EXPORT LAPORAN 1 BULAN (tombol di tab Laporan Bulanan): 3 sheet
+function exportLaporanBulan() {
+    const ym = document.getElementById('laporanBulan').value || monthStr();
+    const trx = trxBulan(ym);
+    if (trx.length === 0) { alert(`Tidak ada transaksi pada ${labelBulan(ym)}, sehingga tidak ada laporan yang bisa di-download.`); return; }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, buatSheetRingkasan(labelBulan(ym), trx), 'Ringkasan');
+    XLSX.utils.book_append_sheet(wb, buatSheetRekapObat(trx), 'Rekap per Obat');
+    XLSX.utils.book_append_sheet(wb, buatSheetTransaksi(trx), 'Detail Transaksi (Data)');
+    XLSX.writeFile(wb, `Laporan_Bulanan_Farmasi_${ym}.xlsx`);
 }

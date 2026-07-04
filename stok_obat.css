@@ -202,3 +202,19 @@ tr.batch-row.show { display: table-row; }
     .form-row { grid-template-columns: 1fr; gap: 0; }
     .report-header { flex-direction: column; align-items: stretch; }
 }
+
+/* ============ NAVIGASI BULAN & PANEL DETAIL (DASHBOARD LAPORAN) ============ */
+.month-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.month-nav .month-picker { margin-bottom: 0; min-width: 165px; }
+.month-nav .btn { padding: 12px 14px; }
+.lap-bulan-label { color: var(--primary); }
+.panel-head-inline { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.panel-head-inline h3 { margin-bottom: 0; }
+.panel-head-inline .form-control { width: auto; margin-bottom: 0; padding: 9px 12px; font-size: 0.85rem; }
+.detail-count { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; background: var(--bg); border: 1px solid var(--border); padding: 2px 9px; border-radius: 12px; margin-left: 6px; white-space: nowrap; }
+
+@media (max-width: 640px) {
+    .month-nav { justify-content: stretch; }
+    .month-nav .month-picker { flex: 1; }
+    .month-nav #btnExportBulan { width: 100%; }
+}

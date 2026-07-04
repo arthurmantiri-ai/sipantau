@@ -126,10 +126,15 @@
         <section id="tabLaporan" class="tab-panel">
             <div class="report-header">
                 <div>
-                    <h2><i class="fa-solid fa-chart-pie"></i> Laporan Bulan</h2>
-                    <p>Pilih bulan untuk melihat &amp; membandingkan data pembelian dan pengeluaran obat.</p>
+                    <h2><i class="fa-solid fa-chart-pie"></i> Dashboard Laporan Bulanan</h2>
+                    <p>Pilih bulan untuk melihat seluruh data secara lengkap: ringkasan, rincian per obat, hingga detail semua transaksi.</p>
                 </div>
-                <input type="month" id="laporanBulan" class="form-control month-picker">
+                <div class="month-nav">
+                    <button type="button" id="btnBulanPrev" class="btn btn-outline" title="Bulan sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
+                    <input type="month" id="laporanBulan" class="form-control month-picker">
+                    <button type="button" id="btnBulanNext" class="btn btn-outline" title="Bulan berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button type="button" id="btnExportBulan" class="btn btn-primary" title="Download laporan Excel untuk bulan yang dipilih"><i class="fa-solid fa-file-excel"></i> Download Laporan Bulan Ini</button>
+                </div>
             </div>
 
             <div class="stats-grid stats-grid-3">
@@ -158,17 +163,68 @@
 
             <div class="report-two-col">
                 <div class="panel-card">
-                    <h3><i class="fa-solid fa-list-check" style="color:#dc2626"></i> Rincian Obat Keluar per Kategori</h3>
+                    <h3><i class="fa-solid fa-list-check" style="color:#dc2626"></i> Obat Keluar per Kategori — <span class="lap-bulan-label"></span></h3>
                     <ul id="lapKategoriList" class="kategori-list"></ul>
                 </div>
                 <div class="panel-card">
-                    <h3><i class="fa-solid fa-cart-shopping" style="color:#3b82f6"></i> Rincian Pembelian Bulan Ini</h3>
+                    <h3><i class="fa-solid fa-cart-shopping" style="color:#3b82f6"></i> Rincian Pembelian — <span class="lap-bulan-label"></span></h3>
                     <div class="mini-table-wrap">
                         <table class="mini-table">
                             <thead><tr><th>Obat</th><th class="text-right">Qty</th><th class="text-right">Nilai</th></tr></thead>
                             <tbody id="lapPembelianBody"><tr><td colspan="3" class="text-center">Belum ada data</td></tr></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- Rincian lengkap obat keluar per obat (bulan terpilih) -->
+            <div class="panel-card">
+                <h3><i class="fa-solid fa-pills" style="color:#dc2626"></i> Rincian Obat Keluar per Obat — <span class="lap-bulan-label"></span></h3>
+                <div class="table-container" style="margin-top:12px;">
+                    <table class="mini-table">
+                        <thead>
+                            <tr>
+                                <th>Nama Obat</th>
+                                <th class="text-right">Qty Keluar</th>
+                                <th class="text-right">Resep Dokter</th>
+                                <th class="text-right">Obat Expired</th>
+                                <th class="text-right">Obat Rusak</th>
+                                <th class="text-right">Lainnya</th>
+                                <th class="text-right">Total Nilai (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lapKeluarBody"><tr><td colspan="7" class="text-center">Memuat...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Detail seluruh transaksi pada bulan terpilih -->
+            <div class="panel-card">
+                <div class="panel-head-inline">
+                    <h3><i class="fa-solid fa-receipt" style="color:var(--primary)"></i> Detail Semua Transaksi — <span class="lap-bulan-label"></span> <span class="detail-count" id="lapDetailCount"></span></h3>
+                    <select id="lapDetailJenis" class="form-control">
+                        <option value="">Semua Jenis</option>
+                        <option value="MASUK">Masuk Saja</option>
+                        <option value="KELUAR">Keluar Saja</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table class="mini-table">
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Jenis</th>
+                                <th>Kategori</th>
+                                <th>Nama Obat</th>
+                                <th class="text-right">Jumlah</th>
+                                <th class="text-right">Harga Satuan</th>
+                                <th class="text-right">Total Nilai</th>
+                                <th>Faktur / PBF</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lapDetailBody"><tr><td colspan="9" class="text-center">Memuat...</td></tr></tbody>
+                    </table>
                 </div>
             </div>
 
@@ -410,7 +466,7 @@
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <p class="modal-info">File Excel berisi 3 sheet: <strong>Stok Saat Ini</strong> (semua batch), <strong>Riwayat Transaksi</strong> (sesuai rentang tanggal), dan <strong>Rekap Bulanan</strong>.</p>
+                <p class="modal-info">File Excel berisi <strong>5 sheet</strong>. Data olahan siap presentasi: <strong>Ringkasan</strong> (ringkasan eksekutif, kategori, top 10 obat, perhatian stok), <strong>Rekap per Obat</strong>, dan <strong>Rekap Bulanan</strong>. Ditambah data mentah: <strong>Stok Saat Ini</strong> &amp; <strong>Riwayat Transaksi</strong> (sesuai rentang tanggal).</p>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Riwayat Dari Tanggal</label>
