@@ -6,6 +6,7 @@
     <title>Register Poli Gigi - Sistem Informasi Klinik</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="master_lookup.css">
     
     <style>
         :root {
@@ -162,17 +163,13 @@
         }
         .btn-submit:hover { background-color: var(--primary-hover); }
 
-        #container_dokter_lain {
-            margin-top: 12px;
-            display: none;
-        }
-
         @media (max-width: 600px) {
             .form-container { padding: 25px 20px; }
             .form-row, .tindakan-biaya-row { grid-template-columns: 1fr; gap: 10px; }
         }
     </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="master_lookup.js"></script>
 </head>
 <body>
 
@@ -250,15 +247,8 @@
                 <label for="dokter_praktek" class="main-label">Dokter Praktek</label>
                 <select id="dokter_praktek" name="dokter_praktek" class="form-control" required>
                     <option value="" disabled selected>Pilih Dokter...</option>
-                    <option value="Drg. Vesta Napitupulu">Drg. Vesta Napitupulu</option>
-                    <option value="Drg. Fara Losu">Drg. Fara Losu</option>
-                    <option value="Drg. Meske Octavianus">Drg. Meske Octavianus</option>
-                    <option value="Lainnya">Dokter Lain...</option>
+                    <!-- Opsi dokter diisi otomatis dari master_dokter oleh master_lookup.js -->
                 </select>
-
-                <div id="container_dokter_lain">
-                    <input type="text" id="input_dokter_lain" name="dokter_lain_detail" class="form-control" placeholder="Masukkan nama dokter pemeriksa...">
-                </div>
             </div>
 
             <div class="form-group">
@@ -343,19 +333,12 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
-        // Logika Dynamic Input untuk Dokter Lain
+        // Master Data: dropdown dokter & autocomplete diagnosis (ICD-10)
         const selectDokter = document.getElementById('dokter_praktek')
-        const containerDokterLain = document.getElementById('container_dokter_lain')
-        const inputDokterLain = document.getElementById('input_dokter_lain')
-        selectDokter.addEventListener('change', function() {
-            if (this.value === 'Lainnya') {
-                containerDokterLain.style.display = 'block'
-                inputDokterLain.required = true
-            } else {
-                containerDokterLain.style.display = 'none'
-                inputDokterLain.required = false
-                inputDokterLain.value = ''
-            }
+        MasterLookup.init(db).then(() => {
+            MasterLookup.isiDokterSelect('dokter_praktek', { poli: 'Gigi' });
+            ['diagnosa1','diagnosa2','diagnosa3','diagnosa4','diagnosa5']
+                .forEach(id => MasterLookup.pasangDiagnosisAutocomplete(id))
         })
 
         // Logika Dinamis Diagnosis
@@ -409,9 +392,7 @@
         document.getElementById('formPoliGigi').addEventListener('submit', async (e) => {
             e.preventDefault()
             
-            const namaDokter = selectDokter.value === 'Lainnya'
-                               ? inputDokterLain.value
-                               : selectDokter.value
+            const namaDokter = selectDokter.value
             
             // Pengumpulan data terpetakan rapi ke masing-masing kolom database
             const data = {

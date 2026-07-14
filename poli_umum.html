@@ -6,6 +6,7 @@
     <title>Register Poli Umum - Sistem Informasi Klinik</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="master_lookup.css">
     
     <style>
         :root {
@@ -169,6 +170,7 @@
         }
     </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="master_lookup.js"></script>
 </head>
 <body>
 
@@ -322,6 +324,13 @@
         const SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co'
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+        // Master Data: dropdown dokter & autocomplete diagnosis (ICD-10)
+        MasterLookup.init(db).then(() => {
+            MasterLookup.isiDokterSelect('nama_dokter', { poli: 'Umum' });
+            ['diagnosa1','diagnosa2','diagnosa3','diagnosa4','diagnosa5']
+                .forEach(id => MasterLookup.pasangDiagnosisAutocomplete(id))
+        })
 
         // Logika Dinamis Diagnosis
         const btnAddDiagnosa = document.getElementById('btnAddDiagnosa')

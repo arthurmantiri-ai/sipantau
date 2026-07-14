@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Data Dokter & Diagnosis - Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-soft: #eff6ff;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --danger: #dc2626;
+            --danger-soft: #fef2f2;
+            --success: #16a34a;
+            --success-soft: #f0fdf4;
+            --warn: #d97706;
+            --warn-soft: #fffbeb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 1020px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            height: fit-content;
+        }
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+            gap: 20px;
+        }
+        .btn-back { text-decoration: none; color: var(--text-muted); font-size: 1.2rem; transition: color 0.3s; }
+        .btn-back:hover { color: var(--primary-color); }
+        .header-text { flex: 1; }
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+        .header-sub { font-size: 0.87rem; color: var(--text-muted); margin-top: 3px; }
+
+        /* Tab */
+        .tab-bar { display: flex; gap: 8px; margin-bottom: 22px; }
+        .tab-btn {
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { border-color: #bfdbfe; }
+        .tab-btn.active { background: var(--primary-soft); color: var(--primary-color); border-color: #bfdbfe; }
+        .tab-badge {
+            display: none;
+            min-width: 20px;
+            padding: 1px 7px;
+            border-radius: 20px;
+            background: var(--warn);
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-align: center;
+        }
+        .tab-badge.show { display: inline-block; }
+
+        /* Toolbar */
+        .toolbar { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+        .toolbar .cari-box { position: relative; flex: 1; min-width: 220px; }
+        .toolbar .cari-box i {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted); font-size: 0.9rem;
+        }
+        .toolbar input#cari {
+            width: 100%; padding: 11px 14px 11px 40px;
+            border: 1px solid var(--border-color); border-radius: 10px;
+            font-size: 0.92rem; color: var(--text-main);
+        }
+        .toolbar select {
+            padding: 11px 14px; border: 1px solid var(--border-color);
+            border-radius: 10px; font-size: 0.92rem; color: var(--text-main);
+            background: var(--card-bg); cursor: pointer;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .btn-primary {
+            background: var(--primary-color); color: #fff; border: none;
+            padding: 11px 18px; border-radius: 10px; font-size: 0.92rem;
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            transition: background 0.2s; white-space: nowrap;
+        }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        /* Tabel */
+        .tabel-bungkus { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            background: var(--bg-color); text-align: left; padding: 13px 16px;
+            font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        tbody td { padding: 13px 16px; border-top: 1px solid var(--bg-color); font-size: 0.9rem; vertical-align: middle; }
+        tbody tr:hover { background: #fbfdff; }
+        .sel-nama { font-weight: 600; }
+        .sel-alias { font-size: 0.76rem; color: var(--text-muted); margin-top: 3px; }
+
+        .pill { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .pill-kode { color: var(--primary-color); background: var(--primary-soft); border: 1px solid #bfdbfe; }
+        .pill-none { color: var(--text-muted); background: var(--bg-color); border: 1px solid var(--border-color); font-weight: 600; }
+        .stat { font-size: 0.74rem; font-weight: 700; padding: 4px 11px; border-radius: 20px; white-space: nowrap; }
+        .stat-approved { color: var(--success); background: var(--success-soft); border: 1px solid #bbf7d0; }
+        .stat-review { color: var(--warn); background: var(--warn-soft); border: 1px solid #fde68a; }
+        .stat-off { color: var(--text-muted); background: var(--bg-color); border: 1px solid var(--border-color); }
+
+        .aksi { display: flex; gap: 6px; }
+        .btn-ic {
+            width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-muted); cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; font-size: 0.82rem;
+            transition: all 0.15s;
+        }
+        .btn-ic:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-ic.ok:hover { border-color: var(--success); color: var(--success); }
+        .btn-ic.del:hover { border-color: var(--danger); color: var(--danger); }
+
+        .kosong { padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.92rem; }
+        .kosong i { font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
+            z-index: 3000; justify-content: center; align-items: flex-start; padding: 60px 20px;
+            overflow-y: auto;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--card-bg); border-radius: 16px; width: 100%; max-width: 500px;
+            padding: 28px; box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.3);
+        }
+        .modal h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; }
+        .fg { margin-bottom: 16px; }
+        .fg label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 7px; color: var(--text-main); }
+        .fg input, .fg select {
+            width: 100%; padding: 11px 14px; border: 1px solid var(--border-color);
+            border-radius: 10px; font-size: 0.92rem; color: var(--text-main);
+        }
+        .fg .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; }
+        .modal-aksi { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+        .btn-batal {
+            background: var(--card-bg); color: var(--text-muted); border: 1px solid var(--border-color);
+            padding: 11px 18px; border-radius: 10px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-batal:hover { background: var(--bg-color); }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="header-text">
+                <h2>Master Data Dokter &amp; Diagnosis</h2>
+                <div class="header-sub">Daftar baku untuk input Poli Umum &amp; Poli Gigi. Entri dari form yang perlu ditinjau muncul dengan status <b>Perlu Review</b>.</div>
+            </div>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tabDiagBtn" onclick="gantiTab('diagnosis')">
+                <i class="fa-solid fa-stethoscope"></i> Diagnosis
+                <span class="tab-badge" id="reviewDiag">0</span>
+            </button>
+            <button class="tab-btn" id="tabDokBtn" onclick="gantiTab('dokter')">
+                <i class="fa-solid fa-user-doctor"></i> Dokter
+                <span class="tab-badge" id="reviewDok">0</span>
+            </button>
+        </div>
+
+        <div class="toolbar">
+            <div class="cari-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="cari" placeholder="Cari nama, kode, atau alias...">
+            </div>
+            <select id="filterStatus">
+                <option value="semua">Semua status</option>
+                <option value="review">Perlu Review</option>
+                <option value="approved">Disetujui</option>
+                <option value="nonaktif">Nonaktif</option>
+            </select>
+            <button class="btn-primary" onclick="bukaModal(null)"><i class="fa-solid fa-plus"></i> Tambah</button>
+        </div>
+
+        <div class="tabel-bungkus">
+            <table>
+                <thead><tr id="kepala"></tr></thead>
+                <tbody id="isi"></tbody>
+            </table>
+            <div class="kosong" id="kosong" style="display:none;">
+                <i class="fa-solid fa-inbox"></i>
+                Tidak ada data yang cocok.
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal tambah/edit -->
+    <div class="modal-overlay" id="modalForm">
+        <div class="modal">
+            <h3 id="modalJudul">Tambah Data</h3>
+            <div class="fg">
+                <label>Nama <span style="color:var(--danger)">*</span></label>
+                <input type="text" id="f_nama" placeholder="Nama lengkap">
+            </div>
+            <div class="fg" id="g_kode">
+                <label>Kode ICD-10</label>
+                <input type="text" id="f_kode" placeholder="mis. J00">
+                <div class="hint">Boleh dikosongkan bila belum diketahui.</div>
+            </div>
+            <div class="fg" id="g_alias">
+                <label>Alias / Singkatan</label>
+                <input type="text" id="f_alias" placeholder="Pisahkan dengan koma, mis. CC, Selesma">
+                <div class="hint">Membantu pencarian saat input — ketik singkatan, tetap ketemu.</div>
+            </div>
+            <div class="fg" id="g_poli">
+                <label>Poli</label>
+                <select id="f_poli">
+                    <option value="Umum">Umum</option>
+                    <option value="Gigi">Gigi</option>
+                </select>
+            </div>
+            <div class="fg">
+                <label>Status</label>
+                <select id="f_status">
+                    <option value="approved">Disetujui</option>
+                    <option value="review">Perlu Review</option>
+                </select>
+            </div>
+            <div class="modal-aksi">
+                <button class="btn-batal" onclick="tutupModal()">Batal</button>
+                <button class="btn-primary" onclick="simpan()"><i class="fa-solid fa-check"></i> Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="master_lookup.js"></script>
+    <script src="master_data.js"></script>
+</body>
+</html>
