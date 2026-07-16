@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Obat Kronis - Sistem Informasi Klinik</title>
+    <title>Obat Kronis - Sistem Informasi Klinik</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         :root {
             --primary-color: #2563eb;
@@ -32,7 +32,7 @@
         .form-container {
             background-color: var(--card-bg);
             width: 100%;
-            max-width: 700px;
+            max-width: 780px;
             border-radius: 16px;
             padding: 40px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -42,22 +42,183 @@
         .header-form {
             display: flex;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 26px;
             border-bottom: 2px solid var(--bg-color);
             padding-bottom: 20px;
+            gap: 4px;
         }
 
         .btn-back {
             text-decoration: none;
             color: var(--text-muted);
             font-size: 1.2rem;
-            margin-right: 20px;
+            margin-right: 16px;
             transition: color 0.3s;
         }
 
         .btn-back:hover { color: var(--primary-color); }
+        .header-text { flex: 1; }
         .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+        .header-sub { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; }
 
+        .btn-pantauan {
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            transition: 0.2s;
+        }
+        .btn-pantauan:hover { background: #dbeafe; }
+
+        /* ===== Tab ===== */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 26px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 18px;
+            font-family: inherit;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.15s;
+        }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* ===== Info & status box ===== */
+        .box-ok, .box-info, .box-warn, .box-danger {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.55;
+            margin: 12px 0;
+        }
+        .box-ok     { background: #dcfce7; border: 1px solid #86efac; color: #166534; }
+        .box-info   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+        .box-warn   { background: #fef9c3; border: 1px solid #fde047; color: #854d0e; }
+        .box-danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+        .box-ok i, .box-info i, .box-warn i, .box-danger i { margin-top: 2px; }
+
+        /* ===== Daftar jatuh tempo ===== */
+        .due-wrap {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin: 4px 0 24px;
+            overflow: hidden;
+        }
+        .due-head {
+            background: var(--bg-color);
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .due-count {
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+        }
+        .btn-ikon {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 4px;
+        }
+        .btn-ikon:hover { color: var(--primary-color); }
+        .due-list { max-height: 260px; overflow-y: auto; }
+        .due-item {
+            padding: 11px 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            flex-wrap: wrap;
+            transition: background 0.15s;
+        }
+        .due-item:hover { background: #eff6ff; }
+        .due-item.kosong { cursor: default; color: var(--text-muted); }
+        .due-item.kosong:hover { background: none; }
+        .due-nama { font-weight: 600; flex: 1; min-width: 140px; }
+        .due-tgl { color: var(--text-muted); font-size: 0.8rem; }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-danger { background: #fee2e2; color: #b91c1c; }
+        .badge-ok     { background: #dcfce7; color: #15803d; }
+        .badge-warn   { background: #fef9c3; color: #a16207; }
+
+        /* ===== Kartu pasien (konfirmasi) ===== */
+        .kartu {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 22px;
+            margin-top: 4px;
+            background: var(--card-bg);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+        .kartu-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+            gap: 10px;
+        }
+        .kartu-head h3 { font-size: 1.1rem; font-weight: 600; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 18px;
+            font-size: 0.86rem;
+            margin-bottom: 16px;
+        }
+        .info-grid .lbl {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            display: block;
+        }
+
+        /* ===== Form (gaya asli dipertahankan) ===== */
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -65,7 +226,7 @@
         }
 
         .form-group { margin-bottom: 20px; }
-        
+
         .form-group label.main-label {
             display: block;
             font-size: 0.9rem;
@@ -100,6 +261,9 @@
             min-height: 120px;
             line-height: 1.5;
         }
+
+        .hint { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+        .hint.bahaya { color: #b91c1c; font-weight: 600; }
 
         /* Desain Chips untuk Multiple Checkbox */
         .checkbox-grid {
@@ -137,6 +301,49 @@
             box-shadow: inset 0 0 0 1px var(--primary-color);
         }
 
+        .cek-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .cek-inline input { width: 16px; height: 16px; accent-color: var(--primary-color); }
+
+        /* ===== Statin box (Kelola Terapi) ===== */
+        .statin-box {
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 16px 16px 4px;
+            margin-bottom: 20px;
+            background: #fbfdff;
+        }
+        .statin-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #eff6ff;
+            color: var(--primary-color);
+            border: 1px solid #bfdbfe;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 18px;
+        }
+
         .btn-submit {
             width: 100%;
             background-color: var(--primary-color);
@@ -152,10 +359,28 @@
         }
 
         .btn-submit:hover { background-color: var(--primary-hover); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-sekunder {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn-sekunder:hover { border-color: var(--primary-color); color: var(--primary-color); }
 
         @media (max-width: 600px) {
             .form-container { padding: 25px 20px; }
             .form-row { grid-template-columns: 1fr; gap: 0; }
+            .info-grid { grid-template-columns: 1fr; }
+            .btn-pantauan { display: none; }
         }
     </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -167,93 +392,182 @@
             <a href="index.html" class="btn-back" title="Kembali ke Beranda">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <h2>Input Obat Kronis</h2>
+            <div class="header-text">
+                <h2>Obat Kronis</h2>
+                <p class="header-sub">Konfirmasi pengambilan bulanan &amp; pengelolaan terapi pasien PRB/PROLANIS</p>
+            </div>
+            <a href="dashboard.html" class="btn-pantauan" title="Buka pantauan di Dashboard">
+                <i class="fa-solid fa-chart-line"></i> Pantauan
+            </a>
         </div>
 
-        <form action="#" method="POST" id="formObatKronis">
-            
-            <div class="form-group">
-                <label for="nama_pasien" class="main-label">Nama Pasien</label>
-                <input type="text" id="nama_pasien" name="nama_pasien" class="form-control" placeholder="Nama lengkap pasien" required>
+        <div class="tab-bar">
+            <button type="button" class="tab-btn active" data-tab="konfirmasi">
+                <i class="fa-solid fa-calendar-check"></i> Konfirmasi Bulanan
+            </button>
+            <button type="button" class="tab-btn" data-tab="kelola">
+                <i class="fa-solid fa-user-gear"></i> Kelola Terapi
+            </button>
+        </div>
+
+        <!-- ===== TAB: KONFIRMASI BULANAN ===== -->
+        <section id="tab-konfirmasi" class="tab-pane active">
+
+            <div class="box-info" style="margin-top:0">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>Jadwal berikutnya = tanggal ambil terakhir <b>+ 1 bulan</b>; paling cepat diambil <b>H-1</b>.
+                Statin dibatasi kuota sejak tanggal lab LDL: <b>atorvastatin 3&times;</b>, <b>simvastatin 6&times;</b>.</span>
             </div>
+
+            <div class="form-group">
+                <label class="main-label" for="cari_pasien">Cari Pasien</label>
+                <input type="text" id="cari_pasien" class="form-control" list="dlPasien"
+                       placeholder="Ketik nama pasien lalu pilih dari daftar...">
+                <datalist id="dlPasien"></datalist>
+                <span class="hint">Pasien baru belum terdaftar? Daftarkan dulu lewat tab <b>Kelola Terapi</b>.</span>
+            </div>
+
+            <div class="due-wrap">
+                <div class="due-head">
+                    <span><i class="fa-solid fa-user-clock" style="margin-right:6px"></i>Jatuh Tempo &amp; Terlambat
+                        <span class="due-count" id="dueCount">0</span></span>
+                    <button type="button" class="btn-ikon" id="btnRefreshDue" title="Muat ulang">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+                <div class="due-list" id="dueList">
+                    <div class="due-item kosong">Memuat data terapi&hellip;</div>
+                </div>
+            </div>
+
+            <div id="kartuPasien"></div>
+            <div id="hasilKonfirmasi"></div>
+        </section>
+
+        <!-- ===== TAB: KELOLA TERAPI ===== -->
+        <section id="tab-kelola" class="tab-pane">
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="no_bpjs" class="main-label">Nomor BPJS / NIK</label>
-                    <input type="text" id="no_bpjs" name="no_bpjs" class="form-control" placeholder="Masukkan nomor BPJS/NIK" required>
+                    <label class="main-label" for="kelola_cari">Cari &amp; Edit Pasien Terdaftar</label>
+                    <input type="text" id="kelola_cari" class="form-control" list="dlKelola"
+                           placeholder="Ketik nama untuk memuat datanya...">
+                    <datalist id="dlKelola"></datalist>
+                </div>
+                <div class="form-group" style="display:flex;align-items:flex-end">
+                    <button type="button" class="btn-sekunder" id="btnPasienBaru" style="width:100%">
+                        <i class="fa-solid fa-user-plus"></i> Pasien Baru
+                    </button>
+                </div>
+            </div>
+
+            <div id="modeBadge"></div>
+
+            <form id="formTerapi">
+
+                <div class="form-group">
+                    <label for="nama_pasien" class="main-label">Nama Pasien</label>
+                    <input type="text" id="nama_pasien" name="nama_pasien" class="form-control" placeholder="Nama lengkap pasien" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="no_bpjs" class="main-label">Nomor BPJS / NIK</label>
+                        <input type="text" id="no_bpjs" name="no_bpjs" class="form-control" placeholder="Masukkan nomor BPJS/NIK">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="no_telp" class="main-label">Nomor Telepon / HP</label>
+                        <input type="tel" id="no_telp" name="no_telp" class="form-control" placeholder="08xxxxxxxxxx">
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="no_telp" class="main-label">Nomor Telepon / HP</label>
-                    <input type="tel" id="no_telp" name="no_telp" class="form-control" placeholder="08xxxxxxxxxx" required>
+                    <label class="main-label">Diagnosis (Bisa pilih lebih dari satu)</label>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_hipertensi" name="diagnosis" value="Hipertensi">
+                            <label for="diag_hipertensi">Hipertensi</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_dm" name="diagnosis" value="Diabetes Melitus">
+                            <label for="diag_dm">Diabetes Melitus</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_asma" name="diagnosis" value="Asma">
+                            <label for="diag_asma">Asma</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_ppok" name="diagnosis" value="PPOK">
+                            <label for="diag_ppok">PPOK</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_jantung" name="diagnosis" value="Jantung">
+                            <label for="diag_jantung">Jantung</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_skizofrenia" name="diagnosis" value="Skizofrenia">
+                            <label for="diag_skizofrenia">Skizofrenia</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_epilepsi" name="diagnosis" value="Epilepsi">
+                            <label for="diag_epilepsi">Epilepsi</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_stroke" name="diagnosis" value="Stroke">
+                            <label for="diag_stroke">Stroke</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_ckd" name="diagnosis" value="CKD">
+                            <label for="diag_ckd">CKD</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="diag_sle" name="diagnosis" value="SLE">
+                            <label for="diag_sle">SLE</label>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-row">
                 <div class="form-group">
-                    <label for="tanggal_ambil" class="main-label">Tanggal Ambil Obat</label>
-                    <input type="date" id="tanggal_ambil" name="tanggal_ambil" class="form-control" required>
+                    <label for="resep_tetap" class="main-label">Resep Rutin Bulanan
+                        <small style="font-weight:400;color:var(--text-muted)">(tanpa statin &mdash; statin diisi di kolom bawah)</small></label>
+                    <textarea id="resep_tetap" name="resep_tetap" class="form-control"
+                        placeholder="Tulis resep rutin di sini (Contoh: Amlodipine 10mg 1x1, Metformin 500mg 2x1...)"></textarea>
+                    <span id="resep_tetap_warn"></span>
+                </div>
+
+                <div class="statin-box">
+                    <div class="statin-title"><i class="fa-solid fa-vial"></i> Statin Berbatas Kuota (opsional)</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="statin_obat" class="main-label">Nama &amp; Dosis Statin</label>
+                            <input type="text" id="statin_obat" class="form-control"
+                                   placeholder="Contoh: Atorvastatin 20mg 1x1">
+                            <span class="hint" id="statin_deteksi">Kosongkan jika pasien tidak memakai statin berbatas kuota.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="statin_tanggal_lab" class="main-label">Tanggal Hasil Lab LDL</label>
+                            <input type="date" id="statin_tanggal_lab" class="form-control">
+                            <span class="hint">Mengubah tanggal lab akan <b>me-reset</b> hitungan kuota.</span>
+                        </div>
+                    </div>
+                    <div id="statin_usage"></div>
                 </div>
 
                 <div class="form-group">
-                    <label for="tanggal_berikutnya" class="main-label">Jadwal Ambil Berikutnya</label>
-                    <input type="date" id="tanggal_berikutnya" name="tanggal_berikutnya" class="form-control" readonly title="Otomatis terisi 30 hari ke depan">
+                    <label class="cek-inline">
+                        <input type="checkbox" id="terapi_aktif" checked> Terapi aktif
+                    </label>
+                    <span class="hint">Nonaktifkan bila pasien pindah faskes, berhenti, atau meninggal &mdash; pasien akan hilang dari daftar konfirmasi.</span>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label class="main-label">Diagnosis (Bisa pilih lebih dari satu)</label>
-                <div class="checkbox-grid">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_hipertensi" name="diagnosis" value="Hipertensi">
-                        <label for="diag_hipertensi">Hipertensi</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_dm" name="diagnosis" value="Diabetes Melitus">
-                        <label for="diag_dm">Diabetes Melitus</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_asma" name="diagnosis" value="Asma">
-                        <label for="diag_asma">Asma</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_ppok" name="diagnosis" value="PPOK">
-                        <label for="diag_ppok">PPOK</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_jantung" name="diagnosis" value="Jantung">
-                        <label for="diag_jantung">Jantung</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_skizofrenia" name="diagnosis" value="Skizofrenia">
-                        <label for="diag_skizofrenia">Skizofrenia</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_epilepsi" name="diagnosis" value="Epilepsi">
-                        <label for="diag_epilepsi">Epilepsi</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_stroke" name="diagnosis" value="Stroke">
-                        <label for="diag_stroke">Stroke</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_ckd" name="diagnosis" value="CKD">
-                        <label for="diag_ckd">CKD</label>
-                    </div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag_sle" name="diagnosis" value="SLE">
-                        <label for="diag_sle">SLE</label>
-                    </div>
-                </div>
-            </div>
+                <button type="submit" class="btn-submit" id="btnSimpanTerapi">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Terapi
+                </button>
+            </form>
 
-            <div class="form-group">
-                <label for="resep_obat" class="main-label">Resep Obat</label>
-                <textarea id="resep_obat" name="resep_obat" class="form-control" placeholder="Tulis rincian resep obat di sini (Contoh: Amlodipine 10mg 1x1, Metformin 500mg 2x1...)" required></textarea>
-            </div>
-
-            <button type="submit" class="btn-submit">Simpan Data Obat Kronis</button>
-        </form>
+            <div id="hasilKelola"></div>
+        </section>
     </div>
 
     <script>
@@ -261,41 +575,628 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0'
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
-        // Otomatis isi tanggal berikutnya (+30 hari)
-        const inputTglAmbil = document.getElementById('tanggal_ambil')
-        const inputTglBerikutnya = document.getElementById('tanggal_berikutnya')
-        inputTglAmbil.addEventListener('change', function() {
-            if (this.value) {
-                const date = new Date(this.value)
-                date.setDate(date.getDate() + 30)
-                inputTglBerikutnya.value = date.toISOString().split('T')[0]
-            } else {
-                inputTglBerikutnya.value = ''
-            }
-        })
+        /* ===== PURE-START (blok fungsi murni untuk unit test) ===== */
+        const STATIN_ATURAN = [
+            { kunci: 'atorvastatin', maks: 3 },
+            { kunci: 'simvastatin',  maks: 6 }
+        ];
+        const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                          'Juli','Agustus','September','Oktober','November','Desember'];
 
-        // Kirim data ke Supabase saat form disubmit
-        document.getElementById('formObatKronis').addEventListener('submit', async (e) => {
-            e.preventDefault()
-            const diagChecked = [...document.querySelectorAll('input[name="diagnosis"]:checked')]
-                                .map(el => el.value).join(', ')
-            const data = {
-                nama_pasien:        document.getElementById('nama_pasien').value,
-                no_bpjs:            document.getElementById('no_bpjs').value,
-                no_telp:            document.getElementById('no_telp').value,
-                tanggal_ambil:      document.getElementById('tanggal_ambil').value,
-                tanggal_berikutnya: document.getElementById('tanggal_berikutnya').value,
-                diagnosis:          diagChecked,
-                resep_obat:         document.getElementById('resep_obat').value,
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        // Tambah n bulan kalender; tanggal di-clamp ke hari terakhir bulan tujuan
+        function tambahBulan(ymd, n) {
+            if (!ymd) return '';
+            const [y, m, d] = ymd.split('-').map(Number);
+            const total = y * 12 + (m - 1) + n;
+            const y2 = Math.floor(total / 12);
+            const m2 = (total % 12) + 1;
+            const maxHari = new Date(y2, m2, 0).getDate();
+            return `${y2}-${pad2(m2)}-${pad2(Math.min(d, maxHari))}`;
+        }
+
+        function kurangHari(ymd, n) {
+            if (!ymd) return '';
+            const [y, m, d] = ymd.split('-').map(Number);
+            const dt = new Date(y, m - 1, d - n);
+            return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`;
+        }
+
+        // Selisih hari (ke - dari); positif = "ke" lebih belakangan
+        function selisihHari(dari, ke) {
+            if (!dari || !ke) return null;
+            const [y1, m1, d1] = dari.split('-').map(Number);
+            const [y2, m2, d2] = ke.split('-').map(Number);
+            return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+        }
+
+        // Jadwal dari tanggal ambil terakhir
+        function hitungJadwal(tglTerakhir) {
+            if (!tglTerakhir) return { jatuhTempo: null, bolehMulai: null };
+            const jt = tambahBulan(tglTerakhir, 1);
+            return { jatuhTempo: jt, bolehMulai: kurangHari(jt, 1) };
+        }
+
+        // Validasi aturan H-1 (perbandingan string ISO aman secara leksikografis)
+        function cekTanggalAmbil(tglTerakhir, tglBaru) {
+            if (!tglTerakhir) return { ok: true, pertama: true, jatuhTempo: null, bolehMulai: null };
+            const { jatuhTempo, bolehMulai } = hitungJadwal(tglTerakhir);
+            return { ok: !!tglBaru && tglBaru >= bolehMulai, pertama: false, jatuhTempo, bolehMulai };
+        }
+
+        // Deteksi statin dari teks -> {kunci, maks} | null
+        function deteksiStatin(teks) {
+            const t = String(teks || '').toLowerCase();
+            for (const a of STATIN_ATURAN) if (t.includes(a.kunci)) return a;
+            return null;
+        }
+
+        // Hitung pemakaian kuota statin dari kumpulan record log
+        function hitungTerpakai(records, kunci, tglLab) {
+            if (!kunci || !tglLab) return 0;
+            return records.filter(r =>
+                (r.tanggal_ambil || '') >= tglLab &&
+                String(r.resep_obat || '').toLowerCase().includes(kunci)
+            ).length;
+        }
+
+        // Susun snapshot resep final: resep + baris statin (tanpa duplikasi)
+        function susunSnapshot(resep, statinObat, sertakan) {
+            const r = String(resep || '').trim();
+            if (!sertakan || !statinObat) return r;
+            const det = deteksiStatin(statinObat);
+            const kunci = det ? det.kunci : String(statinObat).trim().toLowerCase().split(/\s+/)[0];
+            if (kunci && r.toLowerCase().includes(kunci)) return r; // sudah ada, jangan dobel
+            return r ? r + '\n' + String(statinObat).trim() : String(statinObat).trim();
+        }
+
+        function fmtTgl(ymd) {
+            if (!ymd) return '\u2014';
+            const [y, m, d] = ymd.split('-').map(Number);
+            return `${d} ${BULAN_ID[m - 1]} ${y}`;
+        }
+
+        function esc(s) {
+            return String(s ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        /* ===== PURE-END ===== */
+
+        function todayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        }
+
+        /* ================= STATE ================= */
+        let daftarTerapi = [];          // semua baris kronis_terapi (aktif + nonaktif)
+        let terapiTerpilih = null;      // pasien di kartu konfirmasi
+        let ambilTerakhirEfektif = null;// tanggal ambil terakhir menurut LOG obat_kronis (sumber kebenaran)
+        let statinInfo = null;          // {kunci, maks, terpakai, sisa, gagal}
+        let editTerapiId = null;        // id terapi yang sedang diedit di tab Kelola
+
+        const LABEL_BTN_KONF = '<i class="fa-solid fa-check"></i> Konfirmasi Pengambilan';
+        const LABEL_BTN_TERAPI = '<i class="fa-solid fa-floppy-disk"></i> Simpan Terapi';
+
+        function labelTerapi(t) {
+            return `${t.nama_pasien} \u2014 ${(t.no_bpjs || '').trim() || 'tanpa BPJS'}`;
+        }
+        function labelKelola(t) {
+            return labelTerapi(t) + (t.aktif ? '' : ' (nonaktif)');
+        }
+
+        /* ================= MUAT DATA ================= */
+        async function muatTerapi() {
+            let semua = [], from = 0;
+            const CHUNK = 1000;
+            while (true) {
+                const { data, error } = await db.from('kronis_terapi').select('*')
+                    .order('nama_pasien').range(from, from + CHUNK - 1);
+                if (error) { alert('Gagal memuat data terapi: ' + error.message); break; }
+                if (!data || !data.length) break;
+                semua = semua.concat(data);
+                if (data.length < CHUNK) break;
+                from += CHUNK;
             }
-            const { error } = await db.from('obat_kronis').insert([data])
-            if (error) {
-                alert('Gagal menyimpan: ' + error.message)
+            daftarTerapi = semua;
+            isiDatalist();
+            renderDueList();
+        }
+
+        function isiDatalist() {
+            const aktif = daftarTerapi.filter(t => t.aktif);
+            document.getElementById('dlPasien').innerHTML =
+                aktif.map(t => `<option value="${esc(labelTerapi(t))}"></option>`).join('');
+            document.getElementById('dlKelola').innerHTML =
+                daftarTerapi.map(t => `<option value="${esc(labelKelola(t))}"></option>`).join('');
+        }
+
+        /* ================= DAFTAR JATUH TEMPO ================= */
+        function renderDueList() {
+            const today = todayStr();
+            const wrap = document.getElementById('dueList');
+            const rows = daftarTerapi
+                .filter(t => t.aktif && t.tanggal_ambil_terakhir)
+                .map(t => ({ t, ...hitungJadwal(t.tanggal_ambil_terakhir) }))
+                .filter(x => today >= x.bolehMulai)
+                .sort((a, b) => (a.jatuhTempo < b.jatuhTempo ? -1 : 1));
+
+            document.getElementById('dueCount').textContent = rows.length;
+            if (!rows.length) {
+                wrap.innerHTML = '<div class="due-item kosong">Tidak ada pasien yang jatuh tempo saat ini.</div>';
+                return;
+            }
+            wrap.innerHTML = rows.map(x => {
+                const telat = selisihHari(x.jatuhTempo, today);
+                let badge;
+                if (telat > 0)       badge = `<span class="badge badge-danger">Terlambat ${telat} hari</span>`;
+                else if (telat === 0) badge = '<span class="badge badge-ok">Jatuh tempo hari ini</span>';
+                else                  badge = '<span class="badge badge-warn">Boleh diambil (H-1)</span>';
+                return `<div class="due-item" data-id="${x.t.id}">
+                    <span class="due-nama">${esc(x.t.nama_pasien)}</span>
+                    <span class="due-tgl">jatuh tempo ${fmtTgl(x.jatuhTempo)}</span>
+                    ${badge}</div>`;
+            }).join('');
+        }
+
+        /* ================= KONFIRMASI: PILIH PASIEN ================= */
+
+        // Sumber kebenaran tanggal ambil terakhir = log obat_kronis
+        // (agar hapus record via dashboard tetap terhitung benar).
+        // return: 'YYYY-MM-DD' | null (tidak ada riwayat) | undefined (query gagal)
+        async function ambilTerakhirDariLog(t) {
+            let q = db.from('obat_kronis').select('tanggal_ambil')
+                .order('tanggal_ambil', { ascending: false }).limit(1);
+            const bpjs = (t.no_bpjs || '').trim();
+            q = bpjs ? q.eq('no_bpjs', t.no_bpjs) : q.ilike('nama_pasien', t.nama_pasien);
+            const { data, error } = await q;
+            if (error) return undefined;
+            return (data && data.length) ? data[0].tanggal_ambil : null;
+        }
+
+        async function muatStatinInfo(t) {
+            const det = deteksiStatin(t.statin_obat);
+            const kunci = det ? det.kunci
+                : String(t.statin_obat || '').trim().toLowerCase().split(/\s+/)[0];
+            const maks = t.statin_maks || (det ? det.maks : 0);
+            let q = db.from('obat_kronis').select('resep_obat,tanggal_ambil')
+                .gte('tanggal_ambil', t.statin_tanggal_lab).limit(1000);
+            const bpjs = (t.no_bpjs || '').trim();
+            q = bpjs ? q.eq('no_bpjs', t.no_bpjs) : q.ilike('nama_pasien', t.nama_pasien);
+            const { data, error } = await q;
+            if (error) return { kunci, maks, terpakai: null, sisa: null, gagal: true };
+            const terpakai = hitungTerpakai(data || [], kunci, t.statin_tanggal_lab);
+            return { kunci, maks, terpakai, sisa: Math.max(0, maks - terpakai), gagal: false };
+        }
+
+        async function pilihPasien(id) {
+            const t = daftarTerapi.find(x => x.id === id);
+            if (!t || !t.aktif) return;
+            terapiTerpilih = t;
+            statinInfo = null;
+            ambilTerakhirEfektif = null;
+            document.getElementById('cari_pasien').value = labelTerapi(t);
+            document.getElementById('hasilKonfirmasi').innerHTML = '';
+            renderKartu(true);
+
+            const logTgl = await ambilTerakhirDariLog(t);
+            if (terapiTerpilih !== t) return; // pasien lain sudah dipilih selagi menunggu
+            ambilTerakhirEfektif = (logTgl !== undefined) ? logTgl : (t.tanggal_ambil_terakhir || null);
+
+            // Self-heal: sinkronkan cache bila melenceng dari log
+            if (logTgl !== undefined && logTgl !== (t.tanggal_ambil_terakhir || null)) {
+                db.from('kronis_terapi').update({ tanggal_ambil_terakhir: logTgl }).eq('id', t.id)
+                    .then(() => { t.tanggal_ambil_terakhir = logTgl; renderDueList(); });
+            }
+
+            if (t.statin_obat) {
+                const info = await muatStatinInfo(t);
+                if (terapiTerpilih !== t) return;
+                statinInfo = info;
+            }
+            renderKartu(false);
+        }
+
+        function renderKartu(memuat) {
+            const t = terapiTerpilih;
+            const wrap = document.getElementById('kartuPasien');
+            if (!t) { wrap.innerHTML = ''; return; }
+            if (memuat) {
+                wrap.innerHTML = `<div class="kartu"><div class="box-info" style="margin:0">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Memuat data ${esc(t.nama_pasien)}\u2026</div></div>`;
+                return;
+            }
+
+            const j = hitungJadwal(ambilTerakhirEfektif);
+            const jadwalHtml = !ambilTerakhirEfektif
+                ? `<div class="box-info"><i class="fa-solid fa-circle-info"></i>
+                    <span>Belum ada riwayat pengambilan \u2014 ini pengambilan pertama, tanggal bebas.</span></div>`
+                : `<div class="info-grid" style="margin-bottom:4px">
+                    <div><span class="lbl">Ambil Terakhir</span>${fmtTgl(ambilTerakhirEfektif)}</div>
+                    <div><span class="lbl">Jatuh Tempo</span>${fmtTgl(j.jatuhTempo)}
+                        <span style="color:var(--text-muted);font-size:.78rem">(boleh mulai ${fmtTgl(j.bolehMulai)})</span></div>
+                   </div>`;
+
+            let statinHtml = '';
+            if (t.statin_obat) {
+                if (!statinInfo || statinInfo.gagal) {
+                    statinHtml = `<div class="box-warn"><i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Gagal menghitung kuota statin \u2014 muat ulang halaman sebelum konfirmasi.
+                        Statin tidak akan disertakan otomatis.</span></div>`;
+                } else if (statinInfo.sisa > 0) {
+                    statinHtml = `<div class="box-info"><i class="fa-solid fa-vial"></i>
+                        <span><b>${esc(t.statin_obat)}</b> \u2014 pengambilan ke-${statinInfo.terpakai + 1} dari ${statinInfo.maks}
+                        (sejak lab ${fmtTgl(t.statin_tanggal_lab)}).<br>
+                        <label class="cek-inline" style="margin-top:8px;font-size:.85rem">
+                            <input type="checkbox" id="konf_statin" checked>
+                            Sertakan statin bulan ini (baris ditambahkan otomatis ke resep)
+                        </label></span></div>`;
+                } else {
+                    statinHtml = `<div class="box-danger"><i class="fa-solid fa-ban"></i>
+                        <span>Kuota <b>${esc(t.statin_obat)}</b> sudah habis: ${statinInfo.terpakai}/${statinInfo.maks}
+                        sejak lab ${fmtTgl(t.statin_tanggal_lab)}. Statin <b>tidak disertakan</b>.
+                        Bila ada hasil LDL baru, perbarui tanggal lab di tab Kelola Terapi.</span></div>`;
+                }
+            }
+
+            wrap.innerHTML = `<div class="kartu">
+                <div class="kartu-head">
+                    <h3><i class="fa-solid fa-user" style="color:var(--primary-color);margin-right:8px"></i>${esc(t.nama_pasien)}</h3>
+                    <button type="button" class="btn-ikon" id="btnTutupKartu" title="Tutup kartu">
+                        <i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="info-grid">
+                    <div><span class="lbl">No BPJS / NIK</span>${esc((t.no_bpjs || '').trim() || '\u2014')}</div>
+                    <div><span class="lbl">No Telp</span>${esc((t.no_telp || '').trim() || '\u2014')}</div>
+                    <div style="grid-column:1/-1"><span class="lbl">Diagnosis</span>${esc(t.diagnosis || '\u2014')}</div>
+                </div>
+                ${jadwalHtml}
+                <div class="form-group" style="margin-top:14px">
+                    <label class="main-label" for="konf_tanggal">Tanggal Ambil</label>
+                    <input type="date" id="konf_tanggal" class="form-control" value="${todayStr()}">
+                    <span class="hint" id="konf_valid"></span>
+                </div>
+                ${statinHtml}
+                <div class="form-group">
+                    <label class="main-label" for="konf_resep">Resep Bulan Ini
+                        <small style="font-weight:400;color:var(--text-muted)">(dari resep rutin \u2014 edit hanya bila ada perubahan)</small></label>
+                    <textarea id="konf_resep" class="form-control">${esc(t.resep_tetap || '')}</textarea>
+                    <span id="konf_resep_warn"></span>
+                </div>
+                <button type="button" class="btn-submit" id="btnKonfirmasi" style="margin-top:0">${LABEL_BTN_KONF}</button>
+            </div>`;
+
+            document.getElementById('btnTutupKartu').addEventListener('click', resetKartu);
+            document.getElementById('konf_tanggal').addEventListener('change', perbaruiValidasiTanggal);
+            document.getElementById('konf_resep').addEventListener('input', cekResepKonfLive);
+            document.getElementById('btnKonfirmasi').addEventListener('click', simpanKonfirmasi);
+            perbaruiValidasiTanggal();
+            cekResepKonfLive();
+        }
+
+        function perbaruiValidasiTanggal() {
+            const el = document.getElementById('konf_valid');
+            if (!el) return;
+            const tgl = document.getElementById('konf_tanggal').value;
+            const c = cekTanggalAmbil(ambilTerakhirEfektif, tgl);
+            if (c.pertama) {
+                el.textContent = 'Pengambilan pertama \u2014 tanggal bebas.';
+                el.classList.remove('bahaya');
+                return;
+            }
+            if (!tgl) { el.textContent = ''; el.classList.remove('bahaya'); return; }
+            if (c.ok) {
+                el.textContent = `OK \u2014 sesuai jadwal (jatuh tempo ${fmtTgl(c.jatuhTempo)}).`;
+                el.classList.remove('bahaya');
             } else {
-                alert('✓ Data obat kronis berhasil disimpan!')
-                e.target.reset()
+                el.textContent = `Belum boleh \u2014 paling cepat ${fmtTgl(c.bolehMulai)} (H-1 dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`;
+                el.classList.add('bahaya');
             }
-        })
+        }
+
+        function cekResepKonfLive() {
+            const el = document.getElementById('konf_resep_warn');
+            if (!el || !terapiTerpilih) return;
+            const det = deteksiStatin(document.getElementById('konf_resep').value);
+            if (!det) { el.innerHTML = ''; return; }
+            el.innerHTML = terapiTerpilih.statin_obat
+                ? `<span class="hint bahaya"><i class="fa-solid fa-triangle-exclamation"></i>
+                    Teks resep sudah memuat ${det.kunci} \u2014 baris statin otomatis tidak ditambahkan lagi
+                    (pengambilan ini tetap terhitung kuota).</span>`
+                : `<span class="hint bahaya"><i class="fa-solid fa-triangle-exclamation"></i>
+                    Terdeteksi ${det.kunci} di resep, tetapi pasien ini belum punya pengaturan statin.
+                    Atur di tab Kelola Terapi agar kuota terhitung.</span>`;
+        }
+
+        function statinIkut() {
+            if (!terapiTerpilih || !terapiTerpilih.statin_obat || !statinInfo) return false;
+            if (statinInfo.gagal || !statinInfo.sisa || statinInfo.sisa <= 0) return false;
+            const cb = document.getElementById('konf_statin');
+            return cb ? cb.checked : true;
+        }
+
+        async function simpanKonfirmasi() {
+            const t = terapiTerpilih;
+            if (!t) return;
+            const tgl = document.getElementById('konf_tanggal').value;
+            if (!tgl) { alert('Isi tanggal ambil terlebih dahulu.'); return; }
+
+            const c = cekTanggalAmbil(ambilTerakhirEfektif, tgl);
+            if (!c.ok) {
+                alert(`Belum boleh diambil.\nPaling cepat ${fmtTgl(c.bolehMulai)} (H-1 dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`);
+                return;
+            }
+
+            const resep = document.getElementById('konf_resep').value.trim();
+            const sertakan = statinIkut();
+            if (!resep && !sertakan) { alert('Resep tidak boleh kosong.'); return; }
+
+            // Kuota habis tapi teks resep masih memuat statin secara manual
+            if (statinInfo && statinInfo.sisa === 0 && statinInfo.kunci &&
+                resep.toLowerCase().includes(statinInfo.kunci)) {
+                const lanjut = confirm(`Kuota ${t.statin_obat} sudah habis, tetapi teks resep masih memuat "${statinInfo.kunci}".\n` +
+                    'Tetap simpan? (pengambilan ini akan tetap terhitung sebagai pemakaian statin)');
+                if (!lanjut) return;
+            }
+
+            const snapshot = susunSnapshot(resep, t.statin_obat, sertakan);
+
+            let terapkan = false;
+            if (resep !== String(t.resep_tetap || '').trim()) {
+                terapkan = confirm('Resep bulan ini berbeda dari resep rutin.\n\n' +
+                    'OK    = terapkan juga untuk bulan-bulan berikutnya (resep rutin diperbarui)\n' +
+                    'Batal = hanya untuk bulan ini');
+            }
+
+            const btn = document.getElementById('btnKonfirmasi');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+            const baris = {
+                nama_pasien: t.nama_pasien,
+                no_bpjs: t.no_bpjs,
+                no_telp: t.no_telp,
+                tanggal_ambil: tgl,
+                tanggal_berikutnya: tambahBulan(tgl, 1),
+                diagnosis: t.diagnosis,
+                resep_obat: snapshot
+            };
+            const { error } = await db.from('obat_kronis').insert([baris]);
+            if (error) {
+                btn.disabled = false;
+                btn.innerHTML = LABEL_BTN_KONF;
+                alert('Gagal menyimpan: ' + error.message);
+                return;
+            }
+
+            const upd = { tanggal_ambil_terakhir: tgl };
+            if (terapkan) upd.resep_tetap = resep;
+            const { error: e2 } = await db.from('kronis_terapi').update(upd).eq('id', t.id);
+            if (e2) alert('Transaksi tersimpan, tetapi gagal memperbarui data terapi: ' + e2.message);
+            else { t.tanggal_ambil_terakhir = tgl; if (terapkan) t.resep_tetap = resep; }
+
+            const jBaru = hitungJadwal(tgl);
+            tampilkanHasil('hasilKonfirmasi',
+                `Pengambilan <b>${esc(t.nama_pasien)}</b> tanggal ${fmtTgl(tgl)} tersimpan.` +
+                ` Jadwal berikutnya <b>${fmtTgl(jBaru.jatuhTempo)}</b> (boleh mulai ${fmtTgl(jBaru.bolehMulai)}).` +
+                (terapkan ? ' Resep rutin diperbarui.' : ''));
+            resetKartu();
+            renderDueList();
+        }
+
+        function resetKartu() {
+            terapiTerpilih = null;
+            statinInfo = null;
+            ambilTerakhirEfektif = null;
+            document.getElementById('kartuPasien').innerHTML = '';
+            document.getElementById('cari_pasien').value = '';
+        }
+
+        function tampilkanHasil(idWadah, html) {
+            const el = document.getElementById(idWadah);
+            el.innerHTML = `<div class="box-ok"><i class="fa-solid fa-circle-check"></i><span>${html}</span></div>`;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        /* ================= KELOLA TERAPI ================= */
+        function setVal(id, v) { document.getElementById(id).value = v ?? ''; }
+        function val(id) { return document.getElementById(id).value.trim(); }
+
+        function resetFormTerapi() {
+            editTerapiId = null;
+            document.getElementById('formTerapi').reset();
+            document.getElementById('terapi_aktif').checked = true;
+            document.getElementById('kelola_cari').value = '';
+            document.getElementById('statin_usage').innerHTML = '';
+            document.getElementById('resep_tetap_warn').innerHTML = '';
+            document.getElementById('modeBadge').innerHTML =
+                '<span class="mode-badge"><i class="fa-solid fa-user-plus"></i> Mode: tambah pasien baru</span>';
+            perbaruiDeteksiStatin();
+        }
+
+        function muatKeForm(t) {
+            editTerapiId = t.id;
+            setVal('nama_pasien', t.nama_pasien);
+            setVal('no_bpjs', t.no_bpjs);
+            setVal('no_telp', t.no_telp);
+            setVal('resep_tetap', t.resep_tetap);
+            setVal('statin_obat', t.statin_obat);
+            document.getElementById('statin_tanggal_lab').value = t.statin_tanggal_lab || '';
+            document.getElementById('terapi_aktif').checked = !!t.aktif;
+            const dset = String(t.diagnosis || '').split(',').map(s => s.trim());
+            document.querySelectorAll('input[name="diagnosis"]').forEach(cb => {
+                cb.checked = dset.includes(cb.value);
+            });
+            document.getElementById('modeBadge').innerHTML =
+                `<span class="mode-badge"><i class="fa-solid fa-pen"></i> Mode: edit terapi \u2014 ${esc(t.nama_pasien)}${t.aktif ? '' : ' (nonaktif)'}</span>`;
+            perbaruiDeteksiStatin();
+            cekResepTetapLive();
+            tampilkanUsage(t);
+        }
+
+        async function tampilkanUsage(t) {
+            const el = document.getElementById('statin_usage');
+            if (!t.statin_obat) { el.innerHTML = ''; return; }
+            el.innerHTML = '<div class="box-info" style="margin-top:0"><i class="fa-solid fa-spinner fa-spin"></i> Menghitung pemakaian kuota\u2026</div>';
+            const info = await muatStatinInfo(t);
+            if (editTerapiId !== t.id) return;
+            if (info.gagal) {
+                el.innerHTML = '<div class="box-warn" style="margin-top:0"><i class="fa-solid fa-triangle-exclamation"></i><span>Gagal menghitung pemakaian kuota.</span></div>';
+                return;
+            }
+            el.innerHTML = info.sisa > 0
+                ? `<div class="box-info" style="margin-top:0"><i class="fa-solid fa-vial"></i>
+                    <span>Terpakai <b>${info.terpakai} dari ${info.maks}</b> sejak lab ${fmtTgl(t.statin_tanggal_lab)} \u2014 sisa ${info.sisa}&times;.</span></div>`
+                : `<div class="box-danger" style="margin-top:0"><i class="fa-solid fa-ban"></i>
+                    <span>Kuota habis (${info.terpakai}/${info.maks} sejak lab ${fmtTgl(t.statin_tanggal_lab)}).
+                    Isi tanggal lab LDL baru untuk memulai siklus baru.</span></div>`;
+        }
+
+        function perbaruiDeteksiStatin() {
+            const v = val('statin_obat');
+            const el = document.getElementById('statin_deteksi');
+            if (!v) {
+                el.textContent = 'Kosongkan jika pasien tidak memakai statin berbatas kuota.';
+                el.classList.remove('bahaya');
+                return;
+            }
+            const det = deteksiStatin(v);
+            if (det) {
+                el.textContent = `Terdeteksi ${det.kunci} \u2014 kuota ${det.maks}\u00d7 pengambilan sejak tanggal lab.`;
+                el.classList.remove('bahaya');
+            } else {
+                el.textContent = "Tidak dikenali \u2014 nama harus mengandung 'atorvastatin' atau 'simvastatin'.";
+                el.classList.add('bahaya');
+            }
+        }
+
+        function cekResepTetapLive() {
+            const det = deteksiStatin(document.getElementById('resep_tetap').value);
+            const el = document.getElementById('resep_tetap_warn');
+            el.innerHTML = det
+                ? `<span class="hint bahaya"><i class="fa-solid fa-triangle-exclamation"></i>
+                    Terdeteksi ${det.kunci} di resep rutin \u2014 pindahkan ke kolom Statin di bawah agar kuota terhitung.
+                    Penyimpanan akan diblokir selama masih di sini.</span>`
+                : '';
+        }
+
+        async function simpanTerapi(e) {
+            e.preventDefault();
+            const nama = val('nama_pasien');
+            const bpjs = val('no_bpjs');
+            const telp = val('no_telp');
+            const resep = val('resep_tetap');
+            const sObat = val('statin_obat');
+            const sLab = document.getElementById('statin_tanggal_lab').value;
+            const diag = [...document.querySelectorAll('input[name="diagnosis"]:checked')]
+                .map(el => el.value).join(', ');
+
+            if (!nama) { alert('Nama pasien wajib diisi.'); return; }
+            if (!resep && !sObat) { alert('Resep rutin tidak boleh kosong.'); return; }
+            if (deteksiStatin(resep)) {
+                alert('Resep rutin masih memuat atorvastatin/simvastatin.\nPindahkan ke kolom Statin di bawah agar kuota terhitung.');
+                return;
+            }
+
+            let sMaks = null;
+            if (sObat) {
+                const det = deteksiStatin(sObat);
+                if (!det) {
+                    alert("Nama statin tidak dikenali \u2014 harus mengandung 'atorvastatin' atau 'simvastatin'.");
+                    return;
+                }
+                if (!sLab) { alert('Tanggal hasil lab LDL wajib diisi bila statin dipakai.'); return; }
+                sMaks = det.maks;
+            }
+
+            const baris = {
+                nama_pasien: nama,
+                no_bpjs: bpjs || null,
+                no_telp: telp || null,
+                diagnosis: diag || null,
+                resep_tetap: resep || null,
+                statin_obat: sObat || null,
+                statin_maks: sObat ? sMaks : null,
+                statin_tanggal_lab: sObat ? sLab : null,
+                aktif: document.getElementById('terapi_aktif').checked
+            };
+
+            const btn = document.getElementById('btnSimpanTerapi');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+
+            let error;
+            if (editTerapiId) {
+                ({ error } = await db.from('kronis_terapi').update(baris).eq('id', editTerapiId));
+            } else {
+                ({ error } = await db.from('kronis_terapi').insert([baris]));
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = LABEL_BTN_TERAPI;
+
+            if (error) {
+                if (String(error.code) === '23505' || /duplicate|uq_kronis/i.test(error.message || '')) {
+                    alert('Gagal: No BPJS ini sudah terdaftar sebagai terapi aktif.\nCari pasiennya di kolom atas lalu edit datanya, jangan buat baru.');
+                } else {
+                    alert('Gagal menyimpan: ' + error.message);
+                }
+                return;
+            }
+
+            tampilkanHasil('hasilKelola', `Terapi <b>${esc(nama)}</b> tersimpan.`);
+            const idSebelum = editTerapiId;
+            await muatTerapi();
+
+            let t = null;
+            if (idSebelum) {
+                t = daftarTerapi.find(x => x.id === idSebelum);
+            } else {
+                const kandidat = daftarTerapi.filter(x =>
+                    x.nama_pasien === nama && (x.no_bpjs || '') === (bpjs || ''));
+                kandidat.sort((a, b) => b.id - a.id);
+                t = kandidat[0] || null;
+            }
+            if (t) muatKeForm(t); else resetFormTerapi();
+        }
+
+        /* ================= EVENT & INISIALISASI ================= */
+        document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(x => x.classList.toggle('active', x === b));
+            document.querySelectorAll('.tab-pane').forEach(p =>
+                p.classList.toggle('active', p.id === 'tab-' + b.dataset.tab));
+        }));
+
+        document.getElementById('cari_pasien').addEventListener('input', function () {
+            const v = this.value.trim();
+            if (!v) return;
+            const t = daftarTerapi.find(x => x.aktif && labelTerapi(x) === v);
+            if (t) pilihPasien(t.id);
+        });
+
+        document.getElementById('dueList').addEventListener('click', e => {
+            const item = e.target.closest('.due-item');
+            if (!item || !item.dataset.id) return;
+            pilihPasien(Number(item.dataset.id));
+        });
+
+        document.getElementById('btnRefreshDue').addEventListener('click', () => muatTerapi());
+
+        document.getElementById('kelola_cari').addEventListener('input', function () {
+            const v = this.value.trim();
+            if (!v) return;
+            const t = daftarTerapi.find(x => labelKelola(x) === v);
+            if (t) muatKeForm(t);
+        });
+
+        document.getElementById('btnPasienBaru').addEventListener('click', resetFormTerapi);
+        document.getElementById('formTerapi').addEventListener('submit', simpanTerapi);
+        document.getElementById('statin_obat').addEventListener('input', perbaruiDeteksiStatin);
+        document.getElementById('resep_tetap').addEventListener('input', cekResepTetapLive);
+
+        resetFormTerapi();
+        muatTerapi();
     </script>
 </body>
 </html>
