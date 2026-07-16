@@ -1165,14 +1165,22 @@ async function loadFollowup() {
     if(!data.length) { empty('followupContent', 'Tidak ada follow-up hari ini.'); return; }
 
     const cards = data.map(p => {
-        const noWa = p.no_wa ? p.no_wa.replace(/^0/, '62').replace(/\D/g,'') : null;
+        const noWa = p.no_wa ? p.no_wa.replace(/\D/g,'').replace(/^0/, '62') : null;
+        const pesanFu = `Selamat pagi Bpk/Ibu ${p.nama_pasien} \u{1F64F}\n\n` +
+            `Kami dari Klinik Imanuel ingin mengingatkan bahwa besok, *${fmtDate(p.tanggal_kontrol)}*, ` +
+            `adalah jadwal kontrol Bapak/Ibu di *${p.poli_asal || 'Klinik Imanuel'}*.\n\n` +
+            `Mohon hadir sesuai jadwal agar kondisi kesehatan tetap terpantau dengan baik.\n\n` +
+            `Terima kasih, Tuhan memberkati.\n\u2014 Klinik Imanuel`;
+        const waHref = noWa ? `https://wa.me/${noWa}?text=${encodeURIComponent(pesanFu)}` : null;
         return `<div class="followup-card">
             <div class="followup-info">
                 <div class="followup-name">${p.nama_pasien}</div>
-                <div style="font-size:0.85rem;color:var(--text-mid)">Kontrol: <strong>${fmtDate(p.tanggal_kontrol)}</strong> di ${p.poli_asal}</div>
+                <div style="font-size:0.85rem;color:var(--text-mid)">Kontrol: <strong>${fmtDate(p.tanggal_kontrol)}</strong> di ${p.poli_asal}${p.nama_dokter ? ' &mdash; ' + p.nama_dokter : ''}</div>
+                ${p.diagnosa ? `<div style="font-size:0.85rem;color:var(--text-mid);margin-top:3px"><i class="fa-solid fa-stethoscope" style="width:15px;color:#00897b"></i> ${p.diagnosa}</div>` : ''}
+                ${p.instruksi_petugas ? `<div style="font-size:0.85rem;background:#fff7ed;border-left:3px solid #f97316;padding:6px 10px;border-radius:6px;margin-top:6px;color:#7c2d12"><i class="fa-solid fa-circle-exclamation"></i> <strong>Instruksi:</strong> ${p.instruksi_petugas}</div>` : ''}
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-                ${noWa ? `<a class="wa-btn" href="https://wa.me/${noWa}" target="_blank"><i class="fa-brands fa-whatsapp"></i> WA</a>` : ''}
+                ${waHref ? `<a class="wa-btn" href="${waHref}" target="_blank"><i class="fa-brands fa-whatsapp"></i> WA</a>` : ''}
                 <button class="btn-hapus" onclick="konfirmasiHapus('pasien_kontrol','${p.id}','${(p.nama_pasien||'').replace(/'/g,"\\'")}',loadFollowup)" title="Hapus data ini" style="padding:9px 11px;font-size:0.9rem;"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         </div>`;
@@ -1464,6 +1472,15 @@ async function searchRujukan(resetPage = true) {
 }
 
 // 7. PASIEN KONTROL
+function waCellKontrol(r) {
+    if (!r.no_wa) return '-';
+    const noWa = r.no_wa.replace(/\D/g,'').replace(/^0/, '62');
+    if (!noWa) return r.no_wa;
+    const pesan = `Selamat pagi Bpk/Ibu ${r.nama_pasien} \u{1F64F}\n\n` +
+        `Kami dari Klinik Imanuel ingin mengingatkan jadwal kontrol Bapak/Ibu pada *${fmtDate(r.tanggal_kontrol)}* di *${r.poli_asal || 'Klinik Imanuel'}*.\n\n` +
+        `Mohon hadir sesuai jadwal. Terima kasih, Tuhan memberkati.\n\u2014 Klinik Imanuel`;
+    return `<a href="https://wa.me/${noWa}?text=${encodeURIComponent(pesan)}" target="_blank" style="color:#128C7E;font-weight:600;text-decoration:none;white-space:nowrap"><i class="fa-brands fa-whatsapp"></i> ${r.no_wa}</a>`;
+}
 async function searchPasienKontrol(resetPage = true) {
     if(resetPage) pageState['pasien_kontrol'] = 1;
     showSkeleton('pasienKontrolContent');
@@ -1482,7 +1499,7 @@ async function searchPasienKontrol(resetPage = true) {
         <td class="td-date">${fmtDate(r.tanggal_kontrol)}</td>
         <td class="td-name">${r.nama_pasien}</td>
         <td class="td-mono">${r.no_bpjs||'-'}</td>
-        <td>${r.no_wa||'-'}</td>
+        <td>${waCellKontrol(r)}</td>
         <td>${r.poli_asal||'-'}</td>
         <td>${r.nama_dokter||'-'}</td>
         <td style="white-space:normal;min-width:150px">${r.diagnosa||'-'}</td>
