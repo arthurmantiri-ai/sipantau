@@ -415,7 +415,7 @@
 
             <div class="box-info" style="margin-top:0">
                 <i class="fa-solid fa-circle-info"></i>
-                <span>Jadwal berikutnya = tanggal ambil terakhir <b>+ 1 bulan</b>; paling cepat diambil <b>H-1</b>.
+                <span>Jadwal berikutnya = tanggal ambil terakhir <b>+ 1 bulan</b>; paling cepat diambil <b id="lblAturanH">H-3</b>.
                 Statin dibatasi kuota sejak tanggal lab LDL: <b>atorvastatin 3&times;</b>, <b>simvastatin 6&times;</b>.</span>
             </div>
 
@@ -583,6 +583,10 @@
         const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
                           'Juli','Agustus','September','Oktober','November','Desember'];
 
+        // Aturan H-minus: pengambilan boleh dimulai n hari sebelum jatuh tempo.
+        // Ubah angka ini bila kebijakan berubah (mis. H-1 -> 1, H-3 -> 3).
+        const HARI_SEBELUM_JATUH_TEMPO = 3;
+
         function pad2(n) { return String(n).padStart(2, '0'); }
 
         // Tambah n bulan kalender; tanggal di-clamp ke hari terakhir bulan tujuan
@@ -615,10 +619,10 @@
         function hitungJadwal(tglTerakhir) {
             if (!tglTerakhir) return { jatuhTempo: null, bolehMulai: null };
             const jt = tambahBulan(tglTerakhir, 1);
-            return { jatuhTempo: jt, bolehMulai: kurangHari(jt, 1) };
+            return { jatuhTempo: jt, bolehMulai: kurangHari(jt, HARI_SEBELUM_JATUH_TEMPO) };
         }
 
-        // Validasi aturan H-1 (perbandingan string ISO aman secara leksikografis)
+        // Validasi aturan H-3 (lihat HARI_SEBELUM_JATUH_TEMPO; perbandingan string ISO aman secara leksikografis)
         function cekTanggalAmbil(tglTerakhir, tglBaru) {
             if (!tglTerakhir) return { ok: true, pertama: true, jatuhTempo: null, bolehMulai: null };
             const { jatuhTempo, bolehMulai } = hitungJadwal(tglTerakhir);
@@ -732,7 +736,7 @@
                 let badge;
                 if (telat > 0)       badge = `<span class="badge badge-danger">Terlambat ${telat} hari</span>`;
                 else if (telat === 0) badge = '<span class="badge badge-ok">Jatuh tempo hari ini</span>';
-                else                  badge = '<span class="badge badge-warn">Boleh diambil (H-1)</span>';
+                else                  badge = `<span class="badge badge-warn">Boleh diambil (H-${-telat})</span>`;
                 return `<div class="due-item" data-id="${x.t.id}">
                     <span class="due-nama">${esc(x.t.nama_pasien)}</span>
                     <span class="due-tgl">jatuh tempo ${fmtTgl(x.jatuhTempo)}</span>
@@ -760,6 +764,8 @@
             const kunci = det ? det.kunci
                 : String(t.statin_obat || '').trim().toLowerCase().split(/\s+/)[0];
             const maks = t.statin_maks || (det ? det.maks : 0);
+            // Tanpa tanggal lab, kuota tak bisa dihitung; .gte(null) juga akan error di PostgREST
+            if (!t.statin_tanggal_lab) return { kunci, maks, terpakai: null, sisa: null, gagal: true };
             let q = db.from('obat_kronis').select('resep_obat,tanggal_ambil')
                 .gte('tanggal_ambil', t.statin_tanggal_lab).limit(1000);
             const bpjs = (t.no_bpjs || '').trim();
@@ -890,7 +896,7 @@
                 el.textContent = `OK \u2014 sesuai jadwal (jatuh tempo ${fmtTgl(c.jatuhTempo)}).`;
                 el.classList.remove('bahaya');
             } else {
-                el.textContent = `Belum boleh \u2014 paling cepat ${fmtTgl(c.bolehMulai)} (H-1 dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`;
+                el.textContent = `Belum boleh \u2014 paling cepat ${fmtTgl(c.bolehMulai)} (H-${HARI_SEBELUM_JATUH_TEMPO} dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`;
                 el.classList.add('bahaya');
             }
         }
@@ -924,7 +930,7 @@
 
             const c = cekTanggalAmbil(ambilTerakhirEfektif, tgl);
             if (!c.ok) {
-                alert(`Belum boleh diambil.\nPaling cepat ${fmtTgl(c.bolehMulai)} (H-1 dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`);
+                alert(`Belum boleh diambil.\nPaling cepat ${fmtTgl(c.bolehMulai)} (H-${HARI_SEBELUM_JATUH_TEMPO} dari jatuh tempo ${fmtTgl(c.jatuhTempo)}).`);
                 return;
             }
 
@@ -1194,6 +1200,9 @@
         document.getElementById('formTerapi').addEventListener('submit', simpanTerapi);
         document.getElementById('statin_obat').addEventListener('input', perbaruiDeteksiStatin);
         document.getElementById('resep_tetap').addEventListener('input', cekResepTetapLive);
+
+        const elAturanH = document.getElementById('lblAturanH');
+        if (elAturanH) elAturanH.textContent = 'H-' + HARI_SEBELUM_JATUH_TEMPO;
 
         resetFormTerapi();
         muatTerapi();
