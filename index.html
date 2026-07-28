@@ -1,375 +1,639 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Klinik Imanuel</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="welcome-splash.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Klinik Imanuel</title>
 
-    <style>
-        :root {
-            /* Palet Glass — selaras dengan animasi pembuka (navy glossy) */
-            --bg-top:#122f54; --bg-mid:#0b2038; --bg-bot:#071628;
-            --ink:#eef4ff;        /* teks utama */
-            --ink-soft:#c6d6f0;   /* teks sekunder */
-            --ink-faint:#8fa6c6;  /* teks samar */
-            --glass:rgba(255,255,255,.05);
-            --glass-strong:rgba(255,255,255,.085);
-            --brd:rgba(255,255,255,.10);
-            --brd-strong:rgba(255,255,255,.20);
-            --hi:rgba(255,255,255,.16);
-            --red:#e11507; --green:#1fa80a;     /* aksen brand */
-            --teal:#35d6bd; --blue:#5b9bf0; --gold:#e6b24a; --cool:#84b3f2;
-            --shadow:0 18px 50px -24px rgba(0,0,0,.7);
-        }
+<!-- Set tema SEBELUM paint → tidak ada kedip saat reload -->
+<script>
+(function(){
+  try{
+    var s = localStorage.getItem('ki-theme');
+    var t = s || (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){ document.documentElement.setAttribute('data-theme','dark'); }
+})();
+</script>
 
-        * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter',sans-serif; }
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-        html { background:#071628; }
+<style>
+/* ════════════════════ TEMA GELAP (default & fallback) ════════════════════ */
+:root{
+  --ink:#eef4ff; --ink-soft:#c6d6f0; --ink-faint:#8fa6c6;
 
-        body {
-            min-height:100vh; overflow-x:hidden;
-            display:flex; flex-direction:column; align-items:center;
-            color:var(--ink); -webkit-font-smoothing:antialiased;
-            background:
-                url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2288%22%20height%3D%2288%22%20viewBox%3D%220%200%2088%2088%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22rgba%28180%2C205%2C240%2C0.05%29%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M22%2015v14M15%2022h14%22%2F%3E%3Cpath%20d%3D%22M66%2059v14M59%2066h14%22%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%22rgba%28180%2C205%2C240%2C0.045%29%22%3E%3Ccircle%20cx%3D%2266%22%20cy%3D%2220%22%20r%3D%221.4%22%2F%3E%3Ccircle%20cx%3D%2222%22%20cy%3D%2264%22%20r%3D%221.4%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
-                radial-gradient(900px 520px at 14% -8%, rgba(45,120,110,.20), transparent 60%),
-                radial-gradient(1000px 640px at 86% -4%, rgba(70,120,200,.24), transparent 62%),
-                radial-gradient(1100px 820px at 50% 116%, rgba(80,110,180,.14), transparent 60%),
-                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 52%, var(--bg-bot) 100%);
-            background-repeat:repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-            background-size:88px 88px, auto, auto, auto, auto;
-            background-attachment:fixed;
-        }
+  --glass:rgba(255,255,255,.05); --glass-strong:rgba(255,255,255,.09);
+  --brd:rgba(255,255,255,.10); --brd-strong:rgba(255,255,255,.20); --hi:rgba(255,255,255,.16);
+  --card-sh:inset 0 1px 0 var(--hi), 0 16px 44px -26px rgba(0,0,0,.75);
+  --card-sh-hover:inset 0 1px 0 var(--hi), 0 26px 56px -24px rgba(0,0,0,.8);
+  --tile-sh-hover:0 14px 32px -20px rgba(0,0,0,.85);
 
-        /* ── Header ── */
-        .header {
-            text-align:center; width:100%;
-            padding:56px 20px 30px;
-            display:flex; flex-direction:column; align-items:center;
-        }
-        .logo-badge {
-            width:130px; height:130px; border-radius:30px; margin-bottom:18px;
-            display:flex; align-items:center; justify-content:center;
-            background:linear-gradient(160deg, rgba(255,255,255,.11), rgba(255,255,255,.03));
-            border:1px solid var(--brd);
-            -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
-            box-shadow:inset 0 1px 0 var(--hi), 0 22px 55px -20px rgba(6,20,50,.85), 0 0 60px -12px rgba(96,156,236,.40);
-        }
-        .logo-badge .logo-img {
-            width:80%; height:80%; object-fit:contain;
-            filter:drop-shadow(0 6px 16px rgba(0,0,0,.45));
-        }
-        .header h1 {
-            font-size:clamp(2rem, 5vw, 2.6rem); font-weight:700; letter-spacing:-.5px;
-            color:var(--ink); text-shadow:0 2px 24px rgba(120,170,240,.30); margin-bottom:8px;
-        }
-        .header .subtitle {
-            font-size:clamp(1rem, 2.6vw, 1.12rem); color:var(--ink-soft); font-weight:400; max-width:600px;
-        }
-        .brand-rule {
-            width:56px; height:3px; margin:16px 0 12px; border-radius:3px;
-            background:linear-gradient(90deg, var(--red), var(--green));
-            box-shadow:0 0 14px rgba(225,21,7,.30);
-        }
-        .vision {
-            font-style:italic; font-weight:300; color:var(--ink-soft); opacity:.92;
-            font-size:clamp(.85rem, 2.4vw, .98rem); max-width:520px; line-height:1.5;
-        }
+  --inset-bg:rgba(0,0,0,.20); --inset-brd:var(--brd);
+  --chip-bg:rgba(255,255,255,.06); --chip-brd:var(--brd); --chip-ink:var(--ink-faint);
 
-        /* ── Banner besar (glass, aksen warna berbeda per modul) ── */
-        .banners-container {
-            width:90%; max-width:1200px; display:flex; flex-direction:column; gap:20px; margin:8px 0 30px;
-        }
-        .dashboard-card, .farmasi-card, .pembukuan-card {
-            position:relative; overflow:hidden; text-decoration:none;
-            display:flex; align-items:center; justify-content:space-between; gap:24px;
-            padding:26px 32px; border-radius:20px;
-            background:var(--glass); border:1px solid var(--brd);
-            -webkit-backdrop-filter:blur(14px) saturate(120%); backdrop-filter:blur(14px) saturate(120%);
-            box-shadow:inset 0 1px 0 var(--hi), var(--shadow);
-            transition:transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s, border-color .35s, background .35s;
-        }
-        .dashboard-card { --accent:var(--teal); --accent-glow:rgba(53,214,189,.30); }
-        .farmasi-card   { --accent:var(--blue); --accent-glow:rgba(91,155,240,.32); }
-        .pembukuan-card { --accent:var(--gold); --accent-glow:rgba(230,178,74,.28); }
+  --side-bg:rgba(255,255,255,.022); --side-brd:var(--brd);
+  --sitem-on-bg:rgba(255,255,255,.08); --drawer-bg:#0b2038;
+  --topbar-bg:rgba(7,22,40,.72); --topbar-brd:var(--brd);
+  --inp-bg:rgba(255,255,255,.05); --inp-bg-focus:rgba(255,255,255,.08);
 
-        .dashboard-card::before, .farmasi-card::before, .pembukuan-card::before {
-            content:''; position:absolute; top:-32%; right:-6%; width:340px; height:340px; border-radius:50%;
-            background:radial-gradient(circle, var(--accent-glow) 0%, transparent 68%); pointer-events:none;
-        }
-        .dashboard-card:hover, .farmasi-card:hover, .pembukuan-card:hover {
-            transform:translateY(-5px); background:var(--glass-strong); border-color:var(--brd-strong);
-            box-shadow:inset 0 1px 0 var(--hi), 0 28px 62px -24px rgba(0,0,0,.78), 0 0 42px -12px var(--accent-glow);
-        }
+  /* aksen domain — varian terang untuk background gelap */
+  --dom-data:#35D6BD; --dom-medis:#84B3F2; --dom-farmasi:#A78BFA;
+  --dom-uang:#E6B24A; --dom-sistem:#94A3B8; --on-accent:#06182b;
 
-        .banner-card-left { display:flex; align-items:center; gap:20px; z-index:1; }
-        .banner-card-icon {
-            width:62px; height:62px; border-radius:16px; flex-shrink:0;
-            display:flex; align-items:center; justify-content:center; font-size:1.7rem; color:var(--accent);
-            background:linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.03));
-            border:1px solid var(--brd);
-            box-shadow:inset 0 1px 0 var(--hi), 0 0 26px -6px var(--accent-glow);
-            transition:transform .3s ease;
-        }
-        .dashboard-card:hover .banner-card-icon,
-        .farmasi-card:hover .banner-card-icon,
-        .pembukuan-card:hover .banner-card-icon { transform:scale(1.06) rotate(-3deg); }
+  /* aksi utama (merah dari logo hati) */
+  --act:#E11507; --act-hi:#FF4438; --act-ink:#ffffff; --act-glow:rgba(225,21,7,.45);
 
-        .banner-card-text h3 { font-size:1.22rem; font-weight:700; color:var(--ink); letter-spacing:-.3px; margin-bottom:5px; }
-        .banner-card-text p { font-size:.87rem; color:var(--ink-soft); line-height:1.5; max-width:520px; }
+  /* chip KPI */
+  --pos-bg:rgba(34,197,94,.15);  --pos-ink:#4ade80;
+  --neg-bg:rgba(225,21,7,.15);   --neg-ink:#ff8d84;
+  --flat-bg:rgba(255,255,255,.07);--flat-ink:var(--ink-faint);
+  --lock-bg:rgba(225,21,7,.15); --lock-ink:#ffb3ab; --lock-brd:rgba(225,21,7,.38);
 
-        .banner-card-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; }
-        .banner-pill {
-            font-size:.72rem; font-weight:600; padding:4px 11px; border-radius:20px;
-            background:rgba(255,255,255,.07); border:1px solid var(--brd); color:var(--ink-soft);
-        }
+  --bg:
+    radial-gradient(900px 520px at 14% -8%, rgba(45,120,110,.18), transparent 60%),
+    radial-gradient(1000px 640px at 86% -4%, rgba(70,120,200,.22), transparent 62%),
+    linear-gradient(180deg, #122f54 0%, #0b2038 52%, #071628 100%);
+  --html-bg:#071628;
 
-        .banner-card-right { z-index:1; flex-shrink:0; }
-        .banner-cta {
-            display:flex; align-items:center; gap:8px; white-space:nowrap;
-            font-size:.9rem; font-weight:700; padding:12px 22px; border-radius:12px;
-            color:var(--ink); background:rgba(255,255,255,.10); border:1px solid var(--brd-strong);
-            box-shadow:inset 0 1px 0 var(--hi); transition:all .3s ease;
-        }
-        .dashboard-card:hover .banner-cta,
-        .farmasi-card:hover .banner-cta,
-        .pembukuan-card:hover .banner-cta {
-            background:var(--accent); color:#06182b; border-color:transparent;
-            box-shadow:0 8px 24px -8px var(--accent-glow);
-        }
+  --rad:16px; --rad-sm:11px; --sidebar-w:264px; --topbar-h:62px;
+}
 
-        /* ── Divider ── */
-        .section-divider {
-            width:90%; max-width:1200px; display:flex; align-items:center; gap:14px; margin:6px 0 22px;
-        }
-        .section-divider-line { flex:1; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); }
-        .section-divider-label {
-            font-size:.76rem; font-weight:700; text-transform:uppercase; letter-spacing:.10em;
-            color:var(--ink-faint); white-space:nowrap;
-        }
-        .section-divider-label i { color:var(--cool); }
+/* ════════════════════ TEMA TERANG ════════════════════ */
+[data-theme="light"]{
+  --ink:#0f172a; --ink-soft:#475569; --ink-faint:#94a3b8;
 
-        /* ── Grid menu (glass) ── */
-        .dashboard-container {
-            width:90%; max-width:1200px; display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:22px; padding-bottom:56px;
-        }
-        .menu-card {
-            text-decoration:none; display:flex; flex-direction:column; align-items:center; text-align:center;
-            padding:30px 22px; border-radius:18px;
-            background:var(--glass); border:1px solid var(--brd);
-            -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-            box-shadow:inset 0 1px 0 var(--hi), 0 12px 34px -22px rgba(0,0,0,.7);
-            transition:transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s, border-color .35s, background .35s;
-        }
-        .menu-card:hover {
-            transform:translateY(-8px); background:var(--glass-strong); border-color:var(--brd-strong);
-            box-shadow:inset 0 1px 0 var(--hi), 0 22px 48px -20px rgba(0,0,0,.8), 0 0 34px -12px rgba(96,156,236,.35);
-        }
-        .icon-wrapper {
-            width:70px; height:70px; border-radius:50%; margin-bottom:18px;
-            display:flex; align-items:center; justify-content:center; font-size:1.7rem; color:var(--cool);
-            background:linear-gradient(160deg, rgba(132,179,242,.18), rgba(132,179,242,.04));
-            border:1px solid var(--brd);
-            box-shadow:inset 0 1px 0 var(--hi), 0 0 22px -8px rgba(96,156,236,.40);
-            transition:all .3s ease;
-        }
-        .menu-card:hover .icon-wrapper {
-            background:linear-gradient(160deg, var(--cool), #4f86dc); color:#fff; transform:scale(1.08);
-            box-shadow:0 10px 26px -8px rgba(96,156,236,.55);
-        }
-        .menu-card h3 { font-size:1.12rem; font-weight:700; color:var(--ink); margin-bottom:8px; }
-        .menu-card p { font-size:.88rem; color:var(--ink-soft); line-height:1.5; }
+  --glass:#ffffff; --glass-strong:#ffffff;
+  --brd:#e6ebf2; --brd-strong:#cfd8e6; --hi:rgba(255,255,255,0);
+  --card-sh:0 1px 2px rgba(15,23,42,.04), 0 12px 30px -20px rgba(15,23,42,.16);
+  --card-sh-hover:0 2px 4px rgba(15,23,42,.05), 0 22px 44px -22px rgba(15,23,42,.22);
+  --tile-sh-hover:0 12px 26px -18px rgba(15,23,42,.22);
 
-        /* ── Footer ── */
-        .footer {
-            margin-top:auto; width:100%; padding:22px; text-align:center;
-            color:var(--ink-faint); font-size:.88rem;
-            background:rgba(255,255,255,.03); border-top:1px solid var(--brd);
-            -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-        }
-        .footer .hb { color:var(--red); }
+  --inset-bg:#f8fafc; --inset-brd:#eef2f7;
+  --chip-bg:#f1f5f9; --chip-brd:#e6ebf2; --chip-ink:#64748b;
 
-        /* ── Aksesibilitas ── */
-        .dashboard-card:focus-visible, .farmasi-card:focus-visible,
-        .pembukuan-card:focus-visible, .menu-card:focus-visible {
-            outline:2px solid var(--cool); outline-offset:3px;
-        }
+  --side-bg:#ffffff; --side-brd:#e6ebf2;
+  --sitem-on-bg:#eff3fb; --drawer-bg:#ffffff;
+  --topbar-bg:rgba(255,255,255,.82); --topbar-brd:#e6ebf2;
+  --inp-bg:#f4f6fa; --inp-bg-focus:#ffffff;
 
-        /* ── Responsif ── */
-        @media (max-width:768px) {
-            .header { padding:40px 18px 24px; }
-            .banners-container, .dashboard-container, .section-divider { width:92%; }
-            .dashboard-card, .farmasi-card, .pembukuan-card { flex-direction:column; align-items:flex-start; padding:24px 22px; }
-            .banner-card-right { width:100%; }
-            .banner-cta { width:100%; justify-content:center; }
-            .banner-card-text p { max-width:100%; }
-            .dashboard-container { grid-template-columns:1fr; }
-        }
+  /* aksen domain — varian gelap agar kontras di atas putih (≥5:1) */
+  --dom-data:#0f766e; --dom-medis:#2563eb; --dom-farmasi:#7c3aed;
+  --dom-uang:#b45309; --dom-sistem:#475569; --on-accent:#ffffff;
 
-        @media (prefers-reduced-motion:reduce) {
-            * { transition:none !important; }
-            .dashboard-card:hover, .farmasi-card:hover, .pembukuan-card:hover, .menu-card:hover { transform:none; }
-        }
-    </style>
+  --act:#E11507; --act-hi:#c11207; --act-ink:#ffffff; --act-glow:rgba(225,21,7,.30);
+
+  --pos-bg:#dcfce7; --pos-ink:#15803d;
+  --neg-bg:#fee2e2; --neg-ink:#b91c1c;
+  --flat-bg:#eef2f7;--flat-ink:#64748b;
+  --lock-bg:#fee2e2; --lock-ink:#b91c1c; --lock-brd:#fecaca;
+
+  --bg:
+    radial-gradient(900px 520px at 14% -8%, rgba(15,118,110,.06), transparent 60%),
+    radial-gradient(1000px 640px at 86% -4%, rgba(37,99,235,.07), transparent 62%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f7 60%, #e9eef5 100%);
+  --html-bg:#eef2f7;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+html{background:var(--html-bg)}
+body{min-height:100vh;color:var(--ink);-webkit-font-smoothing:antialiased;
+  background:var(--bg);background-attachment:fixed;
+  transition:background .35s ease,color .25s ease}
+a{text-decoration:none;color:inherit}
+
+/* ════════ TOPBAR ════════ */
+.topbar{position:sticky;top:0;z-index:40;height:var(--topbar-h);
+  display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:var(--topbar-bg);border-bottom:1px solid var(--topbar-brd);
+  -webkit-backdrop-filter:blur(16px) saturate(130%);backdrop-filter:blur(16px) saturate(130%);
+  transition:background .35s,border-color .35s}
+.tb-burger{display:none;background:none;border:none;color:var(--ink);font-size:1.2rem;cursor:pointer;padding:6px}
+.tb-mark{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;overflow:hidden;
+  background:var(--chip-bg);border:1px solid var(--brd)}
+.tb-mark img{width:82%;height:82%;object-fit:contain}
+.tb-mark .fa-heart{color:var(--act);font-size:1rem}
+.tb-name{font-size:.98rem;font-weight:700;letter-spacing:-.2px;line-height:1.15}
+.tb-sub{font-size:.72rem;color:var(--ink-faint);font-weight:500}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.tb-date{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--ink-faint);white-space:nowrap}
+
+.theme-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  padding:8px 13px;border-radius:10px;font-size:.82rem;font-weight:600;color:var(--ink-soft);
+  background:var(--chip-bg);border:1px solid var(--brd);transition:.2s;font-family:inherit}
+.theme-btn:hover{border-color:var(--brd-strong);color:var(--ink)}
+.theme-btn i{font-size:.9rem;color:var(--dom-uang)}
+[data-theme="light"] .theme-btn i{color:var(--dom-medis)}
+
+/* ════════ SHELL ════════ */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) 1fr;align-items:start}
+
+/* ════════ SIDEBAR ════════ */
+.side{position:sticky;top:var(--topbar-h);height:calc(100vh - var(--topbar-h));
+  overflow-y:auto;padding:20px 14px 26px;
+  border-right:1px solid var(--side-brd);background:var(--side-bg);transition:background .35s,border-color .35s}
+.side::-webkit-scrollbar{width:6px}
+.side::-webkit-scrollbar-thumb{background:var(--brd-strong);border-radius:6px}
+
+.sfind{position:relative;margin-bottom:18px}
+.sfind i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-faint);font-size:.82rem}
+.sfind input{width:100%;padding:10px 12px 10px 33px;border-radius:10px;font-size:.85rem;
+  background:var(--inp-bg);border:1px solid var(--brd);color:var(--ink);outline:none;transition:.2s}
+.sfind input::placeholder{color:var(--ink-faint)}
+.sfind input:focus{border-color:var(--dom-medis);background:var(--inp-bg-focus)}
+
+.slabel{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.11em;
+  color:var(--ink-faint);padding:0 10px;margin:18px 0 7px}
+.slabel:first-of-type{margin-top:0}
+
+.sitem{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;
+  font-size:.875rem;font-weight:500;color:var(--ink-soft);cursor:pointer;
+  transition:background .18s,color .18s;position:relative;width:100%;border:none;background:none;
+  font-family:inherit;text-align:left}
+.sitem i{width:17px;text-align:center;font-size:.9rem;color:var(--dot,var(--ink-faint))}
+.sitem:hover{background:var(--chip-bg);color:var(--ink)}
+.sitem.on{background:var(--sitem-on-bg);color:var(--ink);font-weight:650}
+.sitem.on::before{content:'';position:absolute;left:-14px;top:7px;bottom:7px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--dot,var(--act))}
+.sitem .n{margin-left:auto;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--ink-faint)}
+
+.side-foot{margin-top:22px;padding:12px 10px 0;border-top:1px solid var(--brd);
+  font-size:.72rem;color:var(--ink-faint);line-height:1.6}
+.side-foot .hb{color:var(--act)}
+
+/* ════════ MAIN ════════ */
+.main{padding:26px 30px 60px;max-width:1280px}
+.page-head{margin-bottom:22px}
+.page-head h1{font-size:1.55rem;font-weight:800;letter-spacing:-.5px}
+.page-head p{font-size:.88rem;color:var(--ink-soft);margin-top:5px}
+.page-head .vis{font-style:italic;font-weight:300;color:var(--ink-faint);font-size:.82rem;margin-top:3px}
+
+/* ════════ HERO + KPI ════════ */
+.heroes{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px;margin-bottom:30px}
+.hero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:14px;
+  padding:20px 20px 18px;border-radius:var(--rad);
+  background:var(--glass);border:1px solid var(--brd);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--card-sh);
+  transition:transform .3s cubic-bezier(.2,.7,.2,1),border-color .3s,background .3s,box-shadow .3s}
+.hero::after{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:var(--dom)}
+.hero:hover{transform:translateY(-4px);background:var(--glass-strong);border-color:var(--brd-strong);box-shadow:var(--card-sh-hover)}
+
+.hero-top{display:flex;align-items:flex-start;gap:12px}
+.hero-ico{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;
+  font-size:1.15rem;color:var(--dom);background:var(--chip-bg);border:1px solid var(--brd)}
+.hero-top h3{font-size:1.04rem;font-weight:700;letter-spacing:-.25px;line-height:1.3}
+.hero-top .who{font-size:.74rem;color:var(--ink-faint);font-weight:500;margin-top:2px}
+.lockpill{margin-left:auto;flex:none;font-size:.68rem;font-weight:700;padding:4px 9px;border-radius:20px;
+  background:var(--lock-bg);border:1px solid var(--lock-brd);color:var(--lock-ink);white-space:nowrap}
+
+.kpi{display:flex;align-items:flex-end;gap:14px;padding:12px 13px;border-radius:var(--rad-sm);
+  background:var(--inset-bg);border:1px solid var(--inset-brd)}
+.kpi-main{min-width:0}
+.kpi-num{font-family:'DM Mono',monospace;font-size:1.65rem;font-weight:500;color:var(--dom);
+  line-height:1;letter-spacing:-1px;display:block}
+.kpi-num.rp{font-size:1.12rem;letter-spacing:-.4px}
+.kpi-lbl{font-size:.71rem;color:var(--ink-faint);font-weight:500;margin-top:5px;display:block;
+  text-transform:uppercase;letter-spacing:.05em}
+.kpi-side{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.delta{font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.delta.up{background:var(--pos-bg);color:var(--pos-ink)}
+.delta.dn{background:var(--neg-bg);color:var(--neg-ink)}
+.delta.flat{background:var(--flat-bg);color:var(--flat-ink)}
+.spark-bar{fill:var(--dom);opacity:.35}
+.spark-bar.now{opacity:1}
+
+.hero-desc{font-size:.83rem;color:var(--ink-soft);line-height:1.55;flex:1}
+
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;align-self:flex-start;
+  padding:11px 18px;border-radius:11px;font-size:.86rem;font-weight:700;
+  background:var(--act);color:var(--act-ink);border:1px solid transparent;
+  box-shadow:0 6px 18px -8px var(--act-glow);transition:background .22s,box-shadow .22s,transform .22s}
+.hero:hover .cta{background:var(--act-hi);box-shadow:0 12px 28px -8px var(--act-glow);transform:translateX(2px)}
+.cta i{font-size:.78rem;transition:transform .22s}
+.hero:hover .cta i{transform:translateX(3px)}
+
+/* ════════ KATEGORI (collapsible) ════════ */
+.cat{margin-bottom:12px;scroll-margin-top:calc(var(--topbar-h) + 16px)}
+
+.cat-head{display:flex;align-items:center;gap:11px;width:100%;cursor:pointer;
+  padding:12px 4px 11px;border:none;background:none;border-bottom:1px solid var(--brd);
+  font-family:inherit;text-align:left;color:inherit;transition:border-color .35s}
+.cat-dot{width:9px;height:9px;border-radius:3px;background:var(--cat);flex:none;box-shadow:0 0 12px -1px var(--cat)}
+.cat-titles{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;min-width:0}
+.cat-name{font-size:.95rem;font-weight:700;letter-spacing:.01em}
+.cat-titles .sub{font-size:.78rem;color:var(--ink-faint);font-weight:400}
+.cat-count{margin-left:auto;font-family:'DM Mono',monospace;font-size:.73rem;color:var(--ink-faint)}
+.cat-chev{color:var(--ink-faint);font-size:.8rem;transition:transform .3s ease;flex:none}
+.cat.open .cat-chev,.cat.searching .cat-chev{transform:rotate(180deg)}
+.cat-head:hover .cat-chev{color:var(--ink)}
+
+.cat-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.cat.open .cat-body,.cat.searching .cat-body{grid-template-rows:1fr}
+.cat-grid{overflow:hidden;min-height:0;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:12px;padding-top:16px}
+
+/* ════════ TILE (rata kiri) ════════ */
+.tile{position:relative;display:flex;align-items:flex-start;gap:13px;
+  padding:15px 16px 15px 17px;border-radius:var(--rad-sm);
+  background:var(--glass);border:1px solid var(--brd);
+  transition:transform .25s cubic-bezier(.2,.7,.2,1),background .25s,border-color .25s,box-shadow .25s}
+.tile::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;
+  border-radius:0 3px 3px 0;background:var(--cat);opacity:.55;transition:opacity .25s,top .25s,bottom .25s}
+.tile:hover{transform:translateY(-3px);background:var(--glass-strong);border-color:var(--brd-strong);box-shadow:var(--tile-sh-hover)}
+.tile:hover::before{opacity:1;top:8px;bottom:8px}
+
+.tile-ico{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;
+  font-size:1rem;color:var(--cat);background:var(--chip-bg);border:1px solid var(--brd);transition:background .25s,color .25s}
+.tile:hover .tile-ico{background:var(--cat);color:var(--on-accent)}
+
+.tile-body{min-width:0;flex:1}
+.tile-title{display:block;font-size:.92rem;font-weight:650;letter-spacing:-.15px;margin-bottom:3px}
+.tile-desc{display:block;font-size:.79rem;color:var(--ink-soft);line-height:1.5;text-align:left}
+.tile-who{display:inline-block;margin-top:8px;font-size:.68rem;font-weight:600;
+  padding:2px 8px;border-radius:20px;background:var(--chip-bg);border:1px solid var(--chip-brd);color:var(--chip-ink)}
+.tile[hidden]{display:none}
+.cat[hidden]{display:none}
+
+.noresult{padding:34px 10px;text-align:center;color:var(--ink-faint);font-size:.87rem}
+.noresult i{display:block;font-size:1.5rem;margin-bottom:10px;opacity:.5}
+
+/* ════════ FOKUS & RESPONSIF ════════ */
+.hero:focus-visible,.tile:focus-visible,.sitem:focus-visible,.cat-head:focus-visible,.theme-btn:focus-visible{
+  outline:2px solid var(--dom-medis);outline-offset:3px}
+
+@media(max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .tb-burger{display:block}
+  .side{position:fixed;left:0;top:var(--topbar-h);width:var(--sidebar-w);z-index:35;
+    background:var(--drawer-bg);transform:translateX(-100%);transition:transform .28s ease}
+  .side.open{transform:none;box-shadow:22px 0 60px -30px rgba(0,0,0,.5)}
+  .main{padding:22px 18px 50px}
+}
+@media(max-width:560px){
+  .tb-sub,.tb-date,.theme-btn .tlabel{display:none}
+  .cat-grid,.heroes{grid-template-columns:1fr}
+  .page-head h1{font-size:1.3rem}
+}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none !important}
+  .hero:hover,.tile:hover{transform:none}
+}
+</style>
 </head>
 <body>
 
-    <header class="header">
-        <div class="logo-badge">
-            <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="logo-img">
+<div class="topbar">
+  <button class="tb-burger" onclick="toggleSide()" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+  <div class="tb-mark">
+    <img src="logo klinik imanuel.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-heart'}))">
+  </div>
+  <div>
+    <div class="tb-name">Klinik Imanuel</div>
+    <div class="tb-sub">Portal Pencatatan &amp; Pantauan</div>
+  </div>
+  <div class="tb-right">
+    <span class="tb-date" id="tbDate"></span>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">
+      <i class="fa-solid fa-sun"></i><span class="tlabel">Terang</span>
+    </button>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ════════ SIDEBAR ════════ -->
+  <aside class="side" id="side">
+    <div class="sfind">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" id="find" placeholder="Cari modul…" oninput="filterTiles(this.value)" aria-label="Cari modul">
+    </div>
+
+    <div class="slabel">Modul Utama</div>
+    <a href="dashboard.html" class="sitem" style="--dot:var(--dom-data)"><i class="fa-solid fa-chart-line"></i>Dashboard &amp; Data</a>
+    <a href="stok_obat.html" class="sitem" style="--dot:var(--dom-farmasi)"><i class="fa-solid fa-boxes-stacked"></i>Stok Obat (Apotek)</a>
+    <a href="pembukuan.html" class="sitem" style="--dot:var(--dom-uang)"><i class="fa-solid fa-book-open"></i>Pembukuan</a>
+
+    <div class="slabel">Kategori Form</div>
+    <button class="sitem" data-spy="cat-medis"   style="--dot:var(--dom-medis)"   onclick="jumpCat('cat-medis',event)"><i class="fa-solid fa-stethoscope"></i>Poli &amp; Medis<span class="n">4</span></button>
+    <button class="sitem" data-spy="cat-farmasi" style="--dot:var(--dom-farmasi)" onclick="jumpCat('cat-farmasi',event)"><i class="fa-solid fa-capsules"></i>Farmasi &amp; Lab<span class="n">2</span></button>
+    <button class="sitem" data-spy="cat-admin"   style="--dot:var(--dom-uang)"    onclick="jumpCat('cat-admin',event)"><i class="fa-solid fa-file-invoice-dollar"></i>Administrasi<span class="n">4</span></button>
+    <button class="sitem" data-spy="cat-sistem"  style="--dot:var(--dom-sistem)"  onclick="jumpCat('cat-sistem',event)"><i class="fa-solid fa-sliders"></i>Pengaturan Sistem<span class="n">3</span></button>
+
+    <div class="side-foot">
+      &copy; 1991 Klinik Imanuel<br>
+      Mewujudnyatakan Kristus dalam pelayanan kesehatan <span class="hb">&hearts;</span>
+    </div>
+  </aside>
+
+  <!-- ════════ MAIN ════════ -->
+  <main class="main">
+
+    <div class="page-head">
+      <h1>Selamat datang di Portal Klinik</h1>
+      <p>Pilih modul untuk mulai bekerja. Klik judul kategori untuk membuka atau menutupnya.</p>
+      <p class="vis">Mewujudnyatakan Kristus dalam pelayanan kesehatan</p>
+    </div>
+
+    <!-- ── 3 modul utama + KPI ── -->
+    <section class="heroes">
+
+      <a href="dashboard.html" class="hero" style="--dom:var(--dom-data)">
+        <div class="hero-top">
+          <span class="hero-ico"><i class="fa-solid fa-chart-line"></i></span>
+          <div><h3>Dashboard &amp; Pencarian Data</h3><div class="who">Semua peran</div></div>
         </div>
-        <h1>Klinik Imanuel</h1>
-        <p class="subtitle">Portal Sistem Pencatatan &amp; Pantauan Klinik</p>
-        <div class="brand-rule"></div>
-        <p class="vision">Mewujudnyatakan Kristus dalam pelayanan kesehatan</p>
-    </header>
+        <div class="kpi">
+          <div class="kpi-main">
+            <span class="kpi-num" id="kpiKunjungan">—</span>
+            <span class="kpi-lbl">Kunjungan hari ini</span>
+          </div>
+          <div class="kpi-side">
+            <span class="delta up" id="kpiKunjunganDelta">+12%</span>
+            <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
+              <rect class="spark-bar" x="0"  y="13" width="8" height="11" rx="2"/>
+              <rect class="spark-bar" x="11" y="9"  width="8" height="15" rx="2"/>
+              <rect class="spark-bar" x="22" y="16" width="8" height="8"  rx="2"/>
+              <rect class="spark-bar" x="33" y="6"  width="8" height="18" rx="2"/>
+              <rect class="spark-bar" x="44" y="11" width="8" height="13" rx="2"/>
+              <rect class="spark-bar" x="55" y="14" width="8" height="10" rx="2"/>
+              <rect class="spark-bar now" x="66" y="3" width="8" height="21" rx="2"/>
+            </svg>
+          </div>
+        </div>
+        <p class="hero-desc">Ringkasan aktivitas hari ini, pencarian pasien lintas modul, pantauan follow-up, dan ekspor Excel.</p>
+        <span class="cta">Buka Dashboard <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
 
-    <div class="banners-container">
+      <a href="stok_obat.html" class="hero" style="--dom:var(--dom-farmasi)">
+        <div class="hero-top">
+          <span class="hero-ico"><i class="fa-solid fa-boxes-stacked"></i></span>
+          <div><h3>Stok Obat (Apotek)</h3><div class="who">Apoteker</div></div>
+          <span class="lockpill"><i class="fa-solid fa-lock"></i> Terkunci</span>
+        </div>
+        <div class="kpi">
+          <div class="kpi-main">
+            <span class="kpi-num" id="kpiStok">—</span>
+            <span class="kpi-lbl">Batch perlu tindakan</span>
+          </div>
+          <div class="kpi-side">
+            <span class="delta dn" id="kpiStokDelta">3 kedaluwarsa</span>
+            <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
+              <rect class="spark-bar" x="0" y="8" width="76" height="8" rx="4" opacity=".16"/>
+              <rect class="spark-bar now" x="0" y="8" width="46" height="8" rx="4"/>
+            </svg>
+          </div>
+        </div>
+        <p class="hero-desc">Inventaris FEFO, transaksi masuk/keluar per batch, dan analitik pergerakan obat.</p>
+        <span class="cta">Buka Modul Farmasi <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
 
-        <a href="dashboard.html" class="dashboard-card">
-            <div class="banner-card-left">
-                <div class="banner-card-icon"><i class="fa-solid fa-chart-line"></i></div>
-                <div class="banner-card-text">
-                    <h3>Dashboard &amp; Pencarian Data</h3>
-                    <p>Lihat ringkasan aktivitas hari ini, cari data pasien, pantau follow-up, dan ekspor laporan ke Excel — semuanya dalam satu tempat.</p>
-                    <div class="banner-card-pills">
-                        <span class="banner-pill"><i class="fa-solid fa-bell" style="margin-right:4px"></i>Follow-up Hari Ini</span>
-                        <span class="banner-pill"><i class="fa-solid fa-magnifying-glass" style="margin-right:4px"></i>Pencarian Pasien</span>
-                        <span class="banner-pill"><i class="fa-solid fa-file-excel" style="margin-right:4px"></i>Export Excel</span>
-                    </div>
-                </div>
-            </div>
-            <div class="banner-card-right">
-                <div class="banner-cta">Buka Dashboard <i class="fa-solid fa-arrow-right"></i></div>
-            </div>
-        </a>
+      <a href="pembukuan.html" class="hero" style="--dom:var(--dom-uang)">
+        <div class="hero-top">
+          <span class="hero-ico"><i class="fa-solid fa-book-open"></i></span>
+          <div><h3>Pembukuan Keuangan</h3><div class="who">Bendahara / Yayasan</div></div>
+          <span class="lockpill"><i class="fa-solid fa-lock"></i> Terkunci</span>
+        </div>
+        <div class="kpi">
+          <div class="kpi-main">
+            <span class="kpi-num rp" id="kpiKas">—</span>
+            <span class="kpi-lbl">Kas masuk hari ini</span>
+          </div>
+          <div class="kpi-side">
+            <span class="delta flat" id="kpiKasDelta">7 jurnal</span>
+            <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
+              <polyline points="2,19 14,15 26,17 38,10 50,12 62,7 74,5" fill="none"
+                        stroke="var(--dom)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="74" cy="5" r="3" fill="var(--dom)"/>
+            </svg>
+          </div>
+        </div>
+        <p class="hero-desc">Jurnal kas, laba/rugi, neraca, dan penyusutan inventaris klinik dalam satu sistem.</p>
+        <span class="cta">Buka Pembukuan <i class="fa-solid fa-arrow-right"></i></span>
+      </a>
 
-        <a href="stok_obat.html" class="farmasi-card">
-            <div class="banner-card-left">
-                <div class="banner-card-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
-                <div class="banner-card-text">
-                    <h3>Manajemen Stok Obat (Apotek)</h3>
-                    <p>Sistem inventaris obat pintar dengan pengaturan FEFO (First Expired First Out), transaksi masuk/keluar, dan analitik stok apotek.</p>
-                    <div class="banner-card-pills">
-                        <span class="banner-pill" style="background:rgba(225,21,7,.16); border-color:rgba(225,21,7,.40); color:#ffb3ab;"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Akses Terkunci</span>
-                        <span class="banner-pill"><i class="fa-solid fa-truck-ramp-box" style="margin-right:4px"></i>Sistem Batch</span>
-                        <span class="banner-pill"><i class="fa-solid fa-chart-pie" style="margin-right:4px"></i>Analitik Obat</span>
-                    </div>
-                </div>
-            </div>
-            <div class="banner-card-right">
-                <div class="banner-cta">Buka Modul Farmasi <i class="fa-solid fa-arrow-right"></i></div>
-            </div>
-        </a>
+    </section>
 
-        <a href="pembukuan.html" class="pembukuan-card">
-            <div class="banner-card-left">
-                <div class="banner-card-icon"><i class="fa-solid fa-book-open"></i></div>
-                <div class="banner-card-text">
-                    <h3>Pembukuan Keuangan</h3>
-                    <p>Jurnal kas, laporan laba/rugi, neraca, dan penyusutan inventaris klinik &mdash; lengkap dalam satu sistem untuk bendahara/pengurus yayasan.</p>
-                    <div class="banner-card-pills">
-                        <span class="banner-pill" style="background:rgba(225,21,7,.16); border-color:rgba(225,21,7,.40); color:#ffb3ab;"><i class="fa-solid fa-lock" style="margin-right:4px"></i>Akses Terkunci</span>
-                        <span class="banner-pill"><i class="fa-solid fa-scale-balanced" style="margin-right:4px"></i>Laba/Rugi &amp; Neraca</span>
-                        <span class="banner-pill"><i class="fa-solid fa-box-archive" style="margin-right:4px"></i>Inventaris</span>
-                    </div>
-                </div>
-            </div>
-            <div class="banner-card-right">
-                <div class="banner-cta">Buka Pembukuan <i class="fa-solid fa-arrow-right"></i></div>
-            </div>
-        </a>
+    <!-- ── KATEGORI 1 (terbuka) ── -->
+    <section class="cat open" id="cat-medis" style="--cat:var(--dom-medis)">
+      <button class="cat-head" aria-expanded="true" aria-controls="body-medis" onclick="toggleCat(this)">
+        <span class="cat-dot"></span>
+        <span class="cat-titles"><span class="cat-name">Pelayanan Poli &amp; Medis</span><span class="sub">— pencatatan saat pasien dilayani</span></span>
+        <span class="cat-count">4 modul</span>
+        <i class="cat-chev fa-solid fa-chevron-down"></i>
+      </button>
+      <div class="cat-body" id="body-medis">
+        <div class="cat-grid">
+          <a href="poli_umum.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-stethoscope"></i></span>
+            <span class="tile-body"><span class="tile-title">Register Poli Umum</span><span class="tile-desc">Kunjungan dan tindakan harian Poli Umum.</span><span class="tile-who">Perawat</span></span>
+          </a>
+          <a href="poli_gigi.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-tooth"></i></span>
+            <span class="tile-body"><span class="tile-title">Register Poli Gigi</span><span class="tile-desc">Kunjungan, dokter pemeriksa, dan tindakan Poli Gigi.</span><span class="tile-who">Perawat gigi</span></span>
+          </a>
+          <a href="pasien_kontrol.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-calendar-check"></i></span>
+            <span class="tile-body"><span class="tile-title">Input Pasien Kontrol</span><span class="tile-desc">Jadwal pasien yang direncanakan kontrol kembali.</span><span class="tile-who">Dokter</span></span>
+          </a>
+          <a href="rujukan.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-file-medical"></i></span>
+            <span class="tile-body"><span class="tile-title">Input Rujukan</span><span class="tile-desc">Rekap rujukan pasien ke fasilitas kesehatan lanjutan.</span><span class="tile-who">Admin</span></span>
+          </a>
+        </div>
+      </div>
+    </section>
 
+    <!-- ── KATEGORI 2 (terbuka) ── -->
+    <section class="cat open" id="cat-farmasi" style="--cat:var(--dom-farmasi)">
+      <button class="cat-head" aria-expanded="true" aria-controls="body-farmasi" onclick="toggleCat(this)">
+        <span class="cat-dot"></span>
+        <span class="cat-titles"><span class="cat-name">Farmasi &amp; Laboratorium</span><span class="sub">— obat kronis dan pantauan lab</span></span>
+        <span class="cat-count">2 modul</span>
+        <i class="cat-chev fa-solid fa-chevron-down"></i>
+      </button>
+      <div class="cat-body" id="body-farmasi">
+        <div class="cat-grid">
+          <a href="obat_kronis.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-capsules"></i></span>
+            <span class="tile-body"><span class="tile-title">Input Obat Kronis</span><span class="tile-desc">Pengambilan obat pasien PRB/PROLANIS, jatuh tempo H-3.</span><span class="tile-who">Apoteker</span></span>
+          </a>
+          <a href="lab_rutin.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-flask-vial"></i></span>
+            <span class="tile-body"><span class="tile-title">Input Lab Rutin</span><span class="tile-desc">Lab pasien DM/HPT dengan jadwal kontrol 3 &amp; 6 bulan.</span><span class="tile-who">Analis / perawat</span></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── KATEGORI 3 (terbuka) ── -->
+    <section class="cat open" id="cat-admin" style="--cat:var(--dom-uang)">
+      <button class="cat-head" aria-expanded="true" aria-controls="body-admin" onclick="toggleCat(this)">
+        <span class="cat-dot"></span>
+        <span class="cat-titles"><span class="cat-name">Administrasi &amp; Keuangan</span><span class="sub">— tagihan, setoran, dan laporan berkala</span></span>
+        <span class="cat-count">4 modul</span>
+        <i class="cat-chev fa-solid fa-chevron-down"></i>
+      </button>
+      <div class="cat-body" id="body-admin">
+        <div class="cat-grid">
+          <a href="generate.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-file-invoice"></i></span>
+            <span class="tile-body"><span class="tile-title">Buat Invoice</span><span class="tile-desc">Susun invoice PDF lalu kirim via Email atau WhatsApp.</span><span class="tile-who">Admin</span></span>
+          </a>
+          <a href="laporan_keuangan.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-cash-register"></i></span>
+            <span class="tile-body"><span class="tile-title">Laporan Keuangan</span><span class="tile-desc">Rekap penerimaan operasional harian klinik.</span><span class="tile-who">Kasir</span></span>
+          </a>
+          <a href="laporan_admin.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-clipboard-list"></i></span>
+            <span class="tile-body"><span class="tile-title">Laporan Harian Admin</span><span class="tile-desc">Rekap capaian indikator kesehatan harian.</span><span class="tile-who">Admin</span></span>
+          </a>
+          <a href="laporan_puskesmas.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-hospital"></i></span>
+            <span class="tile-body"><span class="tile-title">Laporan Puskesmas</span><span class="tile-desc">Input laporan berkala klinik ke puskesmas pembina.</span><span class="tile-who">Perawat</span></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── KATEGORI 4 (tertutup — jarang dibuka) ── -->
+    <section class="cat" id="cat-sistem" style="--cat:var(--dom-sistem)">
+      <button class="cat-head" aria-expanded="false" aria-controls="body-sistem" onclick="toggleCat(this)">
+        <span class="cat-dot"></span>
+        <span class="cat-titles"><span class="cat-name">Pengaturan Sistem</span><span class="sub">— jarang dibuka, memengaruhi seluruh modul</span></span>
+        <span class="cat-count">3 modul</span>
+        <i class="cat-chev fa-solid fa-chevron-down"></i>
+      </button>
+      <div class="cat-body" id="body-sistem">
+        <div class="cat-grid">
+          <a href="master_data.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-book-medical"></i></span>
+            <span class="tile-body"><span class="tile-title">Master Data</span><span class="tile-desc">Daftar baku dokter dan diagnosis ICD-10 untuk input poli.</span><span class="tile-who">Admin sistem</span></span>
+          </a>
+          <a href="items.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-tags"></i></span>
+            <span class="tile-body"><span class="tile-title">Item &amp; Harga</span><span class="tile-desc">Daftar barang dan jasa yang dipakai saat membuat invoice.</span><span class="tile-who">Admin sistem</span></span>
+          </a>
+          <a href="pembersihan_data.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-broom"></i></span>
+            <span class="tile-body"><span class="tile-title">Pembersihan Data</span><span class="tile-desc">Seragamkan penulisan nama dokter dan diagnosis lama.</span><span class="tile-who">Admin sistem</span></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="noresult" id="noResult" hidden>
+      <i class="fa-solid fa-magnifying-glass"></i>
+      Tidak ada modul yang cocok. Coba kata kunci lain.
     </div>
 
-    <div class="section-divider">
-        <div class="section-divider-line"></div>
-        <span class="section-divider-label"><i class="fa-solid fa-pencil" style="margin-right:6px"></i>Form Input Data Harian</span>
-        <div class="section-divider-line"></div>
-    </div>
+  </main>
+</div>
 
-    <main class="dashboard-container">
+<script>
+/* ════════ Tanggal ════════ */
+document.getElementById('tbDate').textContent =
+  new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-        <a href="rujukan.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-file-medical"></i></div>
-            <h3>Input Rujukan</h3>
-            <p>Form rekap data rujukan pasien ke fasilitas kesehatan lanjutan yang diisi oleh admin.</p>
-        </a>
+/* ════════ Tema terang/gelap ════════ */
+function currentTheme(){ return document.documentElement.getAttribute('data-theme') || 'dark'; }
+function syncThemeBtn(t){
+  const b = document.getElementById('themeBtn');
+  const toLight = (t === 'dark');                 /* di gelap → tawarkan terang */
+  b.querySelector('i').className = 'fa-solid ' + (toLight ? 'fa-sun' : 'fa-moon');
+  b.querySelector('.tlabel').textContent = toLight ? 'Terang' : 'Gelap';
+  b.setAttribute('aria-label', toLight ? 'Beralih ke tema terang' : 'Beralih ke tema gelap');
+}
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('ki-theme', t); }catch(e){}
+  syncThemeBtn(t);
+}
+function toggleTheme(){ setTheme(currentTheme() === 'dark' ? 'light' : 'dark'); }
+syncThemeBtn(currentTheme());
 
-        <a href="obat_kronis.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-capsules"></i></div>
-            <h3>Input Obat Kronis</h3>
-            <p>Manajemen dan pendataan resep obat untuk pasien PRB/PROLANIS oleh apoteker.</p>
-        </a>
+/* ════════ Sidebar mobile ════════ */
+function toggleSide(){ document.getElementById('side').classList.toggle('open'); }
+document.addEventListener('click', e=>{
+  if(window.innerWidth > 1000) return;
+  if(e.target.closest('.side') || e.target.closest('.tb-burger')) return;
+  document.getElementById('side').classList.remove('open');
+});
 
-        <a href="pasien_kontrol.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-calendar-check"></i></div>
-            <h3>Input Pasien Kontrol</h3>
-            <p>Penjadwalan pasien rencana kontrol kembali ke klinik yang diisi oleh dokter.</p>
-        </a>
-	<a href="lab_rutin.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-flask-vial"></i></div>
-            <h3>Input Lab Rutin</h3>
-            <p>Pencatatan lab pasien DM/HPT dengan jadwal kontrol otomatis 3 &amp; 6 bulan.</p>
-        </a>
-        <a href="poli_umum.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-stethoscope"></i></div>
-            <h3>Register Poli Umum</h3>
-            <p>Pencatatan data kunjungan dan tindakan harian di Poli Umum oleh perawat.</p>
-        </a>
+/* ════════ Kategori collapsible ════════ */
+function loadCatState(){ try{ return JSON.parse(localStorage.getItem('ki-cats')) || {}; }catch(e){ return {}; } }
+function saveCatState(s){ try{ localStorage.setItem('ki-cats', JSON.stringify(s)); }catch(e){} }
 
-        <a href="poli_gigi.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-tooth"></i></div>
-            <h3>Register Poli Gigi</h3>
-            <p>Pencatatan kunjungan, dokter pemeriksa, dan tindakan Poli Gigi oleh perawat gigi.</p>
-        </a>
+function toggleCat(btn){
+  const cat = btn.closest('.cat');
+  const open = cat.classList.toggle('open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const st = loadCatState(); st[cat.id] = open; saveCatState(st);
+}
+function applyCatState(){
+  const st = loadCatState();
+  document.querySelectorAll('.cat').forEach(c=>{
+    if(c.id in st) c.classList.toggle('open', st[c.id]);
+    c.querySelector('.cat-head').setAttribute('aria-expanded', c.classList.contains('open') ? 'true' : 'false');
+  });
+}
+function jumpCat(id, e){
+  if(e) e.preventDefault();
+  const cat = document.getElementById(id);
+  if(!cat.classList.contains('open')){
+    cat.classList.add('open');
+    cat.querySelector('.cat-head').setAttribute('aria-expanded','true');
+    const st = loadCatState(); st[id] = true; saveCatState(st);
+  }
+  cat.scrollIntoView({behavior:'smooth', block:'start'});
+  if(window.innerWidth <= 1000) document.getElementById('side').classList.remove('open');
+}
 
-        <a href="laporan_puskesmas.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-hospital"></i></div>
-            <h3>Laporan Puskesmas</h3>
-            <p>Input data laporan berkala ke puskesmas oleh perawat.</p>
-        </a>
+/* ════════ Cari modul (paksa buka kategori yang cocok) ════════ */
+function filterTiles(q){
+  q = q.trim().toLowerCase();
+  let hits = 0;
+  document.querySelectorAll('.tile').forEach(t=>{
+    const match = !q || t.textContent.toLowerCase().includes(q);
+    t.hidden = q ? !match : false;
+    if(match) hits++;
+  });
+  document.querySelectorAll('.cat').forEach(c=>{
+    const live = [...c.querySelectorAll('.tile')].some(t=>!t.hidden);
+    if(q){ c.hidden = !live; c.classList.add('searching'); }
+    else { c.hidden = false; c.classList.remove('searching'); }
+  });
+  document.getElementById('noResult').hidden = hits > 0;
+  if(!q) applyCatState();
+}
 
-        <a href="laporan_keuangan.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-            <h3>Laporan Keuangan</h3>
-            <p>Pembukuan dan rekapitulasi penerimaan operasional harian klinik oleh kasir.</p>
-        </a>
+/* ════════ KPI ════════
+   Ganti mockKPI() dengan 3 query count Supabase.
+   PENTING: bila query gagal / diblokir RLS → tampilkan "—", bukan "0".
+   "Kas masuk hari ini: Rp 0" karena RLS senyap = salah baca berbahaya. */
+function setKPI(id, value){
+  document.getElementById(id).textContent = (value == null) ? '—' : value;
+}
+function mockKPI(){
+  setKPI('kpiKunjungan', 35);
+  setKPI('kpiStok', 12);
+  setKPI('kpiKas', new Intl.NumberFormat('id-ID',
+    {style:'currency',currency:'IDR',maximumFractionDigits:0}).format(2450000));
+}
 
-        <a href="laporan_admin.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list"></i></div>
-            <h3>Laporan Harian Admin</h3>
-            <p>Rekapitulasi administrasi capaian indikator kesehatan harian.</p>
-        </a>
-        <a href="items.html" class="menu-card">
-           <div class="icon-wrapper"><i class="fa-solid fa-tags"></i></div>
-           <h3>Item &amp; Harga</h3><p>Kelola daftar barang/jasa untuk invoice.</p>
-        </a>
-      <a href="generate.html" class="menu-card">
-           <div class="icon-wrapper"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-           <h3>Buat Invoice</h3><p>Buat invoice PDF & kirim via Email/WhatsApp.</p>
-       </a>
+/* ════════ Scroll-spy sidebar ════════ */
+const spies = [...document.querySelectorAll('[data-spy]')];
+const spyObserver = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{
+    if(!en.isIntersecting) return;
+    spies.forEach(s=>s.classList.toggle('on', s.dataset.spy === en.target.id));
+  });
+},{rootMargin:'-70px 0px -60% 0px', threshold:0});
+document.querySelectorAll('.cat').forEach(c=>spyObserver.observe(c));
 
-        <a href="master_data.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-book-medical"></i></div>
-            <h3>Master Data</h3>
-            <p>Kelola daftar baku dokter &amp; diagnosis (ICD-10) untuk input poli.</p>
-        </a>
-
-        <a href="pembersihan_data.html" class="menu-card">
-            <div class="icon-wrapper"><i class="fa-solid fa-broom"></i></div>
-            <h3>Pembersihan Data</h3>
-            <p>Seragamkan nama dokter &amp; diagnosis lama yang penulisannya bervariasi.</p>
-        </a>
-    </main>
-
-    <footer class="footer">
-        &copy; 1991 Klinik Imanuel. Mewujudnyatakan Kristus dalam Pelayanan Kesehatan <span class="hb">&hearts;</span>
-    </footer>
-
+/* boot */
+applyCatState();
+mockKPI();
+</script>
 </body>
 </html>
