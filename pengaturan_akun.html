@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan Akun - Klinik Imanuel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Urutan tiga tag ini wajib: pustaka → mesin sandi → gerbang. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="ki_auth.js"></script>
+    <script src="admin_gate.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-soft: #eff6ff;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --danger: #dc2626;
+            --danger-soft: #fef2f2;
+            --success: #16a34a;
+            --success-soft: #f0fdf4;
+            --warn: #d97706;
+            --warn-soft: #fffbeb;
+            --warn-border: #fde68a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .form-container {
+            background-color: var(--card-bg);
+            width: 100%;
+            max-width: 750px;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            height: fit-content;
+        }
+        .header-form {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 20px;
+            gap: 20px;
+        }
+        .btn-back { text-decoration: none; color: var(--text-muted); font-size: 1.2rem; transition: color 0.3s; }
+        .btn-back:hover { color: var(--primary-color); }
+        .header-text { flex: 1; }
+        .header-form h2 { font-size: 1.5rem; font-weight: 600; }
+        .header-sub { font-size: 0.87rem; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+
+        /* ── Panel keterangan & peringatan ── */
+        .panel {
+            display: flex; gap: 13px; padding: 15px 18px; border-radius: 12px;
+            font-size: 0.87rem; line-height: 1.65; margin-bottom: 22px;
+        }
+        .panel i { font-size: 1.05rem; margin-top: 2px; flex-shrink: 0; }
+        .panel-info { background: var(--primary-soft); border: 1px solid #bfdbfe; color: #1e40af; }
+        .panel-info i { color: var(--primary-color); }
+        .panel-warn { background: var(--warn-soft); border: 1px solid var(--warn-border); color: #92400e; }
+        .panel-warn i { color: var(--warn); }
+        .panel b { font-weight: 600; }
+        .panel code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em;
+            background: rgba(255,255,255,0.7); padding: 1px 5px; border-radius: 4px;
+        }
+
+        /* ── Kartu akun ── */
+        .daftar-akun { display: flex; flex-direction: column; gap: 12px; }
+        .akun {
+            display: flex; align-items: center; gap: 16px;
+            border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 18px 20px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .akun:hover { border-color: #cbd5e1; box-shadow: 0 2px 8px -4px rgba(15,23,42,0.12); }
+        .akun-ikon {
+            width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; background: var(--primary-soft); color: var(--primary-color);
+        }
+        .akun-teks { flex: 1; min-width: 0; }
+        .akun-nama { font-size: 0.98rem; font-weight: 600; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+        .akun-ket { font-size: 0.81rem; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+        .akun-waktu { font-size: 0.76rem; color: var(--text-muted); margin-top: 5px; }
+
+        .lencana {
+            font-size: 0.7rem; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+            white-space: nowrap; letter-spacing: 0.01em;
+        }
+        .lencana-ok { color: var(--success); background: var(--success-soft); border: 1px solid #bbf7d0; }
+        .lencana-belum { color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn-border); }
+        .lencana-awal { color: var(--danger); background: var(--danger-soft); border: 1px solid #fecaca; }
+
+        /* ── Tombol ── */
+        .btn-primary, .btn-batal, .btn-ganti {
+            border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 600;
+            cursor: pointer; font-family: inherit; transition: 0.2s;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-primary { background: var(--primary-color); color: #fff; padding: 11px 18px; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-primary:disabled { background: #93b4f5; cursor: default; }
+        .btn-batal {
+            background: var(--card-bg); color: var(--text-muted);
+            border: 1px solid var(--border-color); padding: 11px 18px;
+        }
+        .btn-batal:hover { background: var(--bg-color); }
+        .btn-ganti {
+            flex-shrink: 0; background: var(--card-bg); color: var(--primary-color);
+            border: 1px solid var(--border-color); padding: 9px 15px; font-size: 0.85rem;
+        }
+        .btn-ganti:hover { border-color: var(--primary-color); background: var(--primary-soft); }
+
+        .kosong { padding: 40px; text-align: center; color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; }
+        .kosong i { font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.4; }
+        .kosong.galat { color: var(--danger); }
+        .kosong.galat i { opacity: 0.6; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
+            z-index: 3000; justify-content: center; align-items: flex-start;
+            padding: 60px 20px; overflow-y: auto;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--card-bg); border-radius: 16px; width: 100%; max-width: 460px;
+            padding: 28px; box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.3);
+        }
+        .modal h3 { font-size: 1.18rem; font-weight: 600; margin-bottom: 5px; }
+        .modal-sub { font-size: 0.84rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.55; }
+        .fg { margin-bottom: 16px; }
+        .fg label { display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 7px; color: var(--text-main); }
+        .fg input {
+            width: 100%; padding: 11px 14px; border: 1px solid var(--border-color);
+            border-radius: 10px; font-size: 0.93rem; color: var(--text-main);
+            background: var(--card-bg); font-family: inherit; outline: none; transition: 0.18s;
+        }
+        .fg input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .fg input:disabled { background: var(--bg-color); color: var(--text-muted); }
+        .fg .hint { font-size: 0.77rem; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+
+        .pw-wrap { position: relative; }
+        .pw-wrap input { padding-right: 44px; }
+        .pw-lihat {
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            width: 36px; height: 36px; border: none; background: none; cursor: pointer;
+            color: var(--text-muted); font-size: 0.92rem; border-radius: 8px;
+        }
+        .pw-lihat:hover { color: var(--primary-color); }
+
+        /* Ukur kekuatan */
+        .ukur { margin-top: 9px; }
+        .ukur-batang { height: 5px; border-radius: 3px; background: var(--border-color); overflow: hidden; }
+        .ukur-isi { height: 100%; width: 0; border-radius: 3px; transition: width 0.25s, background 0.25s; }
+        .ukur-teks { font-size: 0.77rem; margin-top: 6px; line-height: 1.5; font-weight: 500; }
+        .ukur[data-tingkat="lemah"]  .ukur-isi { width: 25%;  background: var(--danger); }
+        .ukur[data-tingkat="kosong"] .ukur-isi { width: 0; }
+        .ukur[data-tingkat="pas"]    .ukur-isi { width: 55%;  background: var(--warn); }
+        .ukur[data-tingkat="sedang"] .ukur-isi { width: 78%;  background: #0891b2; }
+        .ukur[data-tingkat="kuat"]   .ukur-isi { width: 100%; background: var(--success); }
+        .ukur[data-tingkat="lemah"]  .ukur-teks,
+        .ukur[data-tingkat="kosong"] .ukur-teks { color: var(--danger); }
+        .ukur[data-tingkat="pas"]    .ukur-teks { color: var(--warn); }
+        .ukur[data-tingkat="sedang"] .ukur-teks { color: #0e7490; }
+        .ukur[data-tingkat="kuat"]   .ukur-teks { color: var(--success); }
+
+        .modal-pesan { font-size: 0.84rem; font-weight: 600; min-height: 20px; margin: 4px 0 2px; line-height: 1.5; }
+        .modal-pesan.salah { color: var(--danger); }
+        .modal-pesan.info { color: var(--text-muted); }
+        .modal-aksi { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(24px);
+            background: #0f172a; color: #fff; padding: 12px 20px; border-radius: 11px;
+            font-size: 0.89rem; font-weight: 500; opacity: 0; pointer-events: none;
+            transition: 0.25s; z-index: 4000; display: flex; align-items: center; gap: 10px;
+            max-width: calc(100vw - 40px);
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.galat { background: #b91c1c; }
+
+        .catatan-bawah {
+            margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border-color);
+            font-size: 0.79rem; color: var(--text-muted); line-height: 1.7;
+        }
+
+        :focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+        @media (max-width: 600px) {
+            body { padding: 0; }
+            .form-container { border-radius: 0; padding: 26px 20px; border: none; min-height: 100vh; }
+            .akun { flex-wrap: wrap; }
+            .btn-ganti { width: 100%; }
+            .modal-aksi { flex-direction: column-reverse; }
+            .modal-aksi button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="header-form">
+            <a href="index.html" class="btn-back" title="Kembali"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="header-text">
+                <h2>Pengaturan Akun</h2>
+                <div class="header-sub">Kata sandi untuk membuka modul yang terkunci.</div>
+            </div>
+        </div>
+
+        <div class="panel panel-info">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+                Kata sandi disimpan sebagai <b>hash bcrypt di dalam database</b>, bukan teks biasa.
+                Untuk menggantinya, sandi lama harus dimasukkan — jadi tidak ada yang bisa menimpanya
+                dari luar tanpa tahu sandi yang berlaku.
+            </div>
+        </div>
+
+        <div class="panel panel-warn">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <b>Yang perlu Anda tahu soal batasnya.</b>
+                Keputusan buka-tutup halaman masih diambil di browser, jadi orang yang membuka
+                DevTools tetap bisa melewati layar kunci. Yang sudah terlindungi adalah
+                <i>sandinya</i>, bukan <i>pintunya</i>. Kunci ini menahan salah klik dan staf yang
+                tidak berkepentingan — bukan orang yang sengaja mencari jalan masuk.
+                Perlindungan sungguhan menunggu Supabase Auth + RLS per peran.
+            </div>
+        </div>
+
+        <div class="daftar-akun" id="daftarAkun">
+            <div class="kosong"><i class="fa-solid fa-spinner fa-spin"></i>Memuat status akun…</div>
+        </div>
+
+        <div class="catatan-bawah">
+            <b>Kalau sandi Pengaturan Sistem terlupa</b>, tidak ada jalan dari dalam aplikasi — itu
+            memang disengaja. Pemulihannya lewat Supabase SQL Editor; perintahnya tercatat di kepala
+            berkas <code>sql/001_sys_akun.sql</code>.
+        </div>
+    </div>
+
+    <!-- ── Modal ganti sandi ── -->
+    <div class="modal-overlay" id="modalSandi">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalJudul">
+            <h3 id="modalJudul">Ganti kata sandi</h3>
+            <div class="modal-sub" id="modalSub"></div>
+
+            <div class="fg" id="grupLama">
+                <label for="pwLama">Kata sandi sekarang</label>
+                <div class="pw-wrap">
+                    <input type="password" id="pwLama" autocomplete="current-password" placeholder="Kata sandi yang berlaku">
+                    <button type="button" class="pw-lihat" data-untuk="pwLama" aria-label="Tampilkan kata sandi">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="fg">
+                <label for="pwBaru">Kata sandi baru</label>
+                <div class="pw-wrap">
+                    <input type="password" id="pwBaru" autocomplete="new-password" placeholder="Minimal 8 karakter">
+                    <button type="button" class="pw-lihat" data-untuk="pwBaru" aria-label="Tampilkan kata sandi">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <div class="ukur" id="ukur" data-tingkat="kosong">
+                    <div class="ukur-batang"><div class="ukur-isi"></div></div>
+                    <div class="ukur-teks" id="ukurTeks"></div>
+                </div>
+            </div>
+
+            <div class="fg">
+                <label for="pwUlang">Ulangi kata sandi baru</label>
+                <input type="password" id="pwUlang" autocomplete="new-password" placeholder="Ketik ulang">
+                <div class="hint">Kalimat panjang lebih aman daripada sandi pendek yang penuh simbol — dan lebih mudah diingat.</div>
+            </div>
+
+            <div class="modal-pesan" id="modalPesan"></div>
+
+            <div class="modal-aksi">
+                <button type="button" class="btn-batal" id="btnBatal">Batal</button>
+                <button type="button" class="btn-primary" id="btnSimpan">Simpan kata sandi</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="pengaturan_akun.js"></script>
+</body>
+</html>
