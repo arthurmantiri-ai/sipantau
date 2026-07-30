@@ -241,6 +241,28 @@
         .heat-stat .k { font-size: 0.72rem; font-weight: 700; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.03em; }
         .heat-stat .v { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--primary); font-size: 1.05rem; margin-top: 3px; }
         .heat-stat .s { font-size: 0.74rem; color: var(--text-mid); margin-top: 2px; }
+
+        /* ── KINERJA DOKTER ── */
+        .dok-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+        .dok-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #f0f4f3; }
+        .dok-row:last-child { border-bottom: none; }
+        .dok-rank { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.8rem; }
+        .dok-main { flex: 1; min-width: 0; }
+        .dok-nama { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: 0.9rem; color: var(--text); }
+        .dok-nama .anon { color: var(--text-soft); font-style: italic; font-weight: 500; }
+        .dok-bar { height: 6px; background: #eef2f1; border-radius: 3px; margin-top: 5px; overflow: hidden; }
+        .dok-bar > span { display: block; height: 100%; border-radius: 3px; }
+        .dok-jml { flex-shrink: 0; text-align: right; min-width: 62px; }
+        .dok-jml .n { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--primary); font-size: 0.95rem; }
+        .dok-jml .p { font-size: 0.68rem; color: var(--text-soft); margin-top: 2px; }
+        .poli-tag { font-size: 0.66rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em; flex-shrink: 0; }
+        .poli-tag.umum { background: #e3f2fd; color: #0d47a1; }
+        .poli-tag.gigi { background: #fce4ec; color: #880e4f; }
+
+        /* ── POLA JAM KUNJUNGAN ── */
+        .jam-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+        .jam-canvas { position: relative; height: 300px; }
+
         @media (max-width: 600px) {
             .ov-toolbar { flex-direction: column; align-items: stretch; }
             .ov-swap { align-self: center; transform: rotate(90deg); }
@@ -930,10 +952,18 @@ const OV_BULAN_GRAFIK = 6;                  // rentang untuk grafik bulanan & di
 const OV_HEAT_WARNA = ['#eef2f1', '#b2dfdb', '#4db6ac', '#00897b', '#00544a'];
 const OV_HEAT_TEKS  = ['#94aeaa', '#00544a', '#00453c', '#ffffff', '#ffffff'];
 const OV_DOW = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const OV_JAM_AWAL  = 8;                     // bucket pertama: 08.00-09.00
+const OV_JAM_AKHIR = 19;                    // batas atas EKSKLUSIF: bucket terakhir 18.00-19.00
 
 let ovData = null;                          // cache data 12 bulan (diisi loadOverview)
 let ovCmp  = { a: null, b: null, mode: 'auto' };   // mode: auto | sebanding | penuh
 let ovHeat = { bulan: null, metrik: 'total' };     // metrik: total | pu | pg | rev
+let ovDok  = { bulan: null };                     // panel kinerja dokter
+let ovJam  = { bulan: null };                     // grafik pola jam kunjungan
+/* Instance Chart.js grafik jam dikelola TERPISAH dari chartInstances.
+   Kalau ikut masuk ke sana, renderCharts() yang jalan belakangan dalam
+   loadOverview() akan langsung menghancurkannya (forEach destroy). */
+let ovJamChart = null;
 
 // ═══ OVERVIEW: UTIL ═══
 function ovKunciBulan(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; }
@@ -945,6 +975,11 @@ function ovLabelBulan(key) {
 function ovLabelBulanPendek(key) {
     const [y, m] = key.split('-').map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+}
+/* Bulan berjalan belum utuh. Labelnya harus mengatakan itu; kalau tidak,
+   Juli yang baru berjalan 30 hari akan dibaca setara dengan Juni yang penuh. */
+function ovLabelPeriode(key) {
+    return key === ovData.curKey ? `${ovLabelBulan(key)} (s/d ${ovTglPendek(TODAY)})` : ovLabelBulan(key);
 }
 function ovKlemBulan(v) {
     const daftar = ovData.bulanDimuat;
@@ -1085,6 +1120,32 @@ function ovNavHeat(delta) {
     ovSetHeatBulan(ovKunciBulan(new Date(y, m - 1 + delta, 1)));
 }
 function ovSetHeatMetrik(v) { if (!ovData) return; ovHeat.metrik = v; ovRenderHeatmap(); }
+
+function ovSetDokBulan(v) {
+    if (!ovData) return;
+    ovDok.bulan = ovKlemBulan(v);
+    const el = document.getElementById('dokBulan');
+    if (el && el.value !== ovDok.bulan) el.value = ovDok.bulan;
+    ovRenderDokter();
+}
+function ovNavDok(delta) {
+    if (!ovData) return;
+    const [y, m] = ovDok.bulan.split('-').map(Number);
+    ovSetDokBulan(ovKunciBulan(new Date(y, m - 1 + delta, 1)));
+}
+
+function ovSetJamBulan(v) {
+    if (!ovData) return;
+    ovJam.bulan = ovKlemBulan(v);
+    const el = document.getElementById('jamBulan');
+    if (el && el.value !== ovJam.bulan) el.value = ovJam.bulan;
+    ovRenderJam();
+}
+function ovNavJam(delta) {
+    if (!ovData) return;
+    const [y, m] = ovJam.bulan.split('-').map(Number);
+    ovSetJamBulan(ovKunciBulan(new Date(y, m - 1 + delta, 1)));
+}
 
 // ═══ OVERVIEW: RENDER PERBANDINGAN ═══
 function ovRenderPerbandingan() {
@@ -1250,6 +1311,182 @@ function ovRenderHeatmap() {
         </div>`;
 }
 
+// ═══ OVERVIEW: KINERJA DOKTER ═══
+/* Satu baris per (dokter, poli). Nama dinormalisasi seperlunya saja:
+   trim + rapatkan spasi ganda, supaya "dr. Andi " dan "dr.  Andi" tidak
+   jadi dua baris. Variasi ejaan yang lebih dalam (gelar, singkatan) sengaja
+   TIDAK disatukan di sini — itu wewenang pembersihan_data.html. Halaman
+   laporan tidak boleh diam-diam menggabungkan dua nama yang berbeda. */
+function ovRekapDokter(key) {
+    const peta = new Map();
+    const catat = (raw, poli) => {
+        const nama = String(raw || '').trim().replace(/\s+/g, ' ');
+        const kosong = !nama;
+        const label = kosong ? 'Tanpa nama dokter' : nama;
+        const k = label + '\u0000' + poli;
+        if (!peta.has(k)) peta.set(k, { nama: label, poli, jml: 0, kosong });
+        peta.get(k).jml++;
+    };
+    ovData.puM.forEach(r => { if (r.tanggal && r.tanggal.slice(0, 7) === key) catat(r.nama_dokter, 'Umum'); });
+    ovData.pgM.forEach(r => { if (r.tanggal && r.tanggal.slice(0, 7) === key) catat(r.nama_dokter_gigi, 'Gigi'); });
+    // Baris tanpa nama selalu di bawah, berapa pun jumlahnya.
+    return Array.from(peta.values())
+        .sort((a, b) => (a.kosong - b.kosong) || (b.jml - a.jml) || a.nama.localeCompare(b.nama, 'id'));
+}
+
+function ovRenderDokter() {
+    if (!ovData) return;
+    const body = document.getElementById('dokBody');
+    if (!body) return;
+
+    const key = ovDok.bulan;
+    const daftarBulan = ovData.bulanDimuat;
+    const bPrev = document.getElementById('dokPrev'), bNext = document.getElementById('dokNext');
+    if (bPrev) bPrev.disabled = (key <= daftarBulan[0]);
+    if (bNext) bNext.disabled = (key >= daftarBulan[daftarBulan.length - 1]);
+
+    const daftar = ovRekapDokter(key);
+    if (!daftar.length) {
+        body.innerHTML = `<div class="dok-wrap"><div class="empty" style="padding:30px">
+            <i class="fa-solid fa-user-doctor"></i>
+            <p>Belum ada kunjungan pada ${escHtml(ovLabelPeriode(key))}.</p></div></div>`;
+        return;
+    }
+
+    const total    = daftar.reduce((s, d) => s + d.jml, 0);
+    const maks     = Math.max(1, ...daftar.map(d => d.jml));
+    const bernama  = daftar.filter(d => !d.kosong);
+    const teratas  = bernama[0] || daftar[0];
+    const aktif    = bernama.length;
+    const rataDok  = aktif ? bernama.reduce((s, d) => s + d.jml, 0) / aktif : 0;
+    const adaAnon  = daftar.some(d => d.kosong);
+
+    const baris = daftar.map((d, i) => {
+        const gigi = d.poli === 'Gigi';
+        const warna = gigi ? '#880e4f' : '#1565c0';
+        const persen = total ? d.jml / total * 100 : 0;
+        return `
+        <div class="dok-row">
+            <div class="dok-rank" style="background:${i < 3 ? 'var(--primary)' : '#e0f2f1'};color:${i < 3 ? '#fff' : 'var(--primary)'}">${i + 1}</div>
+            <div class="dok-main">
+                <div class="dok-nama">
+                    <span${d.kosong ? ' class="anon"' : ''}>${escHtml(d.nama)}</span>
+                    <span class="poli-tag ${gigi ? 'gigi' : 'umum'}">${d.poli}</span>
+                </div>
+                <div class="dok-bar"><span style="width:${(d.jml / maks * 100).toFixed(1)}%;background:${warna}"></span></div>
+            </div>
+            <div class="dok-jml"><div class="n">${ovAngka(d.jml)}</div><div class="p">${ovAngka(persen, 1)}%</div></div>
+        </div>`;
+    }).join('');
+
+    const peringatan = adaAnon
+        ? ` <span class="peringatan"><i class="fa-solid fa-triangle-exclamation"></i> Ada kunjungan tanpa nama dokter (baris paling bawah).</span>`
+        : '';
+
+    body.innerHTML = `
+        <div class="dok-wrap">
+            <div class="ov-note">Periode <strong>${escHtml(ovLabelPeriode(key))}</strong> · gabungan Poli Umum &amp; Poli Gigi, satu baris per dokter per poli.${peringatan}</div>
+            ${baris}
+            <div class="heat-stats">
+                <div class="heat-stat"><div class="k">Total Pasien Diperiksa</div><div class="v">${ovAngka(total)}</div><div class="s">${escHtml(ovLabelPeriode(key))}</div></div>
+                <div class="heat-stat"><div class="k">Dokter Bertugas</div><div class="v">${aktif}</div><div class="s">punya minimal 1 pasien</div></div>
+                <div class="heat-stat"><div class="k">Terbanyak</div><div class="v">${ovAngka(teratas.jml)}</div><div class="s">${escHtml(teratas.nama)} · ${teratas.poli}</div></div>
+                <div class="heat-stat"><div class="k">Rata-rata / Dokter</div><div class="v">${ovAngka(rataDok, 1)}</div><div class="s">tidak termasuk yang tanpa nama</div></div>
+            </div>
+        </div>`;
+}
+
+// ═══ OVERVIEW: POLA JAM KUNJUNGAN ═══
+/* Kolom time Postgres datang sebagai "HH:MM:SS". Kembalikan null kalau kosong
+   atau tak terbaca — JANGAN dipaksa jadi 0, karena jam 00 adalah nilai yang sah
+   dan mengubah "tidak tahu" menjadi "tengah malam" itu mengarang data. */
+function ovJamKe(nilai) {
+    if (!nilai) return null;
+    const m = String(nilai).match(/^\s*(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    const j = parseInt(m[1], 10);
+    return (j >= 0 && j <= 23) ? j : null;
+}
+
+/* Hanya poli_umum: poli_gigi tidak punya kolom jam sama sekali.
+   luar + tanpaJam sengaja dihitung dan ditampilkan, bukan dibuang diam-diam,
+   supaya total batang bisa direkonsiliasi dengan total kunjungan. */
+function ovRekapJam(key) {
+    const ember = new Array(OV_JAM_AKHIR - OV_JAM_AWAL).fill(0);
+    let luar = 0, tanpaJam = 0, total = 0;
+    ovData.puM.forEach(r => {
+        if (!r.tanggal || r.tanggal.slice(0, 7) !== key) return;
+        total++;
+        const j = ovJamKe(r.jam_kedatangan);
+        if (j === null) { tanpaJam++; return; }
+        if (j < OV_JAM_AWAL || j >= OV_JAM_AKHIR) { luar++; return; }
+        ember[j - OV_JAM_AWAL]++;
+    });
+    return { ember, luar, tanpaJam, total, terhitung: total - luar - tanpaJam };
+}
+
+function ovRenderJam() {
+    if (!ovData) return;
+    const body = document.getElementById('jamBody');
+    if (!body) return;
+
+    const key = ovJam.bulan;
+    const daftarBulan = ovData.bulanDimuat;
+    const bPrev = document.getElementById('jamPrev'), bNext = document.getElementById('jamNext');
+    if (bPrev) bPrev.disabled = (key <= daftarBulan[0]);
+    if (bNext) bNext.disabled = (key >= daftarBulan[daftarBulan.length - 1]);
+
+    const r = ovRekapJam(key);
+    const dua = n => String(n).padStart(2, '0');
+    const labelJam = [];
+    for (let j = OV_JAM_AWAL; j < OV_JAM_AKHIR; j++) labelJam.push(`${dua(j)}–${dua(j + 1)}`);
+
+    let sibukI = -1, sibukV = 0;
+    r.ember.forEach((v, i) => { if (v > sibukV) { sibukV = v; sibukI = i; } });
+    const warna = r.ember.map((v, i) => (i === sibukI && sibukV > 0) ? '#004d40' : '#00897b');
+
+    const sisa = [];
+    if (r.luar)     sisa.push(`${ovAngka(r.luar)} di luar ${dua(OV_JAM_AWAL)}.00–${dua(OV_JAM_AKHIR)}.00`);
+    if (r.tanpaJam) sisa.push(`${ovAngka(r.tanpaJam)} tanpa jam kedatangan`);
+    const peringatan = sisa.length
+        ? ` <span class="peringatan"><i class="fa-solid fa-triangle-exclamation"></i> ${sisa.join(' · ')} — tidak masuk batang mana pun.</span>`
+        : '';
+
+    /* Canvas lama ikut terhapus saat innerHTML diganti, tapi instance Chart.js-nya
+       tidak. Tanpa destroy ini, tiap ganti bulan membocorkan satu instance. */
+    if (ovJamChart) { try { ovJamChart.destroy(); } catch (e) {} ovJamChart = null; }
+
+    body.innerHTML = `
+        <div class="jam-wrap">
+            <div class="ov-note">Periode <strong>${escHtml(ovLabelPeriode(key))}</strong> · <strong>Poli Umum saja</strong> — Poli Gigi tidak mencatat jam kedatangan.${peringatan}</div>
+            <div class="jam-canvas"><canvas id="jamChart"></canvas></div>
+            <div class="heat-stats">
+                <div class="heat-stat"><div class="k">Pasien Terpetakan</div><div class="v">${ovAngka(r.terhitung)}</div><div class="s">dari ${ovAngka(r.total)} kunjungan poli umum</div></div>
+                <div class="heat-stat"><div class="k">Jam Tersibuk</div><div class="v">${sibukI >= 0 ? labelJam[sibukI] : '-'}</div><div class="s">${sibukI >= 0 ? ovAngka(sibukV) + ' pasien' : 'belum ada data'}</div></div>
+                <div class="heat-stat"><div class="k">Rata-rata / Slot Jam</div><div class="v">${ovAngka(r.terhitung / r.ember.length, 1)}</div><div class="s">dibagi ${r.ember.length} slot</div></div>
+                <div class="heat-stat"><div class="k">Tanpa Jam</div><div class="v">${ovAngka(r.tanpaJam)}</div><div class="s">kolom jam_kedatangan kosong</div></div>
+            </div>
+        </div>`;
+
+    const kanvas = document.getElementById('jamChart');
+    if (!kanvas) return;
+    ovJamChart = new Chart(kanvas, {
+        type: 'bar',
+        data: { labels: labelJam, datasets: [{ label: 'Pasien Poli Umum', data: r.ember, backgroundColor: warna, borderRadius: 4 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { title: c => `Pukul ${c[0].label}`, label: c => `${ovAngka(c.parsed.y)} pasien` } }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { ticks: { font: { size: 10 } } }
+            }
+        }
+    });
+}
+
 async function loadOverview() {
     showSkeleton('overviewContent', 'overview');
 
@@ -1292,8 +1529,8 @@ async function loadOverview() {
 
         // Data mentah 12 bulan — berpaginasi, menembus batas 1000 baris
         [puM, pgM, keuM, rujM, okM] = await Promise.all([
-            ovAmbilSemua('poli_umum', 'tanggal, pembayaran, status_pasien, diagnosis', 'tanggal', awalRentang, TODAY),
-            ovAmbilSemua('poli_gigi', 'tanggal, pembayaran, status_pasien, diagnosa1, diagnosa2, diagnosa3, diagnosa4, diagnosa5', 'tanggal', awalRentang, TODAY),
+            ovAmbilSemua('poli_umum', 'tanggal, pembayaran, status_pasien, diagnosis, nama_dokter, jam_kedatangan', 'tanggal', awalRentang, TODAY),
+            ovAmbilSemua('poli_gigi', 'tanggal, pembayaran, status_pasien, diagnosa1, diagnosa2, diagnosa3, diagnosa4, diagnosa5, nama_dokter_gigi', 'tanggal', awalRentang, TODAY),
             ovAmbilSemua('laporan_keuangan', 'tanggal, pendapatan_umum, pendapatan_gigi, total_pemasukan', 'tanggal', awalRentang, TODAY),
             ovAmbilSemua('rujukan', 'tanggal', 'tanggal', awalRentang, TODAY),
             ovAmbilSemua('obat_kronis', 'tanggal_ambil', 'tanggal_ambil', awalRentang, TODAY)
@@ -1314,6 +1551,8 @@ async function loadOverview() {
     if (!ovCmp.a || bulanDimuat.indexOf(ovCmp.a) === -1) ovCmp.a = curKey;
     if (!ovCmp.b || bulanDimuat.indexOf(ovCmp.b) === -1) ovCmp.b = prevKey;
     if (!ovHeat.bulan || bulanDimuat.indexOf(ovHeat.bulan) === -1) ovHeat.bulan = curKey;
+    if (!ovDok.bulan  || bulanDimuat.indexOf(ovDok.bulan)  === -1) ovDok.bulan  = curKey;
+    if (!ovJam.bulan  || bulanDimuat.indexOf(ovJam.bulan)  === -1) ovJam.bulan  = curKey;
 
     // ── Tren harian 7 hari (diturunkan dari data 12 bulan) ──
     const puHari = {}, pgHari = {};
@@ -1424,6 +1663,32 @@ async function loadOverview() {
     </div>
     <div id="heatBody"></div>
 
+    ${judul('<i class="fa-solid fa-user-doctor"></i> Kinerja Dokter <span style="font-weight:500;text-transform:none;letter-spacing:0">(jumlah pasien diperiksa)</span>')}
+    <div class="ov-toolbar">
+        <div class="ov-field">
+            <label>Bulan</label>
+            <div style="display:flex;gap:6px;align-items:center">
+                <button class="ov-nav" id="dokPrev" onclick="ovNavDok(-1)" title="Bulan sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
+                <input type="month" id="dokBulan" class="filter-control" value="${ovDok.bulan}" min="${bMin}" max="${bMax}" onchange="ovSetDokBulan(this.value)">
+                <button class="ov-nav" id="dokNext" onclick="ovNavDok(1)" title="Bulan berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+    <div id="dokBody"></div>
+
+    ${judul('<i class="fa-solid fa-clock"></i> Pola Jam Kunjungan <span style="font-weight:500;text-transform:none;letter-spacing:0">(poli umum · interval 1 jam)</span>')}
+    <div class="ov-toolbar">
+        <div class="ov-field">
+            <label>Bulan</label>
+            <div style="display:flex;gap:6px;align-items:center">
+                <button class="ov-nav" id="jamPrev" onclick="ovNavJam(-1)" title="Bulan sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
+                <input type="month" id="jamBulan" class="filter-control" value="${ovJam.bulan}" min="${bMin}" max="${bMax}" onchange="ovSetJamBulan(this.value)">
+                <button class="ov-nav" id="jamNext" onclick="ovNavJam(1)" title="Bulan berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+    <div id="jamBody"></div>
+
     ${judul('<i class="fa-solid fa-chart-simple"></i> Grafik Performa')}
     <div class="charts-grid">
         <div class="chart-box">
@@ -1457,6 +1722,8 @@ async function loadOverview() {
 
     ovRenderPerbandingan();
     ovRenderHeatmap();
+    ovRenderDokter();
+    ovRenderJam();
 
     renderCharts({
         visitLabels: chartLabels, visitData,
