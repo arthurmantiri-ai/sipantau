@@ -18,6 +18,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 /* ════════════════════ TEMA GELAP (default & fallback) ════════════════════ */
@@ -224,6 +225,8 @@ a{text-decoration:none;color:inherit}
 .cat-name{font-size:.95rem;font-weight:700;letter-spacing:.01em}
 .cat-titles .sub{font-size:.78rem;color:var(--ink-faint);font-weight:400}
 .cat-count{margin-left:auto;font-family:'DM Mono',monospace;font-size:.73rem;color:var(--ink-faint)}
+.cat-lock{flex:none;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:20px;
+  background:var(--lock-bg);border:1px solid var(--lock-brd);color:var(--lock-ink);white-space:nowrap}
 .cat-chev{color:var(--ink-faint);font-size:.8rem;transition:transform .3s ease;flex:none}
 .cat.open .cat-chev,.cat.searching .cat-chev{transform:rotate(180deg)}
 .cat-head:hover .cat-chev{color:var(--ink)}
@@ -317,7 +320,7 @@ a{text-decoration:none;color:inherit}
     <div class="slabel">Kategori Form</div>
     <button class="sitem" data-spy="cat-medis"   style="--dot:var(--dom-medis)"   onclick="jumpCat('cat-medis',event)"><i class="fa-solid fa-stethoscope"></i>Poli &amp; Medis<span class="n">4</span></button>
     <button class="sitem" data-spy="cat-farmasi" style="--dot:var(--dom-farmasi)" onclick="jumpCat('cat-farmasi',event)"><i class="fa-solid fa-capsules"></i>Farmasi &amp; Lab<span class="n">2</span></button>
-    <button class="sitem" data-spy="cat-admin"   style="--dot:var(--dom-uang)"    onclick="jumpCat('cat-admin',event)"><i class="fa-solid fa-file-invoice-dollar"></i>Administrasi<span class="n">4</span></button>
+    <button class="sitem" data-spy="cat-admin"   style="--dot:var(--dom-uang)"    onclick="jumpCat('cat-admin',event)"><i class="fa-solid fa-file-invoice-dollar"></i>Administrasi<span class="n">5</span></button>
     <button class="sitem" data-spy="cat-sistem"  style="--dot:var(--dom-sistem)"  onclick="jumpCat('cat-sistem',event)"><i class="fa-solid fa-sliders"></i>Pengaturan Sistem<span class="n">3</span></button>
 
     <div class="side-foot">
@@ -349,7 +352,7 @@ a{text-decoration:none;color:inherit}
             <span class="kpi-lbl">Kunjungan hari ini</span>
           </div>
           <div class="kpi-side">
-            <span class="delta up" id="kpiKunjunganDelta">+12%</span>
+            <span class="delta flat" id="kpiKunjunganDelta">—</span>
             <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
               <rect class="spark-bar" x="0"  y="13" width="8" height="11" rx="2"/>
               <rect class="spark-bar" x="11" y="9"  width="8" height="15" rx="2"/>
@@ -377,7 +380,7 @@ a{text-decoration:none;color:inherit}
             <span class="kpi-lbl">Batch perlu tindakan</span>
           </div>
           <div class="kpi-side">
-            <span class="delta dn" id="kpiStokDelta">3 kedaluwarsa</span>
+            <span class="delta flat" id="kpiStokDelta">—</span>
             <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
               <rect class="spark-bar" x="0" y="8" width="76" height="8" rx="4" opacity=".16"/>
               <rect class="spark-bar now" x="0" y="8" width="46" height="8" rx="4"/>
@@ -400,7 +403,7 @@ a{text-decoration:none;color:inherit}
             <span class="kpi-lbl">Kas masuk hari ini</span>
           </div>
           <div class="kpi-side">
-            <span class="delta flat" id="kpiKasDelta">7 jurnal</span>
+            <span class="delta flat" id="kpiKasDelta">—</span>
             <svg width="76" height="24" viewBox="0 0 76 24" aria-hidden="true">
               <polyline points="2,19 14,15 26,17 38,10 50,12 62,7 74,5" fill="none"
                         stroke="var(--dom)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -471,7 +474,7 @@ a{text-decoration:none;color:inherit}
       <button class="cat-head" aria-expanded="true" aria-controls="body-admin" onclick="toggleCat(this)">
         <span class="cat-dot"></span>
         <span class="cat-titles"><span class="cat-name">Administrasi &amp; Keuangan</span><span class="sub">— tagihan, setoran, dan laporan berkala</span></span>
-        <span class="cat-count">4 modul</span>
+        <span class="cat-count">5 modul</span>
         <i class="cat-chev fa-solid fa-chevron-down"></i>
       </button>
       <div class="cat-body" id="body-admin">
@@ -479,6 +482,10 @@ a{text-decoration:none;color:inherit}
           <a href="generate.html" class="tile">
             <span class="tile-ico"><i class="fa-solid fa-file-invoice"></i></span>
             <span class="tile-body"><span class="tile-title">Buat Invoice</span><span class="tile-desc">Susun invoice PDF lalu kirim via Email atau WhatsApp.</span><span class="tile-who">Admin</span></span>
+          </a>
+          <a href="items.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-tags"></i></span>
+            <span class="tile-body"><span class="tile-title">Item &amp; Harga</span><span class="tile-desc">Daftar barang dan jasa yang dipakai saat membuat invoice.</span><span class="tile-who">Admin</span></span>
           </a>
           <a href="laporan_keuangan.html" class="tile">
             <span class="tile-ico"><i class="fa-solid fa-cash-register"></i></span>
@@ -502,6 +509,7 @@ a{text-decoration:none;color:inherit}
         <span class="cat-dot"></span>
         <span class="cat-titles"><span class="cat-name">Pengaturan Sistem</span><span class="sub">— jarang dibuka, memengaruhi seluruh modul</span></span>
         <span class="cat-count">3 modul</span>
+        <span class="cat-lock"><i class="fa-solid fa-lock"></i> Perlu sandi</span>
         <i class="cat-chev fa-solid fa-chevron-down"></i>
       </button>
       <div class="cat-body" id="body-sistem">
@@ -510,13 +518,13 @@ a{text-decoration:none;color:inherit}
             <span class="tile-ico"><i class="fa-solid fa-book-medical"></i></span>
             <span class="tile-body"><span class="tile-title">Master Data</span><span class="tile-desc">Daftar baku dokter dan diagnosis ICD-10 untuk input poli.</span><span class="tile-who">Admin sistem</span></span>
           </a>
-          <a href="items.html" class="tile">
-            <span class="tile-ico"><i class="fa-solid fa-tags"></i></span>
-            <span class="tile-body"><span class="tile-title">Item &amp; Harga</span><span class="tile-desc">Daftar barang dan jasa yang dipakai saat membuat invoice.</span><span class="tile-who">Admin sistem</span></span>
-          </a>
           <a href="pembersihan_data.html" class="tile">
             <span class="tile-ico"><i class="fa-solid fa-broom"></i></span>
             <span class="tile-body"><span class="tile-title">Pembersihan Data</span><span class="tile-desc">Seragamkan penulisan nama dokter dan diagnosis lama.</span><span class="tile-who">Admin sistem</span></span>
+          </a>
+          <a href="pengaturan_akun.html" class="tile">
+            <span class="tile-ico"><i class="fa-solid fa-key"></i></span>
+            <span class="tile-body"><span class="tile-title">Pengaturan Akun</span><span class="tile-desc">Kata sandi modul stok obat, pembukuan, dan pengaturan sistem.</span><span class="tile-who">Admin sistem</span></span>
           </a>
         </div>
       </div>
@@ -608,17 +616,117 @@ function filterTiles(q){
 }
 
 /* ════════ KPI ════════
-   Ganti mockKPI() dengan 3 query count Supabase.
-   PENTING: bila query gagal / diblokir RLS → tampilkan "—", bukan "0".
-   "Kas masuk hari ini: Rp 0" karena RLS senyap = salah baca berbahaya. */
+   Dulu bagian ini memanggil satu fungsi tiruan yang menampilkan angka karangan:
+   35 kunjungan, 12 batch, "3 kedaluwarsa", Rp 2.450.000, "7 jurnal".
+   Semuanya tetap tampil apa adanya walau database kosong atau mati —
+   dan "Kas masuk hari ini" yang palsu adalah jenis kekeliruan yang
+   paling mudah dipercaya orang.
+
+   ATURAN YANG DIPEGANG DI SINI: kalau query gagal atau diblokir RLS,
+   tampilkan "—", JANGAN "0". Nol berarti "sudah dicek, memang tidak
+   ada"; itu pernyataan yang berbeda dan bisa menyesatkan. */
+
+const KPI_SUPABASE_URL = 'https://xbvnydbglqyqnhwddjvm.supabase.co';
+const KPI_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhidm55ZGJnbHF5cW5od2RkanZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzQwNTMsImV4cCI6MjA5NjMxMDA1M30.QRjVy7TSJi7vOeF3sZzsk1JSD0mg2NMhwBMlO4YrOv0';
+const kpiDb = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(KPI_SUPABASE_URL, KPI_SUPABASE_KEY) : null;
+
 function setKPI(id, value){
   document.getElementById(id).textContent = (value == null) ? '—' : value;
 }
-function mockKPI(){
-  setKPI('kpiKunjungan', 35);
-  setKPI('kpiStok', 12);
-  setKPI('kpiKas', new Intl.NumberFormat('id-ID',
-    {style:'currency',currency:'IDR',maximumFractionDigits:0}).format(2450000));
+function setDelta(id, teks, jenis){
+  const el = document.getElementById(id);
+  el.textContent = teks;
+  el.className = 'delta ' + (jenis || 'flat');
+}
+
+/* Tanggal LOKAL, bukan toISOString(). Di Manado (UTC+8) toISOString()
+   masih menunjuk tanggal kemarin sampai pukul 08.00 pagi, jadi
+   "kunjungan hari ini" akan salah sepanjang pagi. */
+function tglLokal(d){
+  return d.getFullYear() + '-' +
+         String(d.getMonth()+1).padStart(2,'0') + '-' +
+         String(d.getDate()).padStart(2,'0');
+}
+function geserHari(n){ const d = new Date(); d.setDate(d.getDate()+n); return d; }
+
+const rupiah = new Intl.NumberFormat('id-ID',
+  {style:'currency',currency:'IDR',maximumFractionDigits:0});
+
+async function kpiKunjungan(){
+  const hariIni = tglLokal(new Date()), kemarin = tglLokal(geserHari(-1));
+  const hitung = (tabel, tgl) =>
+    kpiDb.from(tabel).select('*', {count:'exact', head:true}).eq('tanggal', tgl);
+  try{
+    const [pu, pg] = await Promise.all([hitung('poli_umum', hariIni), hitung('poli_gigi', hariIni)]);
+    if(pu.error || pg.error) throw (pu.error || pg.error);
+    const kini = (pu.count||0) + (pg.count||0);
+    setKPI('kpiKunjungan', kini);
+
+    const [puK, pgK] = await Promise.all([hitung('poli_umum', kemarin), hitung('poli_gigi', kemarin)]);
+    if(puK.error || pgK.error){ setDelta('kpiKunjunganDelta','—','flat'); return; }
+    const lalu = (puK.count||0) + (pgK.count||0);
+    setDelta('kpiKunjunganDelta', lalu + ' kemarin',
+             kini > lalu ? 'up' : (kini < lalu ? 'dn' : 'flat'));
+  }catch(e){
+    setKPI('kpiKunjungan', null); setDelta('kpiKunjunganDelta','—','flat');
+    console.error('[KPI kunjungan]', e);
+  }
+}
+
+async function kpiStok(){
+  const hariIni = tglLokal(new Date()), h30 = tglLokal(geserHari(30));
+  try{
+    /* "Perlu tindakan" = batch yang masih ada isinya DAN sudah/hampir
+       kedaluwarsa (<= 30 hari) ATAU stoknya menipis (< 10). Batch yang
+       sudah kadaluwarsa otomatis ikut karena tanggalnya <= h30. */
+    const perlu = await kpiDb.from('apotek_batch')
+      .select('*', {count:'exact', head:true})
+      .gt('stok_sisa', 0)
+      .or('tgl_expired.lte.' + h30 + ',stok_sisa.lt.10');
+    if(perlu.error) throw perlu.error;
+    setKPI('kpiStok', perlu.count || 0);
+
+    const exp = await kpiDb.from('apotek_batch')
+      .select('*', {count:'exact', head:true})
+      .gt('stok_sisa', 0)
+      .lte('tgl_expired', hariIni);
+    if(exp.error){ setDelta('kpiStokDelta','—','flat'); return; }
+    const jml = exp.count || 0;
+    setDelta('kpiStokDelta',
+             jml > 0 ? jml + ' kedaluwarsa' : 'tidak ada kedaluwarsa',
+             jml > 0 ? 'dn' : 'flat');
+  }catch(e){
+    setKPI('kpiStok', null); setDelta('kpiStokDelta','—','flat');
+    console.error('[KPI stok]', e);
+  }
+}
+
+async function kpiKas(){
+  const hariIni = tglLokal(new Date());
+  try{
+    const { data, error } = await kpiDb.from('keu_jurnal').select('debet').eq('tgl', hariIni);
+    if(error) throw error;
+    const baris = data || [];
+    const masuk = baris.reduce((t, r) => t + (Number(r.debet) || 0), 0);
+    setKPI('kpiKas', rupiah.format(masuk));
+    setDelta('kpiKasDelta', baris.length + ' jurnal', 'flat');
+  }catch(e){
+    setKPI('kpiKas', null); setDelta('kpiKasDelta','—','flat');
+    console.error('[KPI kas]', e);
+  }
+}
+
+function muatKPI(){
+  if(!kpiDb){
+    ['kpiKunjungan','kpiStok','kpiKas'].forEach(id => setKPI(id, null));
+    ['kpiKunjunganDelta','kpiStokDelta','kpiKasDelta'].forEach(id => setDelta(id,'—','flat'));
+    console.error('[KPI] pustaka Supabase tidak termuat');
+    return;
+  }
+  // Ketiganya jalan sendiri-sendiri: satu gagal tidak menjatuhkan yang lain,
+  // dan portal tetap tampil seketika tanpa menunggu jaringan.
+  kpiKunjungan(); kpiStok(); kpiKas();
 }
 
 /* ════════ Scroll-spy sidebar ════════ */
@@ -633,7 +741,7 @@ document.querySelectorAll('.cat').forEach(c=>spyObserver.observe(c));
 
 /* boot */
 applyCatState();
-mockKPI();
+muatKPI();
 </script>
 </body>
 </html>

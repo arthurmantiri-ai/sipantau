@@ -340,6 +340,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="ki_auth.js"></script>
 <script>
 /* =================================================================
    DATA MODEL  —  diturunkan persis dari file Excel klinik
@@ -372,7 +373,6 @@ function catInfo(name){
 const SEED = {
   meta:{ yayasan:"Yayasan Kesehatan Imanuel", klinik:"Klinik Pratama Imanuel", kota:"Manado", tahun:2026,
          ketua:"Dkn. Yuansun Khosama", bendahara:"May Maria Santosa" },
-  pw:"keuanganimanuel",
   saldoAwal:{ kas:26254100, bankMandiri:219687722.46, deposito:400000000, piutang:300000, stockObat:18433626.17 },
   modalAwal:714395348.63,
   hutangPendek:0, hutangPanjang:0,
@@ -419,8 +419,10 @@ const DEFAULT_CONFIG = {
   hutangPendek:SEED.hutangPendek, hutangPanjang:SEED.hutangPanjang, stockObat:SEED.stockObat
 };
 
+/* Catatan: penyimpanan sandi di objek DB sudah dihapus. Sandi tidak lagi
+   pernah singgah di sisi browser — pemeriksaannya di Postgres lewat KiAuth. */
 let DB = { meta:SEED.meta, saldoAwal:SEED.saldoAwal, modalAwal:SEED.modalAwal,
-           hutangPendek:0, hutangPanjang:0, stockObat:{}, pw:null, jurnal:[], inventaris:[], bank:[] };
+           hutangPendek:0, hutangPanjang:0, stockObat:{}, jurnal:[], inventaris:[], bank:[] };
 let state = { view:"dashboard", period:"JUN", authed:false, q:"", qcat:"" };
 
 function persist(){ /* tidak dipakai lagi — data tersimpan di Supabase */ }
@@ -428,17 +430,20 @@ function persist(){ /* tidak dipakai lagi — data tersimpan di Supabase */ }
 async function loadSettings(){
   const { data, error } = await supa.from('keu_setting').select('*');
   if(error) throw error;
-  let cfg=null, auth=null;
-  (data||[]).forEach(r=>{ if(r.id==='config') cfg=r.data; if(r.id==='auth') auth=r.data; });
+  let cfg=null;
+  (data||[]).forEach(r=>{ if(r.id==='config') cfg=r.data; });
   if(!cfg){ cfg=DEFAULT_CONFIG; await supa.from('keu_setting').upsert({id:'config', data:cfg}); }
-  if(!auth){ auth={pw:'keuanganimanuel'}; await supa.from('keu_setting').upsert({id:'auth', data:auth}); }
+  /* Baris 'auth' tidak lagi dibaca maupun dibuat di sini. Dulu tempat ini
+     menyimpan sandi sebagai TEKS BIASA yang bisa dibaca siapa pun pemegang
+     anon key. Sandinya sudah dipindahkan ke sys_akun (hash bcrypt) oleh
+     sql/001_sys_akun.sql. Setelah modul ini terbukti jalan, hapus sisa
+     teksnya:  update keu_setting set data = data - 'pw' where id='auth'; */
   DB.meta = cfg.meta || DEFAULT_CONFIG.meta;
   DB.saldoAwal = cfg.saldoAwal || DEFAULT_CONFIG.saldoAwal;
   DB.modalAwal = (cfg.modalAwal!=null) ? cfg.modalAwal : DEFAULT_CONFIG.modalAwal;
   DB.hutangPendek = cfg.hutangPendek || 0;
   DB.hutangPanjang = cfg.hutangPanjang || 0;
   DB.stockObat = cfg.stockObat || {};
-  DB.pw = auth.pw || 'keuanganimanuel';
 }
 async function loadData(){
   const [j,i,bk] = await Promise.all([
@@ -507,10 +512,31 @@ function openingKasFor(period){
 /* =================================================================
    AUTH
 ================================================================= */
+let gagalMasuk = 0;
+
 async function doLogin(){
-  if(!DB.pw){ document.getElementById("loginErr").textContent="Sedang menghubungkan ke database…"; return; }
-  const v=document.getElementById("pw").value;
-  if(v === DB.pw){
+  const inp = document.getElementById("pw");
+  const err = document.getElementById("loginErr");
+  const v = inp.value;
+  if(!v){ err.textContent="Kata sandi belum diisi."; inp.focus(); return; }
+
+  inp.disabled = true;
+  err.textContent = "Memeriksa…";
+
+  // Perlambatan bertingkat supaya percobaan berulang tidak murah.
+  if(gagalMasuk >= 3){
+    await new Promise(r => setTimeout(r, Math.min(1000 * Math.pow(2, gagalMasuk - 3), 8000)));
+  }
+
+  try{
+    const benar = await KiAuth.verifikasi('keuangan', v);
+    if(!benar){
+      gagalMasuk++;
+      err.textContent="Kata sandi salah. Coba lagi.";
+      inp.disabled = false; inp.value=""; inp.focus();
+      return;
+    }
+    gagalMasuk = 0;
     state.authed=true;
     document.getElementById("login").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
@@ -518,9 +544,15 @@ async function doLogin(){
     document.getElementById("content").innerHTML='<div class="empty" style="padding:80px 20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:38px;height:38px"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><p>Memuat data…</p></div>';
     try{ await loadData(); }catch(e){ toast('Tidak dapat memuat data dari database.',false); }
     go("dashboard");
-  }else{
-    document.getElementById("loginErr").textContent="Kata sandi salah. Coba lagi.";
-    document.getElementById("pw").select();
+  }catch(e){
+    /* GAGAL-TERTUTUP. Sebelum ini, kalau koneksi ke Supabase putus,
+       BOOT diam-diam memasang sandi bawaan dan modul tetap bisa dibuka —
+       jadi memutus jaringan adalah cara masuk. Sekarang galat apa pun
+       berarti tetap tertutup. Jangan tambahkan cabang yang meloloskan
+       pemakai di sini. */
+    err.textContent = e.message;
+    console.error('[pembukuan] auth', e);
+    inp.disabled = false; inp.value=""; inp.focus();
   }
 }
 function logout(){
@@ -1317,11 +1349,11 @@ async function saveNeraca(){
 function openChangePw(){
   openModal(`
     <div class="modal" style="max-width:440px">
-      <div class="modal-head"><div><h3>Ganti kata sandi</h3><p>Kata sandi baru tersimpan bersama data</p></div>
+      <div class="modal-head"><div><h3>Ganti kata sandi</h3><p>Tersimpan sebagai hash bcrypt di database</p></div>
         <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="modal-body">
         <div class="field one"><label>Kata sandi lama</label><input type="password" id="pwOld" placeholder="Kata sandi saat ini"></div>
-        <div class="field one"><label>Kata sandi baru</label><input type="password" id="pwNew" placeholder="Minimal 5 karakter"></div>
+        <div class="field one"><label>Kata sandi baru</label><input type="password" id="pwNew" placeholder="Minimal 8 karakter"></div>
         <div class="field one"><label>Ulangi kata sandi baru</label><input type="password" id="pwNew2" placeholder="Ulangi"></div>
       </div>
       <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn" onclick="saveChangePw()">Ganti kata sandi</button></div>
@@ -1329,12 +1361,16 @@ function openChangePw(){
 }
 async function saveChangePw(){
   const o=document.getElementById("pwOld").value, n=document.getElementById("pwNew").value, n2=document.getElementById("pwNew2").value;
-  if(o!==DB.pw){ toast("Kata sandi lama salah.",false); return; }
-  if(n.length<5){ toast("Kata sandi baru minimal 5 karakter.",false); return; }
   if(n!==n2){ toast("Konfirmasi kata sandi tidak sama.",false); return; }
-  const { error } = await supa.from('keu_setting').upsert({id:'auth', data:{pw:n}});
-  if(error){ toast('Gagal: '+error.message,false); return; }
-  DB.pw=n; closeModal(); toast("Kata sandi berhasil diganti.");
+  const nilai = KiAuth.kekuatan(n);
+  if(!nilai.ok){ toast(nilai.pesan,false); return; }
+  try{
+    // Sandi lama diperiksa di dalam database, bukan di sini.
+    await KiAuth.atur('keuangan', o, n);
+    closeModal(); toast("Kata sandi berhasil diganti.");
+  }catch(e){
+    toast(e.message,false);
+  }
 }
 
 /* ---- Cadangan data (backup) ---- */
@@ -1465,9 +1501,13 @@ function cetakInventaris(){
   try{
     await loadSettings();
   }catch(e){
-    // Tabel belum dibuat / koneksi gagal — biarkan login tetap bisa dengan kata sandi awal
-    DB.pw = DB.pw || 'keuanganimanuel';
-    toast('Belum terhubung ke database. Pastikan tabel sudah dibuat di Supabase.', false);
+    /* Dulu cabang ini memasang sandi bawaan supaya login tetap bisa saat
+       database tidak terjangkau — artinya memutus koneksi = melewati
+       gerbang. Sekarang hanya memberi tahu; login tetap harus lolos
+       KiAuth, dan kalau database memang tak terjangkau, memang tidak
+       seharusnya bisa masuk. */
+    toast('Belum terhubung ke database. Login tidak bisa dilakukan sampai koneksi pulih.', false);
+    console.error('[pembukuan] loadSettings', e);
   }
 })();
 </script>

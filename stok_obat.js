@@ -1,6 +1,6 @@
 /* ============================================================
    MANAJEMEN STOK OBAT — KLINIK IMANUEL (REDESIGN)
-   Sistem batch FIFO + laporan bulanan + import/export Excel
+   Sistem batch FEFO + laporan bulanan + import/export Excel
    Tabel Supabase: apotek_batch, apotek_transaksi
    ============================================================ */
 
@@ -32,31 +32,104 @@ function monthStr(d) { const x = d || new Date(); return `${x.getFullYear()}-${S
 function labelBulan(ym) { const [y, m] = ym.split('-'); return `${BULAN_ID[parseInt(m) - 1]} ${y}`; }
 function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-// Urutan FIFO: batch yang masuk paling awal berada paling depan
-function sortFifo(list) {
+/* ── URUTAN KELUAR & PENJAGA KADALUWARSA ──────────────────────
+   Dulu berkas ini memakai FIFO murni (urut tanggal masuk). Untuk obat
+   itu keliru: batch yang masuk lebih dulu bisa saja expired-nya masih
+   lama, sementara batch yang masuk belakangan justru sudah mau lewat.
+   Dengan FIFO, batch yang mau lewat itu mengendap sampai benar-benar
+   kadaluwarsa. FEFO membalik urutannya: yang paling dekat expired
+   keluar duluan. Kalau tanggal expired-nya sama, barulah tanggal
+   masuk yang menentukan — jadi FIFO tetap jadi pemutus seri. */
+
+// Kategori yang memang bertujuan MEMBUANG stok. Hanya di sini batch
+// kadaluwarsa boleh dikeluarkan — itu justru gunanya.
+const KATEGORI_PEMUSNAHAN = ['Obat Expired', 'Obat Rusak'];
+
+function awalHariIni() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+// Batch yang expired-nya jatuh hari ini sudah dihitung kadaluwarsa —
+// sama seperti kartu ringkasan di atas, supaya tidak ada dua definisi.
+function sudahExpired(b, today) {
+    return new Date(b.tgl_expired) <= (today || awalHariIni());
+}
+
+// Urutan FEFO: expired terdekat paling depan.
+function sortFefo(list) {
     return [...list].sort((a, b) =>
+        new Date(a.tgl_expired) - new Date(b.tgl_expired) ||
         new Date(a.tgl_masuk) - new Date(b.tgl_masuk) ||
         new Date(a.created_at) - new Date(b.created_at)
     );
 }
 
+// Batch yang boleh dipakai untuk kategori tertentu.
+function batchBolehKeluar(list, kategori) {
+    if (KATEGORI_PEMUSNAHAN.includes(kategori)) return list;
+    const today = awalHariIni();
+    return list.filter(b => !sudahExpired(b, today));
+}
+
 /* ============================================================
    AUTHENTICATION
    ============================================================ */
+/* Sandi tidak lagi tertulis di berkas ini. Dulu ada perbandingan
+   langsung dengan sebuah string di baris ini — dan berkas ini terbuka
+   untuk siapa pun yang membuka View Source di Netlify, jadi sandi itu
+   tidak pernah benar-benar rahasia. Sekarang pemeriksaannya lewat
+   fungsi Postgres; ganti sandinya di halaman Pengaturan Akun. */
 const overlay = document.getElementById('authOverlay');
 const mainApp = document.getElementById('mainApp');
-document.getElementById('btnMasukAuth').addEventListener('click', checkAuth);
+const btnMasukAuth = document.getElementById('btnMasukAuth');
+
+btnMasukAuth.addEventListener('click', checkAuth);
 document.getElementById('farmasiPassword').addEventListener('keypress', e => { if (e.key === 'Enter') checkAuth(); });
 
-function checkAuth() {
+let gagalMasuk = 0;
+
+function pesanAuth(teks) {
+    const el = document.getElementById('authError');
+    el.innerText = teks;
+    el.style.display = teks ? 'block' : 'none';
+}
+
+async function checkAuth() {
     const passInput = document.getElementById('farmasiPassword');
-    if (passInput.value === 'farmasiimanuel') {
-        overlay.style.display = 'none';
-        mainApp.style.display = 'block';
-        initApp();
-    } else {
-        document.getElementById('authError').style.display = 'block';
+    const pw = passInput.value;
+    if (!pw) { pesanAuth('Kata sandi belum diisi.'); passInput.focus(); return; }
+
+    btnMasukAuth.disabled = true;
+    passInput.disabled = true;
+    pesanAuth('');
+
+    // Perlambatan bertingkat supaya percobaan berulang tidak murah.
+    if (gagalMasuk >= 3) {
+        await new Promise(r => setTimeout(r, Math.min(1000 * Math.pow(2, gagalMasuk - 3), 8000)));
+    }
+
+    try {
+        const benar = await KiAuth.verifikasi('farmasi', pw);
+        if (benar) {
+            gagalMasuk = 0;
+            overlay.style.display = 'none';
+            mainApp.style.display = 'block';
+            initApp();
+            return;
+        }
+        gagalMasuk++;
+        pesanAuth('Kata sandi salah!');
         passInput.style.borderColor = 'var(--danger)';
+    } catch (err) {
+        /* GAGAL-TERTUTUP. Jaringan mati, RLS menolak, atau migrasi SQL
+           belum dijalankan — modul tetap tidak terbuka. Jangan sekali-kali
+           menambahkan cabang yang meloloskan pemakai di sini: kalau ada,
+           memutus koneksi ke Supabase jadi cara melewati gerbang. */
+        pesanAuth(err.message);
+        console.error('[stok_obat] auth', err);
+    } finally {
+        btnMasukAuth.disabled = false;
+        passInput.disabled = false;
+        passInput.value = '';
+        passInput.focus();
     }
 }
 
@@ -169,7 +242,7 @@ function renderStatUtama() {
 }
 
 /* ============================================================
-   TAB 1: TABEL STOK (grup per obat, batch urutan FIFO) — poin 1 & 4
+   TAB 1: TABEL STOK (grup per obat, batch urutan FEFO) — poin 1 & 4
    ============================================================ */
 function renderTabelStok() {
     const tbody = document.getElementById('tabelStokBody');
@@ -199,7 +272,7 @@ function renderTabelStok() {
 
     let html = '';
     Object.keys(groups).sort((a, b) => a.localeCompare(b)).forEach(nama => {
-        const batches = sortFifo(groups[nama]);
+        const batches = sortFefo(groups[nama]);
         const totalStok = batches.reduce((s, b) => s + b.stok_sisa, 0);
         const totalNilai = batches.reduce((s, b) => s + b.stok_sisa * parseFloat(b.harga_satuan || 0), 0);
         const satuan = batches[0].satuan || '';
@@ -231,7 +304,8 @@ function renderTabelStok() {
             else if (b.stok_sisa < 10) badge = '<span class="badge badge-warn">Menipis</span>';
             else badge = '<span class="badge badge-ok">Aman</span>';
 
-            const fifoTag = (idx === 0 && b.stok_sisa > 0) ? '<span class="fifo-tag">FIFO #1 — keluar duluan</span>' : '';
+            const fifoTag = (idx === 0 && b.stok_sisa > 0 && !(exp <= today))
+                ? '<span class="fifo-tag">FEFO #1 — keluar duluan</span>' : '';
 
             html += `
             <tr class="batch-row ${isOpen ? 'show' : ''}" data-parent="${esc(nama)}">
@@ -571,10 +645,26 @@ function updateBatchDropdown() {
     const nama = document.getElementById('out_nama').value;
     const selBatch = document.getElementById('out_batch');
     if (!nama) { selBatch.innerHTML = ''; return; }
-    const batches = sortFifo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
-    selBatch.innerHTML = batches.map(b =>
-        `<option value="${b.id}">Exp ${formatTgl(b.tgl_expired)} | ${esc(b.pbf) || '-'} | Faktur ${esc(b.no_faktur) || '-'} | sisa ${b.stok_sisa} | ${formatRp(b.harga_satuan)}/sat</option>`
-    ).join('');
+
+    const kategori = document.getElementById('out_kategori').value;
+    const pemusnahan = KATEGORI_PEMUSNAHAN.includes(kategori);
+    const today = awalHariIni();
+    const batches = sortFefo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
+
+    // Batch kadaluwarsa tetap ditampilkan, tapi dimatikan untuk kategori
+    // non-pemusnahan — supaya jelas ada, dan jelas kenapa tidak bisa dipilih.
+    selBatch.innerHTML = batches.map(b => {
+        const exp = sudahExpired(b, today);
+        const mati = exp && !pemusnahan;
+        const tanda = exp ? ' ⚠ KADALUWARSA' : '';
+        return `<option value="${b.id}"${mati ? ' disabled' : ''}>` +
+               `Exp ${formatTgl(b.tgl_expired)}${tanda} | ${esc(b.pbf) || '-'} | ` +
+               `Faktur ${esc(b.no_faktur) || '-'} | sisa ${b.stok_sisa} | ${formatRp(b.harga_satuan)}/sat</option>`;
+    }).join('');
+
+    // Jangan biarkan pilihan berhenti di option yang disabled.
+    const pilihan = [...selBatch.options].find(o => !o.disabled);
+    if (pilihan) selBatch.value = pilihan.value;
 }
 
 function updateInfoKeluar() {
@@ -586,20 +676,30 @@ function updateInfoKeluar() {
     const metode = document.getElementById('out_metode').value;
     const jumlah = parseInt(document.getElementById('out_jumlah').value) || 0;
 
+    const kategori = document.getElementById('out_kategori').value;
+    const semuaBatch = sortFefo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
+
     let batches;
     if (metode === 'manual') {
         const bid = document.getElementById('out_batch').value;
-        batches = batchData.filter(b => b.id === bid);
+        batches = batchBolehKeluar(batchData.filter(b => b.id === bid), kategori);
     } else {
-        batches = sortFifo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
+        batches = batchBolehKeluar(semuaBatch, kategori);
     }
+
     const tersedia = batches.reduce((s, b) => s + b.stok_sisa, 0);
+    const stokTerkunci = semuaBatch.reduce((s, b) => s + b.stok_sisa, 0) - 
+                         batchBolehKeluar(semuaBatch, kategori).reduce((s, b) => s + b.stok_sisa, 0);
+
     info.innerText = metode === 'manual'
         ? `Sisa stok batch terpilih: ${tersedia}`
-        : `Total tersedia (semua batch): ${tersedia}. Batch pertama FIFO: ${batches[0] ? 'masuk ' + formatTgl(batches[0].tgl_masuk) + ', exp ' + formatTgl(batches[0].tgl_expired) : '-'}`;
+        : `Total tersedia: ${tersedia}. Batch pertama FEFO: ${batches[0] ? 'exp ' + formatTgl(batches[0].tgl_expired) + ', masuk ' + formatTgl(batches[0].tgl_masuk) : '-'}`;
+    if (stokTerkunci > 0) {
+        info.innerText += ` — ${stokTerkunci} lagi ada di batch kadaluwarsa dan tidak ikut dihitung.`;
+    }
 
     if (jumlah > 0) {
-        // Simulasi FIFO untuk preview nilai
+        // Simulasi FEFO untuk preview nilai
         let sisa = jumlah, nilai = 0, potongan = [];
         for (const b of batches) {
             if (sisa <= 0) break;
@@ -611,7 +711,7 @@ function updateInfoKeluar() {
         preview.style.display = 'block';
         preview.innerHTML = sisa > 0
             ? `<span style="color:var(--danger)">Stok tidak cukup! Kurang ${sisa}.</span>`
-            : `Nilai keluar (harga beli FIFO): <strong>${formatRp(nilai)}</strong><br><small style="font-weight:400;color:var(--text-muted)">${potongan.join(' + ')}</small>`;
+            : `Nilai keluar (harga beli FEFO): <strong>${formatRp(nilai)}</strong><br><small style="font-weight:400;color:var(--text-muted)">${potongan.join(' + ')}</small>`;
     } else {
         preview.style.display = 'none';
     }
@@ -628,10 +728,12 @@ function setupFormKeluar() {
 
     // Saran otomatis: kategori Expired -> metode manual (pilih batch yang expired)
     document.getElementById('out_kategori').addEventListener('change', function () {
-        if (this.value === 'Obat Expired' || this.value === 'Obat Rusak') {
+        if (KATEGORI_PEMUSNAHAN.includes(this.value)) {
             document.getElementById('out_metode').value = 'manual';
             document.getElementById('out_batch_wrap').style.display = 'block';
         }
+        // Wajib digambar ulang: batch mana yang boleh dipilih bergantung kategori.
+        updateBatchDropdown();
         updateInfoKeluar();
     });
 
@@ -650,8 +752,8 @@ function setupFormKeluar() {
         const btn = this.querySelector('button[type=submit]');
         btn.disabled = true;
         try {
-            const hasil = await prosesObatKeluarFIFO(nama, jumlah, kategori, tanggal, keterangan, batchIdManual);
-            alert(`Obat keluar berhasil dicatat.\nKategori: ${kategori}\nJumlah: ${jumlah}\nNilai (harga beli FIFO): ${formatRp(hasil.totalNilai)}\nDiambil dari ${hasil.batchCount} batch.`);
+            const hasil = await prosesObatKeluar(nama, jumlah, kategori, tanggal, keterangan, batchIdManual);
+            alert(`Obat keluar berhasil dicatat.\nKategori: ${kategori}\nJumlah: ${jumlah}\nNilai (harga beli FEFO): ${formatRp(hasil.totalNilai)}\nDiambil dari ${hasil.batchCount} batch.`);
             this.reset();
             document.getElementById('out_tanggal').value = todayStr();
             document.getElementById('previewKeluar').style.display = 'none';
@@ -666,19 +768,47 @@ function setupFormKeluar() {
     });
 }
 
-// MESIN FIFO: mengurangi stok mulai dari batch paling awal masuk,
-// bisa melintasi beberapa batch sekaligus. Nilai keluar = harga beli batch masing-masing.
-async function prosesObatKeluarFIFO(nama, jumlah, kategori, tanggal, keterangan, batchIdManual) {
-    let batches;
+/* MESIN FEFO: mengurangi stok mulai dari batch yang paling dekat expired,
+   bisa melintasi beberapa batch sekaligus. Nilai keluar = harga beli batch
+   masing-masing.
+
+   Batch kadaluwarsa DIBLOKIR untuk kategori selain pemusnahan. Sebelum ini
+   penyaringnya cuma `stok_sisa > 0`, jadi obat yang sudah lewat tanggal bisa
+   keluar sebagai "Resep Dokter" tanpa satu pun peringatan, lalu tercatat
+   rapi seolah-olah normal. */
+async function prosesObatKeluar(nama, jumlah, kategori, tanggal, keterangan, batchIdManual) {
+    const today = awalHariIni();
+    const pemusnahan = KATEGORI_PEMUSNAHAN.includes(kategori);
+
+    let batches, stokSemua;
     if (batchIdManual) {
-        batches = batchData.filter(b => b.id === batchIdManual && b.stok_sisa > 0);
-        if (batches.length === 0) throw new Error('Batch terpilih tidak ditemukan / stok habis.');
+        const b = batchData.find(x => x.id === batchIdManual && x.stok_sisa > 0);
+        if (!b) throw new Error('Batch terpilih tidak ditemukan / stok habis.');
+        if (!pemusnahan && sudahExpired(b, today)) {
+            throw new Error(
+                `Batch ini sudah kadaluwarsa (exp ${formatTgl(b.tgl_expired)}), ` +
+                `jadi tidak boleh keluar sebagai "${kategori}".\n\n` +
+                `Kalau memang mau dibuang, ubah Kategori menjadi "Obat Expired".`
+            );
+        }
+        batches = [b];
+        stokSemua = b.stok_sisa;
     } else {
-        batches = sortFifo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
+        const semua = sortFefo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0));
+        stokSemua = semua.reduce((s, b) => s + b.stok_sisa, 0);
+        batches = batchBolehKeluar(semua, kategori);
     }
 
     const tersedia = batches.reduce((s, b) => s + b.stok_sisa, 0);
-    if (jumlah > tersedia) throw new Error(`Stok tidak cukup. Diminta ${jumlah}, tersedia ${tersedia}.`);
+    if (jumlah > tersedia) {
+        const terkunci = stokSemua - tersedia;
+        let pesan = `Stok tidak cukup. Diminta ${jumlah}, tersedia ${tersedia}.`;
+        if (terkunci > 0) {
+            pesan += `\n\n${terkunci} lagi ada di batch yang sudah kadaluwarsa dan sengaja ` +
+                     `tidak ikut dihitung. Keluarkan batch itu lewat kategori "Obat Expired".`;
+        }
+        throw new Error(pesan);
+    }
 
     let sisa = jumlah;
     let totalNilai = 0;
@@ -948,7 +1078,7 @@ function setupImportExport() {
             ['4. Jumlah Stok & Harga Satuan diisi angka saja (tanpa "Rp" atau titik pemisah ribuan).'],
             ['5. Kolom wajib: Nama Obat, Satuan, Jumlah Stok, Harga Satuan, Tanggal Expired, PBF.'],
             ['6. No Faktur, Tanggal Masuk, dan Keterangan boleh dikosongkan (Tanggal Masuk kosong = hari ini).'],
-            ['7. Setiap baris akan menjadi 1 batch stok, dibedakan per Tgl Expired / Faktur / PBF (sistem FIFO).'],
+            ['7. Setiap baris akan menjadi 1 batch stok, dibedakan per Tgl Expired / Faktur / PBF (sistem FEFO).'],
         ];
         const ws2 = XLSX.utils.aoa_to_sheet(petunjuk);
         ws2['!cols'] = [{ wch: 100 }];
@@ -1332,7 +1462,7 @@ function buatSheetRekapBulanan() {
     return formatAngkaSheet(ws);
 }
 
-// SHEET 4 (data mentah): Stok saat ini per batch, urutan FIFO
+// SHEET 4 (data mentah): Stok saat ini per batch, urutan FEFO
 function buatSheetStok() {
     const stokRows = [];
     const groups = {};
@@ -1341,9 +1471,9 @@ function buatSheetStok() {
         groups[b.nama_obat].push(b);
     });
     Object.keys(groups).sort().forEach(nama => {
-        sortFifo(groups[nama]).forEach((b, idx) => {
+        sortFefo(groups[nama]).forEach((b, idx) => {
             stokRows.push({
-                'Nama Obat': b.nama_obat, 'Urutan FIFO': idx + 1, 'Satuan': b.satuan,
+                'Nama Obat': b.nama_obat, 'Urutan FEFO': idx + 1, 'Satuan': b.satuan,
                 'Sisa Stok': b.stok_sisa, 'Harga Satuan (Rp)': parseFloat(b.harga_satuan || 0),
                 'Nilai (Rp)': b.stok_sisa * parseFloat(b.harga_satuan || 0),
                 'Tanggal Masuk': b.tgl_masuk, 'Tanggal Expired': b.tgl_expired,

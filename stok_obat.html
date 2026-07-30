@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="stok_obat.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="ki_auth.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -18,7 +19,8 @@
         <div class="auth-card">
             <img src="logo klinik imanuel.png" alt="Logo Klinik Imanuel" class="auth-logo">
             <h2>Akses Apoteker</h2>
-            <p>Masukkan kata sandi farmasi untuk mengakses sistem stok obat.</p>
+            <p>Masukkan kata sandi farmasi untuk mengakses sistem stok obat.<br>
+               <small style="color:var(--text-muted)">Kata sandi diatur di Pengaturan Akun.</small></p>
             <input type="password" id="farmasiPassword" placeholder="Kata Sandi..." class="form-control" autocomplete="off">
             <div id="authError" class="error-text">Kata sandi salah!</div>
             <button id="btnMasukAuth" class="btn btn-primary">Masuk <i class="fa-solid fa-arrow-right"></i></button>

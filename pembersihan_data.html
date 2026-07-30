@@ -7,6 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="master_lookup.css">
+
+    <!-- Gerbang Pengaturan Sistem — urutan tiga tag ini wajib -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="ki_auth.js"></script>
+    <script src="admin_gate.js"></script>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -182,8 +187,11 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="master_lookup.js"></script>
-    <script src="pembersihan_data.js"></script>
+    <script>
+      /* Skrip halaman sengaja TIDAK dipasang sebagai <script src> di sini.
+         Kalau dipasang biasa, isinya tetap jalan dan menarik data walau
+         layar kunci masih menutupi. Dimuat berurutan setelah sandi benar. */
+      KiGate.muatSkrip(['master_lookup.js', 'pembersihan_data.js']);
+    </script>
 </body>
 </html>
