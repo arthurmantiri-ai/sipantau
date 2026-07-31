@@ -341,6 +341,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="ki_auth.js"></script>
+<script src="pembukuan_core.js"></script>
 <script>
 /* =================================================================
    DATA MODEL  —  diturunkan persis dari file Excel klinik
@@ -349,25 +350,13 @@
 const BULAN = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"];
 const BULAN_PANJANG = {JAN:"Januari",FEB:"Februari",MAR:"Maret",APR:"April",MEI:"Mei",JUN:"Juni",JUL:"Juli",AGU:"Agustus",SEP:"September",OKT:"Oktober",NOV:"November",DES:"Desember"};
 
-/* Kategori klasifikasi jurnal — mengikuti kolom Laba/Rugi di Excel */
-const KATEGORI = [
-  {grup:"Pendapatan dari BPJS Kesehatan", jenis:"in", items:["Kapitasi BPJS Kes","Kegiatan Kelompok","Pelayanan KB","Lab. GDP PRB-Prolanis","Protesa Gigi"]},
-  {grup:"Pendapatan dari Klinik", jenis:"in", items:["Pendapatan Konsultasi","Pendapatan Obat","Tindakan Poli Gigi","Tindakan Poli Umum","Pendapatan Laboratorium","Protesa","Pendapatan Lain"]},
-  {grup:"Pembelian (HPP)", jenis:"out", items:["Pembelian Obat","Pembelian Alkes","Pembelian Medis","Pembelian Laboratorium","Pembelian Protesa"]},
-  {grup:"Gaji & Jasa", jenis:"out", items:["Gaji Pegawai","Jasa Dokter"]},
-  {grup:"Iuran & Potongan", jenis:"out", items:["Iuran BPJS TK + Kes","Potongan PPh Instansi"]},
-  {grup:"Biaya Operasional", jenis:"out", items:["Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain"]},
-  {grup:"Kerohanian", jenis:"out", items:["Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah"]},
-  {grup:"Bidang Kesehatan", jenis:"out", items:["Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan"]},
-  {grup:"Diakonia / P3K", jenis:"out", items:["Diakonia / Obat P3K"]},
-  {grup:"Bidang Sekretariat", jenis:"out", items:["Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK"]},
-  {grup:"Lain-lain", jenis:"out", items:["Subsidi YKI ke GK","Penyusutan Inventaris"]},
-  {grup:"Mutasi Bank & Inventaris", jenis:"mut", items:["Setoran/Transfer ke Bank","Tarik Tunai dari Bank","Pembelian Inventaris"]},
-];
-function catInfo(name){
-  for(const g of KATEGORI){ if(g.items.includes(name)) return {grup:g.grup, jenis:g.jenis}; }
-  return {grup:"Lain-lain", jenis:"out"};
-}
+/* Kategori, daftar akun, dan seluruh rumus akuntansi tinggal di
+   pembukuan_core.js supaya bisa diuji di luar browser. Berkas ini
+   hanya mengurus tampilan dan penyimpanan. */
+const KATEGORI = KEU.KATEGORI;
+const catInfo = KEU.catInfo;
+const AKUN_SEMUA = KEU.SEMUA_AKUN;
+const AKUN_BANK = KEU.AKUN_BANK;
 
 /* ---- DATA AWAL (seed) — contoh dari periode Juni 2026 supaya tampilan terlihat hidup ---- */
 const SEED = {
@@ -446,16 +435,20 @@ async function loadSettings(){
   DB.stockObat = cfg.stockObat || {};
 }
 async function loadData(){
-  const [j,i,bk] = await Promise.all([
+  const [j,i] = await Promise.all([
     supa.from('keu_jurnal').select('*').order('tgl',{ascending:true}).order('id',{ascending:true}),
-    supa.from('keu_inventaris').select('*').order('id',{ascending:true}),
-    supa.from('keu_bank').select('*').order('tgl',{ascending:true}).order('id',{ascending:true})
+    supa.from('keu_inventaris').select('*').order('id',{ascending:true})
   ]);
   if(j.error) toast('Gagal memuat jurnal: '+j.error.message,false);
   if(i.error) toast('Gagal memuat inventaris: '+i.error.message,false);
-  DB.jurnal = (j.data||[]).map(r=>({id:r.id, tgl:r.tgl, uraian:r.uraian, kategori:r.kategori, debet:+r.debet, kredit:+r.kredit}));
-  DB.inventaris = (i.data||[]).map(r=>({id:r.id, jenis:r.jenis, jumlah:r.jumlah, tahun:r.tahun, nilaiBeli:+r.nilai_beli, manfaat:r.manfaat}));
-  DB.bank = (bk&&bk.data?bk.data:[]).map(r=>({id:r.id, tgl:r.tgl, akun:r.akun, uraian:r.uraian, debet:+r.debet, kredit:+r.kredit, refJurnal:r.ref_jurnal||null}));
+  DB.jurnal = (j.data||[]).map(r=>({id:r.id, tgl:r.tgl, uraian:r.uraian, kategori:r.kategori,
+    debet:+r.debet, kredit:+r.kredit, akun:r.akun||'Kas', akunLawan:r.akun_lawan||null}));
+  DB.inventaris = (i.data||[]).map(r=>({id:r.id, jenis:r.jenis, jumlah:r.jumlah, tahun:r.tahun,
+    tglPerolehan:r.tgl_perolehan||null, nilaiBeli:+r.nilai_beli, manfaat:r.manfaat,
+    refJurnal:r.ref_jurnal||null}));
+  /* keu_bank tidak dibaca lagi. Buku Bank sekarang diturunkan dari
+     jurnal; tabelnya tetap ada di database sebagai arsip. */
+  DB.bank = [];
 }
 async function saveConfig(){
   const cfg = { meta:DB.meta, saldoAwal:DB.saldoAwal, modalAwal:DB.modalAwal,
@@ -472,21 +465,30 @@ const fmt = n => "Rp " + (Math.round((+n||0))).toLocaleString("id-ID");
 const fmt0 = n => (Math.round((+n||0))).toLocaleString("id-ID");
 const uid = () => "x"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const monthOf = iso => { const m=(iso||"").slice(5,7); const map={ "01":"JAN","02":"FEB","03":"MAR","04":"APR","05":"MEI","06":"JUN","07":"JUL","08":"AGU","09":"SEP","10":"OKT","11":"NOV","12":"DES"}; return map[m]||"JAN"; };
-function jurnalPeriode(p){ return DB.jurnal.filter(j=>monthOf(j.tgl)===p).sort((a,b)=> (a.tgl||"").localeCompare(b.tgl||"") ); }
-/* ---- Buku Bank helpers ---- */
-const AKUN_BANK=["Bank Mandiri","Bank Mandiri Deposito"];
-function bankPeriode(p){ return DB.bank.filter(b=>monthOf(b.tgl)===p).sort((a,b)=>(a.tgl||"").localeCompare(b.tgl||"")); }
-function openingBankFor(akun, period){
-  const idx=BULAN.indexOf(period);
-  let s = akun==="Bank Mandiri Deposito" ? DB.saldoAwal.deposito : DB.saldoAwal.bankMandiri;
-  for(const b of DB.bank){ if(b.akun===akun && BULAN.indexOf(monthOf(b.tgl))<idx) s+=(+b.debet||0)-(+b.kredit||0); }
-  return s;
+function jurnalPeriode(p){ return KEU.jurnalPeriode(DB,p); }
+function saldoAkun(a,p,batas){ return KEU.saldoAkun(DB,a,p,batas); }
+function mutasiAkun(a,p){ return KEU.mutasiAkun(DB,a,p); }
+function bankBalanceEnd(a,p){ return KEU.saldoAkun(DB,a,p); }
+function openingBankFor(a,p){ return KEU.saldoAkun(DB,a,p,"awal"); }
+function openingKasFor(p){ return KEU.saldoAkun(DB,"Kas",p,"awal"); }
+function stockAkhir(p){ return KEU.stockAkhirFor(DB,p); }
+function stockAwal(p){ return KEU.stockAwalFor(DB,p); }
+
+/* Daftar jurnal satu bulan, tiap baris membawa saldo rekening yang
+   disentuhnya setelah transaksi itu. */
+function jurnalDenganSaldo(p){
+  const run={}; AKUN_SEMUA.forEach(a=>{ run[a]=KEU.saldoAkun(DB,a,p,"awal"); });
+  return jurnalPeriode(p).map(j=>{
+    AKUN_SEMUA.forEach(a=>{ run[a]+=KEU.efekAkun(j,a); });
+    const ak=j.akun||"Kas";
+    return Object.assign({},j,{saldoAkun:run[ak], akun:ak});
+  });
 }
-function bankBalanceEnd(akun, period){
-  const idx=BULAN.indexOf(period);
-  let s = akun==="Bank Mandiri Deposito" ? DB.saldoAwal.deposito : DB.saldoAwal.bankMandiri;
-  for(const b of DB.bank){ if(b.akun===akun && BULAN.indexOf(monthOf(b.tgl))<=idx) s+=(+b.debet||0)-(+b.kredit||0); }
-  return s;
+/* Gabungan mutasi kedua rekening bank, terurut tanggal. */
+function mutasiBankGabungan(p){
+  let out=[];
+  AKUN_BANK.forEach(a=>{ mutasiAkun(a,p).forEach(r=>{ out.push(Object.assign({},r,{akun:a})); }); });
+  return out.sort((x,y)=> String(x.tgl).localeCompare(String(y.tgl)) || (x.id>y.id?1:x.id<y.id?-1:0));
 }
 function toast(msg, ok=true){
   const t=document.getElementById("toast");
@@ -498,15 +500,8 @@ function esc(s){ return (s||"").toString().replace(/[&<>"']/g,c=>({"&":"&amp;","
 /* running saldo kas untuk satu periode */
 function withSaldo(rows, openingKas){
   let s = openingKas; const out=[];
-  for(const j of rows){ s += (+j.debet||0) - (+j.kredit||0); out.push({...j, saldo:s}); }
+  for(const j of rows){ s += KEU.efekAkun(j,"Kas"); out.push(Object.assign({},j,{saldo:s})); }
   return out;
-}
-/* saldo kas awal periode = saldo awal tahun + semua mutasi sebelum periode itu */
-function openingKasFor(period){
-  const idx = BULAN.indexOf(period);
-  let kas = DB.saldoAwal.kas;
-  for(const j of DB.jurnal){ if(BULAN.indexOf(monthOf(j.tgl)) < idx) kas += (+j.debet||0)-(+j.kredit||0); }
-  return kas;
 }
 
 /* =================================================================
@@ -580,13 +575,12 @@ function go(view){
   render();
 }
 
-const TITLES={dashboard:["Ringkasan","Ikhtisar posisi keuangan klinik"],jurnal:["Jurnal Kas","Pembukuan kas masuk & keluar"],bank:["Buku Bank","Mutasi rekening bank & deposito"],labarugi:["Laporan Laba / Rugi","Pendapatan dan pengeluaran"],neraca:["Neraca","Posisi aktiva, hutang & modal"],inventaris:["Inventaris","Daftar & penyusutan inventaris"]};
+const TITLES={dashboard:["Ringkasan","Ikhtisar posisi keuangan klinik"],jurnal:["Jurnal","Kas, bank & deposito — satu titik input"],bank:["Buku Bank","Turunan otomatis dari Jurnal"],labarugi:["Laporan Laba / Rugi","Pendapatan dan pengeluaran"],neraca:["Neraca","Posisi aktiva, hutang & modal"],inventaris:["Inventaris","Daftar & penyusutan inventaris"]};
 function render(){
   const [t,s]=TITLES[state.view];
   document.getElementById("pageTitle").innerHTML=`${t}<span>${BULAN_PANJANG[state.period]} ${DB.meta.tahun} · ${s}</span>`;
   const pa=document.getElementById("primaryAction");
   if(state.view==="jurnal"){ pa.classList.remove("hidden"); pa.textContent="+ Catat transaksi"; }
-  else if(state.view==="bank"){ pa.classList.remove("hidden"); pa.textContent="+ Catat mutasi bank"; }
   else if(state.view==="inventaris"){ pa.classList.remove("hidden"); pa.textContent="+ Tambah inventaris"; }
   else pa.classList.add("hidden");
   const c=document.getElementById("content");
@@ -598,46 +592,24 @@ function render(){
   else if(state.view==="inventaris") c.innerHTML=viewInventaris();
   window.scrollTo(0,0);
 }
-function primaryAdd(){ if(state.view==="jurnal") openJurnal(); else if(state.view==="bank") openBank(); else if(state.view==="inventaris") openInventaris(); }
+function primaryAdd(){ if(state.view==="jurnal") openJurnal(); else if(state.view==="inventaris") openInventaris(); }
 
 /* =================================================================
    PERHITUNGAN LAPORAN
 ================================================================= */
-function lrData(period){
-  // jumlahkan jurnal per kategori untuk bulan terpilih
-  const sum={}; KATEGORI.forEach(g=>g.items.forEach(i=>sum[i]=0));
-  for(const j of jurnalPeriode(period)){
-    const info=catInfo(j.kategori);
-    const v = info.jenis==="in" ? (+j.debet||0) : (+j.kredit||0);
-    if(sum[j.kategori]!==undefined) sum[j.kategori]+=v;
-  }
-  const so = DB.stockObat[period] || {awal:0,akhir:0};
-  return {sum, stockAwal:so.awal||0, stockAkhir:so.akhir||0};
-}
-function lrTotals(period){
-  const d=lrData(period);
-  const pendapatan = KATEGORI.filter(g=>g.jenis==="in").reduce((a,g)=>a+g.items.reduce((x,i)=>x+d.sum[i],0),0);
-  const hpp = (d.stockAwal - d.stockAkhir) + d.sum["Pembelian Obat"]+d.sum["Pembelian Alkes"]+d.sum["Pembelian Medis"]+d.sum["Pembelian Laboratorium"]+d.sum["Pembelian Protesa"];
-  const biayaItems=["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"];
-  const biaya = biayaItems.reduce((a,i)=>a+d.sum[i],0);
-  const laba = pendapatan - hpp - biaya;
-  return {pendapatan,hpp,biaya,laba,d};
-}
-function labaTahun(){ return BULAN.reduce((a,b)=>a+lrTotals(b).laba,0); }
+function lrData(period){ return KEU.lrData(DB, period); }
+function lrTotals(period){ return KEU.lrTotals(DB, period); }
+function labaTahun(){ return KEU.labaTahun(DB); }
 
 /* penyusutan inventaris */
-function invCalc(it){
+function invCalc(it, period){
+  const th=DB.meta.tahun, idx=Math.max(0,BULAN.indexOf(period||state.period));
   const nilai=+it.nilaiBeli||0, manfaat=+it.manfaat||4;
-  const perTahun = manfaat>0 ? nilai/manfaat : 0;
-  // taksiran umur (tahun berlalu) — sederhana untuk tampilan
-  let umur = 4;
-  if(/^\d{4}$/.test((it.tahun||"").trim())){ umur = Math.max(0, DB.meta.tahun - parseInt(it.tahun)); }
-  else if(/2024/.test(it.tahun||"")) umur=2; else if(/2025/.test(it.tahun||"")) umur=1;
-  else umur=manfaat; // "Dibawah 2020" dianggap sudah penuh
-  let akum = Math.min(nilai, perTahun*umur);
-  if(/Dibawah/i.test(it.tahun||"")) akum=nilai;
-  const buku = Math.max(0, nilai-akum);
-  return {perTahun, akum, buku};
+  const akum=KEU.penyusutanAkum(it, th, idx);
+  return { perTahun: manfaat>0 ? nilai/manfaat : 0,
+           perBulan: manfaat>0 ? nilai/(manfaat*12) : 0,
+           akum: akum, buku: Math.max(0, nilai-akum),
+           susutBulanIni: KEU.penyusutanBulan(it, th, idx) };
 }
 
 /* =================================================================
@@ -646,29 +618,33 @@ function invCalc(it){
 function viewDashboard(){
   const p=state.period;
   const opening=openingKasFor(p);
-  const rows=withSaldo(jurnalPeriode(p),opening);
-  const kasAkhir = rows.length? rows[rows.length-1].saldo : opening;
+  const rows=jurnalDenganSaldo(p);
+  const kasAkhir=saldoAkun("Kas",p);
   const t=lrTotals(p);
-  const totalInven = DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
-  const bukuInven = DB.inventaris.reduce((a,it)=>a+invCalc(it).buku,0);
-  const masuk=rows.reduce((a,r)=>a+(+r.debet||0),0);
-  const keluar=rows.reduce((a,r)=>a+(+r.kredit||0),0);
+  const nrc=KEU.neraca(DB,p);
+  const inv=KEU.inventarisPer(DB,p);
+  const masuk=rows.reduce((a,r)=>a+KEU.efekAkun(r,"Kas"),0);
+  const kasMasuk=rows.reduce((a,r)=>{const v=KEU.efekAkun(r,"Kas");return a+(v>0?v:0);},0);
+  const kasKeluar=rows.reduce((a,r)=>{const v=KEU.efekAkun(r,"Kas");return a+(v<0?-v:0);},0);
+  const timpang=Math.abs(nrc.selisih)>=1;
 
   return `
-  <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-  <div><b>Tersambung ke database.</b> Setiap transaksi yang dicatat langsung tersimpan di Supabase — sama seperti modul lain di portal. Angka di bawah dihitung otomatis dari data ${BULAN_PANJANG[p]}.</div></div>
+  ${timpang?`<div class="note" style="border-color:var(--neg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--neg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>Neraca belum seimbang</b> — selisih ${fmt(nrc.selisih)}. Buka menu Neraca untuk melihat rinciannya.</div></div>`
+  :`<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <div><b>Neraca seimbang.</b> Semua laporan dihitung otomatis dari Jurnal — Buku Bank, Laba/Rugi, dan Neraca tidak perlu diinput terpisah.</div></div>`}
 
   <div class="grid-stats">
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Saldo Kas — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(kasAkhir)}</div><div class="meta">Saldo awal periode ${fmt(opening)}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Kas Masuk</div><div class="val pos">${fmt(masuk)}</div><div class="meta">${rows.filter(r=>r.debet>0).length} transaksi</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Kas Keluar</div><div class="val neg">${fmt(keluar)}</div><div class="meta">${rows.filter(r=>r.kredit>0).length} transaksi</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Kas Masuk</div><div class="val pos">${fmt(kasMasuk)}</div><div class="meta">${rows.filter(r=>KEU.efekAkun(r,"Kas")>0).length} transaksi</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Kas Keluar</div><div class="val neg">${fmt(kasKeluar)}</div><div class="meta">${rows.filter(r=>KEU.efekAkun(r,"Kas")<0).length} transaksi</div></div>
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Laba / Rugi ${BULAN_PANJANG[p]}</div><div class="val ${t.laba>=0?'pos':'neg'}">${fmt(t.laba)}</div><div class="meta">Pendapatan ${fmt(t.pendapatan)}</div></div>
   </div>
 
   <div class="grid-stats">
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri",p))}</div><div class="meta">+ Deposito ${fmt(bankBalanceEnd("Bank Mandiri Deposito",p))}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--ink-soft)"></span>Stock Obat</div><div class="val">${fmt((DB.stockObat[p]||{}).akhir||DB.saldoAwal.stockObat)}</div><div class="meta">Persediaan akhir periode</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Nilai Inventaris</div><div class="val">${fmt(totalInven)}</div><div class="meta">Nilai buku ${fmt(bukuInven)} · ${DB.inventaris.length} item</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri</div><div class="val">${fmt(nrc.bank)}</div><div class="meta">+ Deposito ${fmt(nrc.depo)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--ink-soft)"></span>Stock Obat</div><div class="val">${fmt(nrc.stock)}</div><div class="meta">Persediaan akhir periode</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Nilai Inventaris</div><div class="val">${fmt(inv.nilai)}</div><div class="meta">Nilai buku ${fmt(inv.buku)} · ${inv.jumlah} item</div></div>
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Laba Berjalan ${DB.meta.tahun}</div><div class="val ${labaTahun()>=0?'pos':'neg'}">${fmt(labaTahun())}</div><div class="meta">Akumulasi 12 bulan</div></div>
   </div>
 
@@ -683,52 +659,58 @@ function viewDashboard(){
     <div class="card-head"><div><h2>Transaksi terakhir</h2><div class="hint">${BULAN_PANJANG[p]} ${DB.meta.tahun}</div></div>
       <button class="btn btn-ghost btn-sm" onclick="go('jurnal')">Lihat jurnal lengkap</button></div>
     <div class="tbl-wrap"><table class="ledger">
-      <thead><tr><th>Tgl</th><th>Uraian</th><th class="num">Masuk</th><th class="num">Keluar</th><th class="num">Saldo</th></tr></thead>
+      <thead><tr><th>Tgl</th><th>Uraian</th><th>Rekening</th><th class="num">Debet</th><th class="num">Kredit</th></tr></thead>
       <tbody>${rows.slice(-6).reverse().map(r=>`<tr>
         <td class="mono">${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td>
         <td>${esc(r.uraian)}</td>
+        <td style="font-size:12px;color:var(--ink-faint)">${esc(r.akun)}${r.akunLawan?' &rarr; '+esc(r.akunLawan):''}</td>
         <td class="num pos">${r.debet?fmt0(r.debet):"—"}</td>
-        <td class="num neg">${r.kredit?fmt0(r.kredit):"—"}</td>
-        <td class="num saldo-cell">${fmt0(r.saldo)}</td></tr>`).join("")||emptyRow(5)}</tbody>
+        <td class="num neg">${r.kredit?fmt0(r.kredit):"—"}</td></tr>`).join("")||emptyRow(5)}</tbody>
     </table></div>
   </div>`;
 }
 
 function viewJurnal(){
   const p=state.period;
-  const opening=openingKasFor(p);
-  const allRows=withSaldo(jurnalPeriode(p),opening);
-  const masuk=allRows.reduce((a,r)=>a+(+r.debet||0),0);
-  const keluar=allRows.reduce((a,r)=>a+(+r.kredit||0),0);
-  const kasAkhir=allRows.length?allRows[allRows.length-1].saldo:opening;
+  const allRows=jurnalDenganSaldo(p);
+  const kasMasuk=allRows.reduce((a,r)=>{const v=KEU.efekAkun(r,"Kas");return a+(v>0?v:0);},0);
+  const kasKeluar=allRows.reduce((a,r)=>{const v=KEU.efekAkun(r,"Kas");return a+(v<0?-v:0);},0);
   const q=(state.q||"").toLowerCase(), qc=state.qcat||"";
   const rows=allRows.filter(r=>(!q||(r.uraian||"").toLowerCase().includes(q)||(r.kategori||"").toLowerCase().includes(q))&&(!qc||r.kategori===qc));
+  const perluTinjau=allRows.filter(r=>catInfo(r.kategori).takDikenal).length;
 
   const body = rows.length ? rows.map(r=>{
     const info=catInfo(r.kategori);
-    const tag = info.jenis==="in"?'<span class="tag tag-in">Masuk</span>':info.jenis==="mut"?'<span class="tag tag-mut">Mutasi</span>':'<span class="tag tag-out">Keluar</span>';
+    const tag = r.akunLawan?'<span class="tag tag-mut">Pindah dana</span>'
+              : info.takDikenal?'<span class="tag tag-mut" style="background:var(--neg);color:#fff">Perlu kategori</span>'
+              : info.jenis==="in"?'<span class="tag tag-in">Masuk</span>'
+              : info.jenis==="mut"?'<span class="tag tag-mut">Belanja modal</span>'
+              : '<span class="tag tag-out">Keluar</span>';
     return `<tr>
       <td class="mono" style="white-space:nowrap">${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td>
-      <td><div>${esc(r.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.kategori||"")}</div></td>
+      <td><div>${esc(r.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(r.kategori||"—")} · ${esc(r.akun)}${r.akunLawan?' &rarr; '+esc(r.akunLawan):''}</div></td>
       <td>${tag}</td>
       <td class="num pos">${r.debet?fmt0(r.debet):"—"}</td>
       <td class="num neg">${r.kredit?fmt0(r.kredit):"—"}</td>
-      <td class="num saldo-cell">${fmt0(r.saldo)}</td>
+      <td class="num saldo-cell">${fmt0(r.saldoAkun)}</td>
       <td><div class="row-actions">
         <button class="ico-btn" title="Edit" onclick="openJurnal('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         <button class="ico-btn del" title="Hapus" onclick="delJurnal('${r.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
       </div></td></tr>`;
-  }).join("") : emptyRow(7, (q||qc)?"Tidak ada transaksi yang cocok":"Belum ada transaksi di bulan ini", (q||qc)?"Coba ubah kata kunci atau filter.":"Klik “Catat transaksi” untuk mulai membukukan.");
+  }).join("") : emptyRow(7, (q||qc)?"Tidak ada transaksi yang cocok":"Belum ada transaksi di bulan ini", (q||qc)?"Coba ubah kata kunci atau filter.":"Klik \u201cCatat transaksi\u201d untuk mulai membukukan.");
 
   return `
+  ${perluTinjau?`<div class="note" style="border-color:var(--neg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--neg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>${perluTinjau} transaksi belum berkategori</b> di bulan ini — kebanyakan mutasi bank lama yang dipindahkan. Angkanya sudah ikut terhitung dan neraca tetap seimbang, tapi belum masuk pos yang benar di Laba/Rugi. Klik barisnya untuk membetulkan kategori.</div></div>`:''}
   <div class="grid-stats" style="margin-bottom:18px">
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Total Masuk</div><div class="val pos">${fmt(masuk)}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Total Keluar</div><div class="val neg">${fmt(keluar)}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Saldo Kas Akhir</div><div class="val">${fmt(kasAkhir)}</div><div class="meta">Awal ${fmt(opening)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Kas Masuk</div><div class="val pos">${fmt(kasMasuk)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Kas Keluar</div><div class="val neg">${fmt(kasKeluar)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Saldo Kas Akhir</div><div class="val">${fmt(saldoAkun("Kas",p))}</div><div class="meta">Awal ${fmt(openingKasFor(p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Saldo Bank</div><div class="val">${fmt(saldoAkun("Bank Mandiri",p))}</div><div class="meta">Deposito ${fmt(saldoAkun("Bank Mandiri Deposito",p))}</div></div>
   </div>
   <div class="card">
     <div class="card-head">
-      <div><h2>Jurnal Kas — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length}${(q||qc)?" dari "+allRows.length:""} transaksi · saldo berjalan otomatis</div></div>
+      <div><h2>Jurnal — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length}${(q||qc)?" dari "+allRows.length:""} transaksi · satu-satunya tempat input</div></div>
       <div class="card-tools">
         <button class="btn btn-ghost btn-sm" onclick="cetakJurnal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
         <button class="btn btn-soft btn-sm" onclick="openJurnal()">+ Catat transaksi</button>
@@ -741,7 +723,7 @@ function viewJurnal(){
       ${(q||qc)?'<button class="btn btn-ghost btn-sm" onclick="clearSearch()">Hapus filter</button>':''}
     </div>
     <div class="tbl-wrap"><table class="ledger">
-      <thead><tr><th>Tgl</th><th>Uraian &amp; Kategori</th><th>Jenis</th><th class="num">Debet (Masuk)</th><th class="num">Kredit (Keluar)</th><th class="num">Saldo</th><th></th></tr></thead>
+      <thead><tr><th>Tgl</th><th>Uraian, Kategori &amp; Rekening</th><th>Jenis</th><th class="num">Debet</th><th class="num">Kredit</th><th class="num">Saldo Rek.</th><th></th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
   </div>`;
@@ -814,36 +796,32 @@ function chartPendapatan(period){
 function viewBank(){
   const p=state.period;
   const q=(state.q||"").toLowerCase();
-  const all=bankPeriode(p).filter(b=>!q || (b.uraian||"").toLowerCase().includes(q) || (b.akun||"").toLowerCase().includes(q));
-  // saldo berjalan per akun
-  const run={}; AKUN_BANK.forEach(a=>run[a]=openingBankFor(a,p));
-  const rows=all.map(b=>{ run[b.akun]=(run[b.akun]??0)+(+b.debet||0)-(+b.kredit||0); return {...b, saldo:run[b.akun]}; });
+  const all=mutasiBankGabungan(p);
+  const rows=all.filter(b=>!q||(b.uraian||"").toLowerCase().includes(q)||(b.akun||"").toLowerCase().includes(q));
   const masuk=all.reduce((a,b)=>a+(+b.debet||0),0), keluar=all.reduce((a,b)=>a+(+b.kredit||0),0);
   const body = rows.length ? rows.map(b=>`<tr>
       <td class="mono" style="white-space:nowrap">${b.tgl.slice(8,10)}/${b.tgl.slice(5,7)}</td>
-      <td><div>${esc(b.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(b.akun)}${b.refJurnal?' · <span style="color:var(--primary);font-weight:600">tersinkron dari Jurnal Kas</span>':''}</div></td>
+      <td><div>${esc(b.uraian)}</div><div style="font-size:11.5px;color:var(--ink-faint);margin-top:2px">${esc(b.akun)}${b.lawan?' &harr; '+esc(b.lawan):''} · ${esc(b.kategori||"—")}</div></td>
       <td class="num pos">${b.debet?fmt0(b.debet):"—"}</td>
       <td class="num neg">${b.kredit?fmt0(b.kredit):"—"}</td>
       <td class="num saldo-cell">${fmt0(b.saldo)}</td>
-      <td><div class="row-actions">${b.refJurnal?`
-        <button class="ico-btn" title="Otomatis dari Jurnal Kas — ubah lewat menu Jurnal" onclick="toast('Mutasi ini otomatis dari Jurnal Kas. Ubah atau hapus lewat menu Jurnal Kas.', false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button>`:`
-        <button class="ico-btn" title="Edit" onclick="openBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-        <button class="ico-btn del" title="Hapus" onclick="delBank('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>`}
-      </div></td></tr>`).join("") : emptyRow(6, q?"Tidak ada mutasi yang cocok":"Belum ada mutasi bank di bulan ini","Catat setoran/tarikan ke rekening di sini agar Neraca akurat.");
+      <td><div class="row-actions">
+        <button class="ico-btn" title="Ubah lewat Jurnal" onclick="openJurnal('${b.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      </div></td></tr>`).join("") : emptyRow(6, q?"Tidak ada mutasi yang cocok":"Belum ada mutasi bank di bulan ini","Catat lewat menu Jurnal dengan memilih rekening Bank.");
   return `
   <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-  <div>Saldo bank di <b>Neraca</b> dihitung dari saldo awal + mutasi di sini. Setoran &amp; tarik tunai kas <b>otomatis tersinkron dari Jurnal Kas</b> — jangan diinput ulang di sini. Input manual hanya untuk transaksi yang tidak lewat kas: bunga bank, biaya admin/pajak bank, transfer masuk langsung ke rekening, atau pindah dana Bank ↔ Deposito. <b>Debet</b> = uang masuk ke rekening, <b>Kredit</b> = uang keluar dari rekening.</div></div>
+  <div>Halaman ini <b>hanya menampilkan</b>. Seluruh isinya diturunkan dari Jurnal, jadi tidak ada tombol input di sini dan tidak mungkin lagi ada mutasi yang tercatat di satu tempat tapi hilang di tempat lain. Untuk bunga bank, biaya admin, transfer masuk langsung ke rekening, atau pindah dana Bank &harr; Deposito: buka <b>Jurnal</b> lalu pilih rekeningnya di sana.</div></div>
   <div class="grid-stats" style="margin-bottom:18px">
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri",p))}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Deposito — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(bankBalanceEnd("Bank Mandiri Deposito",p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Bank Mandiri — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(saldoAkun("Bank Mandiri",p))}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary-700)"></span>Deposito — akhir ${BULAN_PANJANG[p]}</div><div class="val">${fmt(saldoAkun("Bank Mandiri Deposito",p))}</div></div>
     <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Mutasi ${BULAN_PANJANG[p]}</div><div class="val">${fmt(masuk-keluar)}</div><div class="meta">Masuk ${fmt0(masuk)} · Keluar ${fmt0(keluar)}</div></div>
   </div>
   <div class="card">
     <div class="card-head">
-      <div><h2>Buku Bank — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length} mutasi · saldo berjalan per rekening</div></div>
+      <div><h2>Buku Bank — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${rows.length} mutasi · turunan dari Jurnal</div></div>
       <div class="card-tools">
         <button class="btn btn-ghost btn-sm" onclick="cetakBank()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
-        <button class="btn btn-soft btn-sm" onclick="openBank()">+ Catat mutasi bank</button>
+        <button class="btn btn-soft btn-sm" onclick="go('jurnal')">Buka Jurnal</button>
       </div>
     </div>
     <div class="toolbar">
@@ -858,57 +836,14 @@ function viewBank(){
   </div>`;
 }
 function openBank(id){
-  const b = id? DB.bank.find(x=>String(x.id)===String(id)) : null;
-  if(b && b.refJurnal){ toast("Mutasi ini otomatis dari Jurnal Kas. Ubah atau hapus lewat menu Jurnal Kas.", false); return; }
-  const isEdit=!!b;
-  const today=new Date().toISOString().slice(0,10);
-  openModal(`
-    <div class="modal">
-      <div class="modal-head"><div><h3>${isEdit?"Edit mutasi bank":"Catat mutasi bank"}</h3><p>Buku bank ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}</p></div>
-        <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-      <div class="modal-body">
-        <div class="form-row">
-          <div class="field"><label>Tanggal</label><input type="date" id="bTgl" value="${b?b.tgl:today}"></div>
-          <div class="field"><label>Rekening</label><select id="bAkun">${AKUN_BANK.map(a=>`<option value="${a}" ${b&&b.akun===a?"selected":""}>${a}</option>`).join("")}</select></div>
-        </div>
-        <div class="field one"><label>Uraian</label><input type="text" id="bUraian" placeholder="cth: Setoran tunai ke Bank Mandiri" value="${b?esc(b.uraian):""}"></div>
-        <div class="form-row">
-          <div class="field"><label>Debet — masuk ke bank (Rp)</label><input type="number" id="bDebet" placeholder="0" value="${b&&b.debet?b.debet:""}"></div>
-          <div class="field"><label>Kredit — keluar dari bank (Rp)</label><input type="number" id="bKredit" placeholder="0" value="${b&&b.kredit?b.kredit:""}"></div>
-        </div>
-        <div class="help" style="margin-top:-4px">Isi salah satu: <b>Debet</b> untuk setoran ke bank, <b>Kredit</b> untuk penarikan dari bank.</div>
-      </div>
-      <div class="modal-foot">
-        ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delBank('${b.id}')">Hapus</button>`:""}
-        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
-        <button class="btn" onclick="saveBank('${id||""}')">${isEdit?"Simpan perubahan":"Simpan mutasi"}</button>
-      </div>
-    </div>`);
+  toast("Buku Bank tidak lagi diinput terpisah. Catat lewat menu Jurnal dan pilih rekeningnya di sana.", false);
+  go("jurnal");
 }
-async function saveBank(id){
-  const rec={ tgl:document.getElementById("bTgl").value, akun:document.getElementById("bAkun").value,
-    uraian:document.getElementById("bUraian").value.trim(),
-    debet:Math.abs(+document.getElementById("bDebet").value||0), kredit:Math.abs(+document.getElementById("bKredit").value||0) };
-  if(!rec.tgl){ toast("Tanggal wajib diisi.",false); return; }
-  if(!rec.debet && !rec.kredit){ toast("Isi debet atau kredit.",false); return; }
-  if(id){ const {error}=await supa.from('keu_bank').update(rec).eq('id',id);
-    if(error){toast('Gagal menyimpan: '+error.message,false);return;}
-    Object.assign(DB.bank.find(x=>String(x.id)===String(id)), rec); toast("Mutasi diperbarui.");
-  }else{ const {data,error}=await supa.from('keu_bank').insert(rec).select().single();
-    if(error){toast('Gagal menyimpan: '+error.message,false);return;}
-    DB.bank.push({id:data.id, ...rec}); toast("Mutasi bank tersimpan.");
-  }
-  closeModal();
-  const m=monthOf(rec.tgl); if(m!==state.period){ state.period=m; document.getElementById("periodSel").value=m; }
-  render();
+function saveBank(id){
+  toast("Buku Bank sekarang turunan dari Jurnal.", false);
 }
-async function delBank(id){
-  const rec=DB.bank.find(x=>String(x.id)===String(id));
-  if(rec && rec.refJurnal){ toast("Mutasi ini otomatis dari Jurnal Kas. Hapus lewat menu Jurnal Kas.", false); return; }
-  if(!confirm("Hapus mutasi bank ini?")) return;
-  const {error}=await supa.from('keu_bank').delete().eq('id',id);
-  if(error){toast('Gagal menghapus: '+error.message,false);return;}
-  DB.bank=DB.bank.filter(x=>String(x.id)!==String(id)); closeModal(); render(); toast("Mutasi dihapus.");
+function delBank(id){
+  toast("Hapus lewat menu Jurnal.", false);
 }
 
 function viewLabaRugi(){
@@ -917,10 +852,13 @@ function viewLabaRugi(){
   const line=(label,val,cls="")=>`<tr class="sub ${cls}"><td>${label}</td><td class="num mono">${fmt(val)}</td></tr>`;
   const grp=(label)=>`<tr class="grp"><td colspan="2">${label}</td></tr>`;
   const selisihStock = d.stockAwal - d.stockAkhir;
+  const biayaJurnal = KEU.ITEM_BIAYA.filter(i=>i!=="Penyusutan Inventaris");
 
   return `
   <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-  <div>Laporan ini dihitung otomatis dari <b>Jurnal Kas</b> bulan ${BULAN_PANJANG[p]}. Hanya <b>Stock Obat Awal/Akhir</b> yang diisi manual (lihat tombol ubah di bawah).</div></div>
+  <div>Seluruh angka dihitung otomatis dari <b>Jurnal</b> bulan ${BULAN_PANJANG[p]}. Penyusutan inventaris ikut dihitung sendiri dari daftar aset — tidak perlu, dan tidak boleh, dijurnal manual. Hanya <b>stock obat akhir</b> yang masih diisi tangan.</div></div>
+  ${d.takDikenal.length?`<div class="note" style="border-color:var(--neg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--neg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>${d.takDikenal.length} transaksi belum berkategori</b> senilai ${fmt(d.sum[KEU.KAT_TANPA])}. Nilainya sudah ikut mengurangi laba supaya neraca tetap seimbang, tapi belum masuk pos yang tepat.</div></div>`:''}
 
   <div class="card">
     <div class="card-head"><div><h2>Laporan Laba / Rugi — ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${DB.meta.yayasan}</div></div>
@@ -938,15 +876,13 @@ function viewLabaRugi(){
         ${line("- Stock Obat Awal",d.stockAwal)}
         ${line("- Stock Obat Akhir",-d.stockAkhir)}
         ${line("- Selisih Persediaan",selisihStock)}
-        ${line("- Pembelian Obat",d.sum["Pembelian Obat"])}
-        ${line("- Pembelian Alkes",d.sum["Pembelian Alkes"])}
-        ${line("- Pembelian Medis",d.sum["Pembelian Medis"])}
-        ${line("- Pembelian Laboratorium",d.sum["Pembelian Laboratorium"])}
-        ${line("- Protesa",d.sum["Pembelian Protesa"])}
+        ${KEU.ITEM_HPP.map(i=>line("- "+i,d.sum[i])).join("")}
         <tr class="total"><td>TOTAL HARGA POKOK</td><td class="num mono">${fmt(T.hpp)}</td></tr>
 
         ${grp("BIAYA-BIAYA")}
-        ${["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"].map(i=>line("- "+i,d.sum[i])).join("")}
+        ${biayaJurnal.map(i=>line("- "+i,d.sum[i])).join("")}
+        ${line("- Penyusutan Inventaris (otomatis)",d.penyusutan)}
+        ${d.sum[KEU.KAT_TANPA]?line("- Belum berkategori",d.sum[KEU.KAT_TANPA],"neg"):""}
         <tr class="total"><td>TOTAL BIAYA</td><td class="num mono">${fmt(T.biaya)}</td></tr>
 
         <tr class="laba"><td>${T.laba>=0?"LABA":"RUGI"} BULAN ${BULAN_PANJANG[p].toUpperCase()}</td><td class="num mono">${fmt(T.laba)}</td></tr>
@@ -956,27 +892,24 @@ function viewLabaRugi(){
 }
 
 function viewNeraca(){
-  const p=state.period; const idx=BULAN.indexOf(p);
-  const opening=openingKasFor(p);
-  const rows=withSaldo(jurnalPeriode(p),opening);
-  const kas = rows.length?rows[rows.length-1].saldo:opening;
-  const bankM = bankBalanceEnd("Bank Mandiri",p);
-  const depo = bankBalanceEnd("Bank Mandiri Deposito",p);
-  const stock = (DB.stockObat[p]||{}).akhir || DB.saldoAwal.stockObat;
-  const inven = DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
-  const penyusutan = DB.inventaris.reduce((a,it)=>a+invCalc(it).akum,0);
-  const invenBuku = inven - penyusutan;
-  let labaYtd=0; for(let i=0;i<=idx;i++) labaYtd+=lrTotals(BULAN[i]).laba;
-
-  const aktivaLancar = kas + bankM + depo + DB.saldoAwal.piutang + stock;
-  const totalAktiva = aktivaLancar + invenBuku;
-  const totalHutang = (+DB.hutangPendek||0)+(+DB.hutangPanjang||0);
-  const modal = DB.modalAwal + labaYtd;
-  const totalPasiva = totalHutang + modal;
-
+  const p=state.period;
+  const n=KEU.neraca(DB,p);
+  const dg=KEU.diagnosaSelisih(DB,p);
+  const timpang=Math.abs(n.selisih)>=1;
   const r=(l,v,strong=false)=>`<tr class="${strong?'total':'sub'}"><td>${l}</td><td class="num mono">${fmt(v)}</td></tr>`;
 
+  const sebab=[];
+  if(Math.abs(dg.selisihPembuka)>=1) sebab.push(`Saldo awal tahun belum cocok dengan Modal Awal — selisih ${fmt(dg.selisihPembuka)}. Betulkan lewat tombol \u201cUbah saldo awal\u201d.`);
+  if(dg.jurnalInventarisTanpaAset) sebab.push(`${dg.jurnalInventarisTanpaAset} jurnal \u201cPembelian Inventaris\u201d belum punya aset pasangan. Buka jurnalnya lalu simpan ulang agar asetnya dibuat.`);
+  if(dg.asetTanpaJurnal) sebab.push(`${dg.asetTanpaJurnal} aset tahun ini tidak punya jurnal pembelian. Kalau memang hibah, catat sebagai pendapatan; kalau lupa dijurnal, tambahkan transaksinya.`);
+  if(dg.jurnalTanpaKategori) sebab.push(`${dg.jurnalTanpaKategori} transaksi belum berkategori — tidak merusak keseimbangan, tapi pos Laba/Rugi-nya belum benar.`);
+
   return `
+  ${timpang?`<div class="note" style="border-color:var(--neg)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--neg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>Aktiva dan Pasiva belum sama — selisih ${fmt(n.selisih)}.</b>${sebab.length?'<ul style="margin:8px 0 0 16px;padding:0">'+sebab.map(x=>`<li style="margin:3px 0">${x}</li>`).join("")+'</ul>':' Penyebabnya tidak terdeteksi otomatis; periksa saldo awal.'}</div></div>`
+  :`<div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <div><b>Aktiva = Pasiva.</b> Neraca seimbang per akhir ${BULAN_PANJANG[p]}.</div></div>`}
+
   <div class="card">
     <div class="card-head"><div><h2>Neraca — per akhir ${BULAN_PANJANG[p]} ${DB.meta.tahun}</h2><div class="hint">${DB.meta.yayasan}</div></div>
       <div class="card-tools">
@@ -988,73 +921,81 @@ function viewNeraca(){
         <h3>Aktiva</h3>
         <table class="report"><tbody>
           <tr class="grp"><td colspan="2">I. Aktiva Lancar</td></tr>
-          ${r("Kas",kas)} ${r("Bank Mandiri",bankM)} ${r("Bank Mandiri Deposito",depo)}
-          ${r("Piutang",DB.saldoAwal.piutang)} ${r("Stock Obat-obatan",stock)}
-          ${r("Jumlah Aktiva Lancar",aktivaLancar,true)}
+          ${r("Kas",n.kas)} ${r("Bank Mandiri",n.bank)} ${r("Bank Mandiri Deposito",n.depo)}
+          ${r("Piutang",n.piutang)} ${r("Stock Obat-obatan",n.stock)}
+          ${r("Jumlah Aktiva Lancar",n.aktivaLancar,true)}
           <tr class="grp"><td colspan="2">II. Aktiva Tetap</td></tr>
-          ${r("Inventaris",inven)} ${r("Penyusutan & Barang Rusak",-penyusutan)}
-          ${r("Jumlah Aktiva Tetap",invenBuku,true)}
-          <tr class="laba"><td>TOTAL AKTIVA</td><td class="num mono">${fmt(totalAktiva)}</td></tr>
+          ${r("Inventaris",n.inventaris)} ${r("Penyusutan &amp; Barang Rusak",-n.penyusutan)}
+          ${r("Jumlah Aktiva Tetap",n.inventarisBuku,true)}
+          <tr class="laba"><td>TOTAL AKTIVA</td><td class="num mono">${fmt(n.totalAktiva)}</td></tr>
         </tbody></table>
       </div>
       <div class="neraca-col">
         <h3>Pasiva</h3>
         <table class="report"><tbody>
           <tr class="grp"><td colspan="2">IV. Hutang Jangka Pendek</td></tr>
-          ${r("Hutang",DB.hutangPendek||0)}
+          ${r("Hutang",n.hutangPendek)}
           <tr class="grp"><td colspan="2">V. Hutang Jangka Panjang</td></tr>
-          ${r("Hutang",DB.hutangPanjang||0)}
+          ${r("Hutang",n.hutangPanjang)}
           <tr class="grp"><td colspan="2">VI. Modal</td></tr>
-          ${r("Modal Awal "+DB.meta.tahun,DB.modalAwal)}
-          ${r((labaYtd>=0?"Laba":"Rugi")+" tahun "+DB.meta.tahun+" (s.d. "+BULAN_PANJANG[p]+")",labaYtd)}
-          ${r("Jumlah Modal",modal,true)}
-          <tr class="laba"><td>TOTAL PASIVA</td><td class="num mono">${fmt(totalPasiva)}</td></tr>
+          ${r("Modal Awal "+DB.meta.tahun,n.modalAwal)}
+          ${r((n.labaYtd>=0?"Laba":"Rugi")+" tahun "+DB.meta.tahun+" (s.d. "+BULAN_PANJANG[p]+")",n.labaYtd)}
+          ${r("Jumlah Modal",n.modal,true)}
+          <tr class="laba"><td>TOTAL PASIVA</td><td class="num mono">${fmt(n.totalPasiva)}</td></tr>
         </tbody></table>
       </div>
     </div>
+    <table class="report" style="margin-top:4px"><tbody>
+      <tr class="${timpang?'laba':'total'}"><td>SELISIH (Aktiva &minus; Pasiva)</td>
+        <td class="num mono" style="color:${timpang?'var(--neg)':'var(--pos)'}">${fmt(n.selisih)}</td></tr>
+    </tbody></table>
   </div>`;
 }
 
 function viewInventaris(){
+  const p=state.period;
+  const inv=KEU.inventarisPer(DB,p);
   const items=DB.inventaris;
-  const totBeli=items.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
-  const totAkum=items.reduce((a,it)=>a+invCalc(it).akum,0);
-  const totBuku=items.reduce((a,it)=>a+invCalc(it).buku,0);
-  const totSus=items.reduce((a,it)=>a+invCalc(it).perTahun,0);
 
   const body=items.length? items.map((it,n)=>{
-    const c=invCalc(it);
+    const c=invCalc(it,p);
+    const dimiliki=KEU.tglPerolehanOf(it);
+    const terikat=!!it.refJurnal;
     return `<tr>
       <td class="mono">${n+1}</td>
-      <td>${esc(it.jenis)}</td>
+      <td><div>${esc(it.jenis)}</div>${terikat?'<div style="font-size:11px;color:var(--primary);font-weight:600;margin-top:2px">terikat ke Jurnal</div>':''}</td>
       <td class="num">${it.jumlah}</td>
-      <td>${esc(it.tahun)}</td>
+      <td>${esc(it.tahun)}<div style="font-size:11px;color:var(--ink-faint)">${dimiliki?esc(dimiliki):"dianggap habis susut"}</div></td>
       <td class="num mono">${fmt0(it.nilaiBeli)}</td>
       <td class="num">${it.manfaat} thn</td>
-      <td class="num mono">${fmt0(c.perTahun)}</td>
+      <td class="num mono">${fmt0(c.perBulan)}</td>
       <td class="num mono">${fmt0(c.akum)}</td>
       <td class="num mono saldo-cell">${fmt0(c.buku)}</td>
       <td><div class="row-actions">
         <button class="ico-btn" title="Edit" onclick="openInventaris('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
         <button class="ico-btn del" title="Hapus" onclick="delInventaris('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
       </div></td></tr>`;
-  }).join("") : emptyRow(10,"Belum ada inventaris","Klik “Tambah inventaris”.");
+  }).join("") : emptyRow(10,"Belum ada inventaris","Pembelian yang dijurnal dengan kategori Pembelian Inventaris akan muncul di sini otomatis.");
 
   return `
+  <div class="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div>Penyusutan dihitung <b>garis lurus per bulan</b> dan mulai berjalan pada bulan berikutnya setelah perolehan. Bebannya masuk sendiri ke Laba/Rugi tiap bulan. Aset bertanda <b>terikat ke Jurnal</b> dibuat otomatis dari transaksi pembelian — ubah nilainya lewat menu Jurnal.</div></div>
   <div class="grid-stats" style="margin-bottom:18px">
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Total Nilai Beli</div><div class="val">${fmt(totBeli)}</div><div class="meta">${items.length} jenis inventaris</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Akumulasi Penyusutan</div><div class="val neg">${fmt(totAkum)}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Penyusutan / Tahun</div><div class="val">${fmt(totSus)}</div></div>
-    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Nilai Buku</div><div class="val pos">${fmt(totBuku)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--primary)"></span>Nilai Perolehan</div><div class="val">${fmt(inv.nilai)}</div><div class="meta">${inv.jumlah} item per ${BULAN_PANJANG[p]}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--neg)"></span>Akumulasi Penyusutan</div><div class="val neg">${fmt(inv.akum)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--pos)"></span>Nilai Buku</div><div class="val pos">${fmt(inv.buku)}</div></div>
+    <div class="stat"><div class="lab"><span class="dot" style="background:var(--accent)"></span>Beban ${BULAN_PANJANG[p]}</div><div class="val">${fmt(inv.susutBulanIni)}</div><div class="meta">Masuk Laba/Rugi otomatis</div></div>
   </div>
   <div class="card">
-    <div class="card-head"><div><h2>Daftar Inventaris &amp; Penyusutan</h2><div class="hint">Penyusutan per tahun = nilai beli ÷ taksiran manfaat</div></div>
+    <div class="card-head">
+      <div><h2>Daftar Inventaris</h2><div class="hint">${items.length} item terdaftar</div></div>
       <div class="card-tools">
         <button class="btn btn-ghost btn-sm" onclick="cetakInventaris()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg> Cetak</button>
         <button class="btn btn-soft btn-sm" onclick="openInventaris()">+ Tambah inventaris</button>
-      </div></div>
+      </div>
+    </div>
     <div class="tbl-wrap"><table class="ledger">
-      <thead><tr><th>No</th><th>Jenis Inventaris</th><th class="num">Jumlah</th><th>Tahun Perolehan</th><th class="num">Nilai Beli</th><th class="num">Manfaat</th><th class="num">Penyusutan/Thn</th><th class="num">Akumulasi</th><th class="num">Nilai Buku</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Jenis</th><th class="num">Jml</th><th>Perolehan</th><th class="num">Nilai Beli</th><th class="num">Manfaat</th><th class="num">Susut/Bln</th><th class="num">Akumulasi</th><th class="num">Nilai Buku</th><th></th></tr></thead>
       <tbody>${body}</tbody>
     </table></div>
   </div>`;
@@ -1076,34 +1017,51 @@ function catOptions(sel){
 }
 let jurnalJenis="out";
 function openJurnal(id){
-  const it = id? DB.jurnal.find(x=>x.id===id) : null;
+  const it = id? DB.jurnal.find(x=>String(x.id)===String(id)) : null;
   const isEdit=!!it;
   const tgl = it? it.tgl : new Date().toISOString().slice(0,10);
-  jurnalJenis = it ? (it.debet>0 ? "in" : "out") : "in";
-  const amt = it ? (it.debet||it.kredit||"") : "";
+  jurnalJenis = it ? ((+it.debet||0)>0 ? "in" : "out") : "in";
+  const amt = it ? ((+it.debet||0)+(+it.kredit||0)) : "";
+  const aset = it ? DB.inventaris.find(x=>String(x.refJurnal)===String(it.id)) : null;
+  /* Bentuk baku: akun = asal, kredit = jumlah. Baris warisan bisa
+     tersimpan terbalik (debet di rekening tujuan), jadi arah dibaca dari
+     debet/kredit, bukan diasumsikan. Salah baca di sini berarti arah uang
+     terbalik diam-diam begitu barisnya disimpan ulang. */
+  const [dDari,dKe] = it && it.akunLawan
+      ? ((+it.debet||0)>0 ? [it.akunLawan,it.akun] : [it.akun,it.akunLawan])
+      : bawaanPindah(it?it.kategori:"");
   openModal(`
     <div class="modal">
-      <div class="modal-head"><div><h3>${isEdit?"Edit transaksi":"Catat transaksi"}</h3><p>Jurnal kas ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}</p></div>
+      <div class="modal-head"><div><h3>${isEdit?"Edit transaksi":"Catat transaksi"}</h3><p>Jurnal ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}</p></div>
         <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="modal-body">
         <div class="form-row">
           <div class="field"><label>Tanggal</label><input type="date" id="jTgl" value="${tgl}"></div>
-          <div class="field"><label>Uang kas</label>
+          <div class="field"><label>Jumlah (Rp)</label><input type="number" id="jAmt" placeholder="0" value="${amt}"></div>
+        </div>
+        <div class="field one"><label>Uraian</label><input type="text" id="jUraian" placeholder="cth: Terima Konsultasi Poli Umum" value="${it?esc(it.uraian):""}"></div>
+        <div class="field one"><label>Kategori</label><select id="jKat" onchange="syncJenisFromCat()">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
+
+        <div class="form-row" id="jWrapBiasa">
+          <div class="field"><label>Rekening</label><select id="jAkun">${opsiAkun(it?it.akun:"Kas")}</select>
+            <div class="help">Pilih Bank untuk transaksi yang tidak lewat kas: bunga, biaya admin, transfer masuk langsung.</div></div>
+          <div class="field"><label>Arah uang</label>
             <div class="seg" id="jSeg">
               <button type="button" class="${jurnalJenis==='in'?'on-in':''}" onclick="setJenis('in')">Masuk (+)</button>
-              <button type="button" class="${jurnalJenis==='out'?'on-out':''}" onclick="setJenis('out')">Keluar (−)</button>
+              <button type="button" class="${jurnalJenis==='out'?'on-out':''}" onclick="setJenis('out')">Keluar (&minus;)</button>
             </div>
           </div>
         </div>
-        <div class="field one"><label>Uraian</label><input type="text" id="jUraian" placeholder="cth: Terima Konsultasi Poli Umum" value="${it?esc(it.uraian):""}"></div>
-        <div class="form-row">
-          <div class="field"><label>Kategori</label><select id="jKat" onchange="syncJenisFromCat()">${catOptions(it?it.kategori:"")}</select><div class="help" id="jKatHelp"></div></div>
-          <div class="field"><label>Jumlah (Rp)</label><input type="number" id="jAmt" placeholder="0" value="${amt}"></div>
+
+        <div class="form-row hidden" id="jWrapPindah">
+          <div class="field"><label>Dari rekening</label><select id="jDari">${opsiAkun(dDari)}</select></div>
+          <div class="field"><label>Ke rekening</label><select id="jKe">${opsiAkun(dKe)}</select></div>
         </div>
-        <div class="field one hidden" id="jBankWrap">
-          <label>Rekening bank</label>
-          <select id="jBankAkun"><option>Bank Mandiri</option><option>Bank Mandiri Deposito</option></select>
-          <div class="help">Mutasi ini akan <b>otomatis dicatat juga di Buku Bank</b> — tidak perlu input dua kali.</div>
+
+        <div class="field one hidden" id="jWrapAset">
+          <label>Taksiran masa manfaat (tahun)</label>
+          <input type="number" id="jManfaat" value="${aset?aset.manfaat:4}" min="1">
+          <div class="help">Barang ini <b>otomatis masuk daftar Inventaris</b> dan disusutkan tiap bulan. Tidak perlu diketik ulang di menu Inventaris.</div>
         </div>
       </div>
       <div class="modal-foot">
@@ -1113,8 +1071,7 @@ function openJurnal(id){
       </div>
     </div>`);
   jurnalEditId = it ? it.id : null;
-  if(!isEdit) syncJenisFromCat(); else updateJenisHelp();
-  toggleBankField();
+  if(!isEdit) syncJenisFromCat(); else { terapkanMode(); updateJenisHelp(); }
 }
 function setJenis(j){
   jurnalJenis=j;
@@ -1125,59 +1082,84 @@ function setJenis(j){
 }
 function syncJenisFromCat(){
   const kat=document.getElementById("jKat").value;
-  const info=catInfo(kat);
-  let j = info.jenis==="in" ? "in" : "out";
-  if(kat==="Tarik Tunai dari Bank") j="in";   // tarik tunai menambah kas
-  setJenis(j);
-  toggleBankField();
+  const mode=modeKategori(kat);
+  if(mode==="pindah"){
+    const [a,b]=bawaanPindah(kat);
+    const dd=document.getElementById("jDari"), dk=document.getElementById("jKe");
+    if(dd) dd.value=a;
+    if(dk) dk.value=b;
+  }else if(mode==="biasa"){
+    setJenis(catInfo(kat).jenis==="in" ? "in" : "out");
+  }
+  terapkanMode();
+  updateJenisHelp();
 }
 function updateJenisHelp(){
   const h=document.getElementById("jKatHelp"); if(!h) return;
-  h.textContent = jurnalJenis==="in" ? "Tercatat sebagai kas MASUK (+)" : "Tercatat sebagai kas KELUAR (−)";
+  const kat=document.getElementById("jKat"); if(!kat) return;
+  const mode=modeKategori(kat.value);
+  if(mode==="pindah") h.textContent="Uang berpindah antar rekening sendiri — tidak menambah atau mengurangi laba.";
+  else if(mode==="aset") h.textContent="Belanja modal — masuk Neraca sebagai aset, bukan biaya.";
+  else h.textContent = jurnalJenis==="in" ? "Tercatat sebagai uang MASUK (+) ke rekening terpilih" : "Tercatat sebagai uang KELUAR (\u2212) dari rekening terpilih";
 }
-/* ===== SINKRONISASI OTOMATIS: Jurnal Kas -> Buku Bank ===== */
-const KAT_SETOR="Setoran/Transfer ke Bank", KAT_TARIK="Tarik Tunai dari Bank";
-function isMutasiBankKat(k){ return k===KAT_SETOR || k===KAT_TARIK; }
+/* ===== SINKRONISASI OTOMATIS: Jurnal -> Inventaris ===== */
+const KAT_SETOR=KEU.KAT_SETOR, KAT_TARIK=KEU.KAT_TARIK, KAT_PINDAH=KEU.KAT_PINDAH, KAT_ASET=KEU.KAT_INVENTARIS;
 let jurnalEditId=null;
 
-function toggleBankField(){
-  const w=document.getElementById("jBankWrap"); if(!w) return;
-  const kat=document.getElementById("jKat").value;
-  const show=isMutasiBankKat(kat);
-  w.classList.toggle("hidden", !show);
-  if(show && jurnalEditId){
-    const linked=DB.bank.find(b=>String(b.refJurnal)===String(jurnalEditId));
-    if(linked) document.getElementById("jBankAkun").value=linked.akun;
-  }
+/* Tiga bentuk transaksi:
+     pindah — uang berpindah antar rekening sendiri, nol efek Laba/Rugi
+     aset   — belanja modal, melahirkan baris inventaris
+     biasa  — pendapatan atau biaya di satu rekening               */
+function modeKategori(k){
+  if(k===KAT_SETOR||k===KAT_TARIK||k===KAT_PINDAH) return "pindah";
+  if(k===KAT_ASET) return "aset";
+  return "biasa";
+}
+function bawaanPindah(k){
+  if(k===KAT_TARIK) return ["Bank Mandiri","Kas"];
+  if(k===KAT_PINDAH) return ["Bank Mandiri","Bank Mandiri Deposito"];
+  return ["Kas","Bank Mandiri"];
+}
+function opsiAkun(pilih){
+  return AKUN_SEMUA.map(a=>`<option value="${esc(a)}" ${a===pilih?"selected":""}>${esc(a)}</option>`).join("");
 }
 
-async function syncBankFromJurnal(j, akun){
-  const linked=DB.bank.find(b=>String(b.refJurnal)===String(j.id));
-  // kategori bukan mutasi bank -> hapus pasangan lama jika ada (mis. kategori diganti saat edit)
-  if(!isMutasiBankKat(j.kategori)){
-    if(linked){
-      await supa.from('keu_bank').delete().eq('id',linked.id);
-      DB.bank=DB.bank.filter(b=>String(b.id)!==String(linked.id));
+function terapkanMode(){
+  const kat=document.getElementById("jKat");
+  if(!kat) return;
+  const mode=modeKategori(kat.value);
+  const set=(id,tampil)=>{ const e=document.getElementById(id); if(e) e.classList.toggle("hidden",!tampil); };
+  set("jWrapBiasa", mode!=="pindah");
+  set("jWrapPindah", mode==="pindah");
+  set("jWrapAset", mode==="aset");
+  const seg=document.getElementById("jSeg");
+  if(seg) seg.parentElement.classList.toggle("hidden", mode!=="biasa");
+}
+
+async function syncInventarisFromJurnal(j, manfaat){
+  const tertaut = DB.inventaris.find(it=>String(it.refJurnal)===String(j.id));
+  if(j.kategori!==KAT_ASET){
+    /* kategori diubah saat edit -> aset pasangannya ikut dibuang */
+    if(tertaut){
+      const {error}=await supa.from('keu_inventaris').delete().eq('id',tertaut.id);
+      if(error){ toast('Jurnal tersimpan, tapi aset lama gagal dihapus: '+error.message,false); return; }
+      DB.inventaris=DB.inventaris.filter(x=>String(x.id)!==String(tertaut.id));
     }
     return;
   }
-  const amt=(+j.debet||0)+(+j.kredit||0);
-  const rec={
-    tgl:j.tgl,
-    akun:akun||(linked?linked.akun:"Bank Mandiri"),
-    uraian:(j.kategori===KAT_SETOR?"[Otomatis] Setoran dari kas — ":"[Otomatis] Tarik tunai ke kas — ")+j.uraian,
-    debet:j.kategori===KAT_SETOR?amt:0,          // setor: uang MASUK ke bank
-    kredit:j.kategori===KAT_SETOR?0:amt,         // tarik: uang KELUAR dari bank
-    ref_jurnal:String(j.id)
-  };
-  if(linked){
-    const {error}=await supa.from('keu_bank').update(rec).eq('id',linked.id);
-    if(error){ toast('Jurnal tersimpan, tapi sinkron ke Buku Bank gagal: '+error.message,false); return; }
-    Object.assign(linked,{tgl:rec.tgl,akun:rec.akun,uraian:rec.uraian,debet:rec.debet,kredit:rec.kredit});
+  const nilai=(+j.debet||0)+(+j.kredit||0);
+  const mf=+manfaat || (tertaut?tertaut.manfaat:4) || 4;
+  const rec={ jenis:j.uraian, jumlah:tertaut?tertaut.jumlah:1, tahun:j.tgl,
+              tgl_perolehan:j.tgl, nilai_beli:nilai, manfaat:mf, ref_jurnal:j.id };
+  if(tertaut){
+    const {error}=await supa.from('keu_inventaris').update(rec).eq('id',tertaut.id);
+    if(error){ toast('Jurnal tersimpan, tapi aset gagal diperbarui: '+error.message,false); return; }
+    Object.assign(tertaut,{jenis:rec.jenis, tahun:rec.tahun, tglPerolehan:j.tgl, nilaiBeli:nilai, manfaat:mf});
   }else{
-    const {data,error}=await supa.from('keu_bank').insert(rec).select().single();
-    if(error){ toast('Jurnal tersimpan, tapi sinkron ke Buku Bank gagal: '+error.message,false); return; }
-    DB.bank.push({id:data.id,tgl:rec.tgl,akun:rec.akun,uraian:rec.uraian,debet:rec.debet,kredit:rec.kredit,refJurnal:String(j.id)});
+    const {data,error}=await supa.from('keu_inventaris').insert(rec).select().single();
+    if(error){ toast('Jurnal tersimpan, tapi aset gagal dibuat: '+error.message,false); return; }
+    DB.inventaris.push({id:data.id, jenis:data.jenis, jumlah:data.jumlah, tahun:data.tahun,
+      tglPerolehan:data.tgl_perolehan, nilaiBeli:+data.nilai_beli, manfaat:data.manfaat, refJurnal:j.id});
   }
 }
 
@@ -1187,53 +1169,65 @@ async function saveJurnal(id){
   const kat=document.getElementById("jKat").value;
   const amt=Math.abs(+document.getElementById("jAmt").value||0);
   if(!tgl||!uraian||!amt){ toast("Lengkapi tanggal, uraian, dan jumlah.",false); return; }
-  const akunBankEl=document.getElementById("jBankAkun");
-  const akunBank=akunBankEl?akunBankEl.value:"Bank Mandiri";
-  const debet = jurnalJenis==="in" ? amt : 0;
-  const kredit = jurnalJenis==="in" ? 0 : amt;
-  const payload={tgl,uraian,kategori:kat,debet,kredit};
+  if(String(tgl).slice(0,4)!==String(DB.meta.tahun)){
+    toast("Tanggal di luar tahun buku "+DB.meta.tahun+". Transaksi ini tidak akan muncul di laporan.",false); return;
+  }
+
+  const mode=modeKategori(kat);
+  let akun="Kas", akunLawan=null, debet=0, kredit=0, manfaat=0;
+
+  if(mode==="pindah"){
+    akun=document.getElementById("jDari").value;
+    akunLawan=document.getElementById("jKe").value;
+    if(akun===akunLawan){ toast("Rekening asal dan tujuan tidak boleh sama.",false); return; }
+    kredit=amt;                      /* keluar dari asal, masuk ke tujuan */
+  }else{
+    akun=document.getElementById("jAkun").value;
+    if(mode==="aset"){
+      kredit=amt;
+      manfaat=+document.getElementById("jManfaat").value||4;
+      if(manfaat<1){ toast("Masa manfaat minimal 1 tahun.",false); return; }
+    }else{
+      debet = jurnalJenis==="in" ? amt : 0;
+      kredit = jurnalJenis==="in" ? 0 : amt;
+    }
+  }
+
+  const payload={tgl,uraian,kategori:kat,debet,kredit,akun,akun_lawan:akunLawan};
   let saved=null;
   if(id){
     const { error } = await supa.from('keu_jurnal').update(payload).eq('id', id);
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
     saved=DB.jurnal.find(x=>String(x.id)===String(id));
-    Object.assign(saved, payload);
+    Object.assign(saved, {tgl,uraian,kategori:kat,debet,kredit,akun,akunLawan});
     toast("Transaksi diperbarui.");
   }else{
     const { data, error } = await supa.from('keu_jurnal').insert(payload).select().single();
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
-    saved={id:data.id, tgl:data.tgl, uraian:data.uraian, kategori:data.kategori, debet:+data.debet, kredit:+data.kredit};
+    saved={id:data.id, tgl:data.tgl, uraian:data.uraian, kategori:data.kategori,
+           debet:+data.debet, kredit:+data.kredit, akun:data.akun||akun, akunLawan:data.akun_lawan||null};
     DB.jurnal.push(saved);
     toast("Transaksi tersimpan.");
   }
 
-  /* SINKRON OTOMATIS ke Buku Bank */
-  await syncBankFromJurnal(saved, akunBank);
+  /* Belanja modal langsung melahirkan asetnya — tidak ada lagi
+     pertanyaan yang bisa di-Batal sehingga Neraca jadi timpang. */
+  await syncInventarisFromJurnal(saved, manfaat);
 
   closeModal();
   const m=monthOf(tgl); if(m!==state.period){ state.period=m; document.getElementById("periodSel").value=m; }
   render();
-
-  /* Pengingat otomatis: pembelian inventaris ikut dicatat ke daftar Inventaris */
-  if(kat==="Pembelian Inventaris" && !id){
-    setTimeout(()=>{
-      if(confirm("Transaksi kas tersimpan.\n\nCatat juga barang ini ke daftar Inventaris (agar masuk Neraca & penyusutan otomatis)?")){
-        openInventaris();
-        const je=document.getElementById("iJenis"), ne=document.getElementById("iNilai");
-        if(je) je.value=uraian;
-        if(ne) ne.value=amt;
-      }
-    },250);
-  }
 }
 async function delJurnal(id){
-  if(!confirm("Hapus transaksi ini?")) return;
-  /* hapus juga mutasi bank pasangannya (jika ada) */
-  const linked=DB.bank.find(b=>String(b.refJurnal)===String(id));
-  if(linked){
-    const {error:e2}=await supa.from('keu_bank').delete().eq('id',linked.id);
-    if(e2){ toast('Gagal menghapus mutasi bank terkait: '+e2.message,false); return; }
-    DB.bank=DB.bank.filter(b=>String(b.id)!==String(linked.id));
+  const tertaut = DB.inventaris.find(it=>String(it.refJurnal)===String(id));
+  const pesan = tertaut
+    ? "Hapus transaksi ini?\n\nAset \u201c"+tertaut.jenis+"\u201d yang terikat padanya ikut dihapus supaya Neraca tetap seimbang."
+    : "Hapus transaksi ini?";
+  if(!confirm(pesan)) return;
+  if(tertaut){
+    const {error:e1}=await supa.from('keu_inventaris').delete().eq('id',tertaut.id);
+    if(e1){ toast('Gagal menghapus aset terkait: '+e1.message,false); return; }
+    DB.inventaris=DB.inventaris.filter(x=>String(x.id)!==String(tertaut.id));
   }
   const { error } = await supa.from('keu_jurnal').delete().eq('id', id);
   if(error){ toast('Gagal menghapus: '+error.message,false); return; }
@@ -1242,22 +1236,27 @@ async function delJurnal(id){
 
 /* ---- Inventaris add/edit ---- */
 function openInventaris(id){
-  const it = id? DB.inventaris.find(x=>x.id===id):null; const isEdit=!!it;
+  const it = id? DB.inventaris.find(x=>String(x.id)===String(id)):null; const isEdit=!!it;
+  const terikat = !!(it && it.refJurnal);
+  const tglP = it ? (KEU.tglPerolehanOf(it)||"") : new Date().toISOString().slice(0,10);
   openModal(`
     <div class="modal">
-      <div class="modal-head"><div><h3>${isEdit?"Edit inventaris":"Tambah inventaris"}</h3><p>Daftar & penyusutan inventaris</p></div>
+      <div class="modal-head"><div><h3>${isEdit?"Edit inventaris":"Tambah inventaris"}</h3><p>Daftar &amp; penyusutan inventaris</p></div>
         <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
       <div class="modal-body">
-        <div class="field one"><label>Jenis inventaris</label><input type="text" id="iJenis" placeholder="cth: AC Merk Panasonic 1 PK" value="${it?esc(it.jenis):""}"></div>
+        ${terikat?`<div class="note" style="margin-bottom:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div>Aset ini lahir dari transaksi di <b>Jurnal</b>. Uraian, tanggal, dan nilainya ikut jurnalnya — ubah di sana supaya kas dan aset tidak berselisih. Di sini hanya jumlah dan masa manfaat yang bisa disetel.</div></div>`:''}
+        <div class="field one"><label>Jenis inventaris</label><input type="text" id="iJenis" placeholder="cth: AC Merk Panasonic 1 PK" value="${it?esc(it.jenis):""}" ${terikat?"disabled":""}></div>
         <div class="form-row">
           <div class="field"><label>Jumlah</label><input type="number" id="iJml" value="${it?it.jumlah:1}"></div>
-          <div class="field"><label>Tahun perolehan</label><input type="text" id="iThn" placeholder="cth: 2024 / Juli 2024 / Dibawah 2020" value="${it?esc(it.tahun):DB.meta.tahun}"></div>
+          <div class="field"><label>Tanggal perolehan</label><input type="date" id="iTglP" value="${esc(tglP)}" ${terikat?"disabled":""}>
+            <div class="help">Kosongkan bila aset lama yang sudah habis disusutkan.</div></div>
         </div>
         <div class="form-row">
-          <div class="field"><label>Nilai beli (Rp)</label><input type="number" id="iNilai" value="${it?it.nilaiBeli:""}"></div>
-          <div class="field"><label>Taksiran manfaat (tahun)</label><input type="number" id="iManfaat" value="${it?it.manfaat:4}"></div>
+          <div class="field"><label>Nilai beli (Rp)</label><input type="number" id="iNilai" value="${it?it.nilaiBeli:""}" ${terikat?"disabled":""}></div>
+          <div class="field"><label>Taksiran manfaat (tahun)</label><input type="number" id="iManfaat" value="${it?it.manfaat:4}" min="1"></div>
         </div>
-        <div class="help">Penyusutan per tahun &amp; nilai buku akan dihitung otomatis.</div>
+        <div class="help">Penyusutan dihitung garis lurus per bulan dan mulai berjalan sebulan setelah tanggal perolehan.</div>
       </div>
       <div class="modal-foot">
         ${isEdit?`<button class="btn btn-danger-ghost btn-sm" onclick="delInventaris('${it.id}')">Hapus</button>`:""}
@@ -1267,23 +1266,30 @@ function openInventaris(id){
     </div>`);
 }
 async function saveInventaris(id){
-  const jenis=document.getElementById("iJenis").value.trim();
-  const jumlah=+document.getElementById("iJml").value||1;
-  const tahun=document.getElementById("iThn").value.trim();
-  const nilaiBeli=+document.getElementById("iNilai").value||0;
-  const manfaat=+document.getElementById("iManfaat").value||4;
+  const lama = id? DB.inventaris.find(x=>String(x.id)===String(id)) : null;
+  const terikat = !!(lama && lama.refJurnal);
+  const el=i=>document.getElementById(i);
+  const jenis  = terikat ? lama.jenis     : el("iJenis").value.trim();
+  const tglP   = terikat ? lama.tglPerolehan : (el("iTglP").value||null);
+  const nilai  = terikat ? lama.nilaiBeli  : (+el("iNilai").value||0);
+  const jumlah = +el("iJml").value||1;
+  const manfaat= +el("iManfaat").value||4;
   if(!jenis){ toast("Isi jenis inventaris.",false); return; }
-  const payload={jenis,jumlah,tahun,nilai_beli:nilaiBeli,manfaat};
+  if(manfaat<1){ toast("Masa manfaat minimal 1 tahun.",false); return; }
+
+  const payload={jenis, jumlah, tahun: tglP||"Dibawah tahun 2020",
+                 tgl_perolehan: tglP, nilai_beli:nilai, manfaat};
   if(id){
     const { error } = await supa.from('keu_inventaris').update(payload).eq('id', id);
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
-    Object.assign(DB.inventaris.find(x=>String(x.id)===String(id)),{jenis,jumlah,tahun,nilaiBeli,manfaat});
+    Object.assign(lama,{jenis,jumlah,tahun:payload.tahun,tglPerolehan:tglP,nilaiBeli:nilai,manfaat});
     toast("Inventaris diperbarui.");
   }else{
     const { data, error } = await supa.from('keu_inventaris').insert(payload).select().single();
     if(error){ toast('Gagal menyimpan: '+error.message,false); return; }
-    DB.inventaris.push({id:data.id, jenis:data.jenis, jumlah:data.jumlah, tahun:data.tahun, nilaiBeli:+data.nilai_beli, manfaat:data.manfaat});
-    toast("Inventaris ditambahkan.");
+    DB.inventaris.push({id:data.id, jenis:data.jenis, jumlah:data.jumlah, tahun:data.tahun,
+      tglPerolehan:data.tgl_perolehan, nilaiBeli:+data.nilai_beli, manfaat:data.manfaat, refJurnal:null});
+    toast("Inventaris ditambahkan. Kalau pembeliannya pakai uang klinik, catat juga di Jurnal agar Neraca seimbang.");
   }
   closeModal(); render();
 }
@@ -1296,21 +1302,30 @@ async function delInventaris(id){
 
 /* ---- Stock obat (manual LR) ---- */
 function openStock(){
-  const p=state.period; const so=DB.stockObat[p]||{awal:0,akhir:0};
+  const p=state.period;
+  const awal=KEU.stockAwalFor(DB,p);
+  const rec=DB.stockObat[p]||{};
+  const akhir=(rec.akhir!=null&&rec.akhir!=="")?rec.akhir:awal;
   openModal(`
     <div class="modal">
-      <div class="modal-head"><div><h3>Stock Obat — ${BULAN_PANJANG[p]}</h3><p>Diisi manual untuk laporan laba/rugi</p></div>
+      <div class="modal-head"><div><h3>Stock Obat — ${BULAN_PANJANG[p]}</h3><p>Untuk perhitungan harga pokok</p></div>
         <button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-      <div class="modal-body"><div class="form-row">
-        <div class="field"><label>Stock obat awal (Rp)</label><input type="number" id="sAwal" value="${so.awal||0}"></div>
-        <div class="field"><label>Stock obat akhir (Rp)</label><input type="number" id="sAkhir" value="${so.akhir||0}"></div>
-      </div></div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Stock obat awal (Rp)</label><input type="number" id="sAwal" value="${awal}" disabled>
+            <div class="help">Dirantai otomatis dari stok akhir bulan sebelumnya — tidak bisa diketik supaya tidak ada putus rantai.</div></div>
+          <div class="field"><label>Stock obat akhir (Rp)</label><input type="number" id="sAkhir" value="${akhir}"></div>
+        </div>
+        <div class="help">Selisihnya langsung masuk Harga Pokok di Laba/Rugi, dan angka yang sama dipakai Neraca.</div>
+      </div>
       <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn" onclick="saveStock()">Simpan</button></div>
     </div>`);
 }
 async function saveStock(){
   const p=state.period;
-  DB.stockObat[p]={awal:+document.getElementById("sAwal").value||0, akhir:+document.getElementById("sAkhir").value||0};
+  const v=document.getElementById("sAkhir").value;
+  if(v===""){ toast("Isi stock obat akhir.",false); return; }
+  DB.stockObat[p]={awal:KEU.stockAwalFor(DB,p), akhir:+v||0};
   if(await saveConfig()){ closeModal(); render(); toast("Stock obat tersimpan."); }
 }
 
@@ -1425,25 +1440,23 @@ function ptbl(head, rows, foot){
   return `<table class="p-tbl"><thead>${head}</thead><tbody>${rows}</tbody>${foot?`<tfoot>${foot}</tfoot>`:""}</table>`;
 }
 function cetakJurnal(){
-  const p=state.period, opening=openingKasFor(p);
-  const rows=withSaldo(jurnalPeriode(p),opening);
+  const p=state.period;
+  const rows=jurnalDenganSaldo(p);
   const masuk=rows.reduce((a,r)=>a+(+r.debet||0),0), keluar=rows.reduce((a,r)=>a+(+r.kredit||0),0);
-  const akhir=rows.length?rows[rows.length-1].saldo:opening;
-  const head=`<tr><th>Tgl</th><th>Uraian</th><th>Kategori</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr>`;
-  let body=`<tr><td></td><td><i>Saldo awal periode</i></td><td></td><td class="n">—</td><td class="n">—</td><td class="n">${fmt0(opening)}</td></tr>`;
-  body+=rows.map(r=>`<tr><td>${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td><td>${esc(r.uraian)}</td><td>${esc(r.kategori||"")}</td><td class="n">${r.debet?fmt0(r.debet):"—"}</td><td class="n">${r.kredit?fmt0(r.kredit):"—"}</td><td class="n">${fmt0(r.saldo)}</td></tr>`).join("");
-  const foot=`<tr class="tot"><td colspan="3">JUMLAH</td><td class="n">${fmt0(masuk)}</td><td class="n">${fmt0(keluar)}</td><td class="n">${fmt0(akhir)}</td></tr>`;
-  printDoc("Jurnal Kas", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+  const head=`<tr><th>Tgl</th><th>Uraian</th><th>Kategori</th><th>Rekening</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo Rek.</th></tr>`;
+  let body=`<tr><td></td><td><i>Saldo kas awal periode</i></td><td></td><td>Kas</td><td class="n">—</td><td class="n">—</td><td class="n">${fmt0(openingKasFor(p))}</td></tr>`;
+  body+=rows.map(r=>`<tr><td>${r.tgl.slice(8,10)}/${r.tgl.slice(5,7)}</td><td>${esc(r.uraian)}</td><td>${esc(r.kategori||"")}</td><td>${esc(r.akun)}${r.akunLawan?" &rarr; "+esc(r.akunLawan):""}</td><td class="n">${r.debet?fmt0(r.debet):"—"}</td><td class="n">${r.kredit?fmt0(r.kredit):"—"}</td><td class="n">${fmt0(r.saldoAkun)}</td></tr>`).join("");
+  const foot=`<tr class="tot"><td colspan="4">JUMLAH · saldo kas akhir</td><td class="n">${fmt0(masuk)}</td><td class="n">${fmt0(keluar)}</td><td class="n">${fmt0(saldoAkun("Kas",p))}</td></tr>`;
+  printDoc("Jurnal", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
 }
 function cetakBank(){
   const p=state.period;
-  const run={}; AKUN_BANK.forEach(a=>run[a]=openingBankFor(a,p));
-  const list=bankPeriode(p).map(b=>{ run[b.akun]=(run[b.akun]??0)+(+b.debet||0)-(+b.kredit||0); return {...b,saldo:run[b.akun]}; });
+  const list=mutasiBankGabungan(p);
   const head=`<tr><th>Tgl</th><th>Uraian</th><th>Rekening</th><th class="n">Debet</th><th class="n">Kredit</th><th class="n">Saldo</th></tr>`;
   const body=list.length?list.map(b=>`<tr><td>${b.tgl.slice(8,10)}/${b.tgl.slice(5,7)}</td><td>${esc(b.uraian)}</td><td>${esc(b.akun)}</td><td class="n">${b.debet?fmt0(b.debet):"—"}</td><td class="n">${b.kredit?fmt0(b.kredit):"—"}</td><td class="n">${fmt0(b.saldo)}</td></tr>`).join(""):`<tr><td colspan="6" style="text-align:center">Tidak ada mutasi</td></tr>`;
-  const foot=`<tr class="tot"><td colspan="3">SALDO AKHIR ${BULAN_PANJANG[p].toUpperCase()}</td><td class="n" colspan="2">Bank Mandiri</td><td class="n">${fmt0(bankBalanceEnd("Bank Mandiri",p))}</td></tr>
-    <tr class="tot"><td colspan="3"></td><td class="n" colspan="2">Deposito</td><td class="n">${fmt0(bankBalanceEnd("Bank Mandiri Deposito",p))}</td></tr>`;
-  printDoc("Buku Bank", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+  const foot=`<tr class="tot"><td colspan="3">SALDO AKHIR ${BULAN_PANJANG[p].toUpperCase()}</td><td class="n" colspan="2">Bank Mandiri</td><td class="n">${fmt0(saldoAkun("Bank Mandiri",p))}</td></tr>
+    <tr class="tot"><td colspan="3"></td><td class="n" colspan="2">Deposito</td><td class="n">${fmt0(saldoAkun("Bank Mandiri Deposito",p))}</td></tr>`;
+  printDoc("Buku Bank", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun} · turunan dari Jurnal`, ptbl(head,body,foot));
 }
 function cetakLR(){
   const p=state.period, T=lrTotals(p), d=T.d;
@@ -1455,43 +1468,38 @@ function cetakLR(){
   b+=tot("Total Pendapatan",T.pendapatan);
   b+=grp("Harga Pokok / Persediaan");
   b+=ln("- Stock Obat Awal",d.stockAwal)+ln("- Stock Obat Akhir",-d.stockAkhir);
-  ["Pembelian Obat","Pembelian Alkes","Pembelian Medis","Pembelian Laboratorium","Pembelian Protesa"].forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
+  KEU.ITEM_HPP.forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
   b+=tot("Total Harga Pokok",T.hpp);
   b+=grp("Biaya-biaya");
-  ["Gaji Pegawai","Jasa Dokter","Iuran BPJS TK + Kes","Potongan PPh Instansi","Biaya Administrasi","Biaya Transportasi","Biaya Konsumsi","Biaya Telepon, Listrik, Air","Biaya Perawatan","Biaya Lain","Kunjungan Orang Sakit","Kunjungan Kedukaan","Kunjungan Musibah","Donor Darah","Edukasi/Senam","Ret-ret Klinik","Seminar + Pelatihan","Diakonia / Obat P3K","Pengurusan SIP/SIK","Fiskal Yayasan","PBB Marina/STNK","Subsidi YKI ke GK","Penyusutan Inventaris"].forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
+  KEU.ITEM_BIAYA.filter(i=>i!=="Penyusutan Inventaris").forEach(i=>{ if(d.sum[i]) b+=ln("- "+i,d.sum[i]); });
+  if(d.penyusutan) b+=ln("- Penyusutan Inventaris",d.penyusutan);
+  if(d.sum[KEU.KAT_TANPA]) b+=ln("- Belum berkategori",d.sum[KEU.KAT_TANPA]);
   b+=tot("Total Biaya",T.biaya);
   b+=tot((T.laba>=0?"LABA":"RUGI")+" BERSIH "+BULAN_PANJANG[p].toUpperCase(),T.laba);
   printDoc("Laporan Laba / Rugi", `Bulan ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(`<tr><th>Uraian</th><th class="n">Jumlah (Rp)</th></tr>`,b));
 }
 function cetakNeraca(){
-  const p=state.period, idx=BULAN.indexOf(p);
-  const kas=(()=>{ const r=withSaldo(jurnalPeriode(p),openingKasFor(p)); return r.length?r[r.length-1].saldo:openingKasFor(p); })();
-  const bankM=bankBalanceEnd("Bank Mandiri",p), depo=bankBalanceEnd("Bank Mandiri Deposito",p);
-  const stock=(DB.stockObat[p]||{}).akhir||DB.saldoAwal.stockObat;
-  const inven=DB.inventaris.reduce((a,it)=>a+(+it.nilaiBeli||0),0);
-  const peny=DB.inventaris.reduce((a,it)=>a+invCalc(it).akum,0);
-  const invBuku=inven-peny;
-  let laba=0; for(let i=0;i<=idx;i++) laba+=lrTotals(BULAN[i]).laba;
-  const aktivaLancar=kas+bankM+depo+DB.saldoAwal.piutang+stock, totalAktiva=aktivaLancar+invBuku;
-  const hutang=(+DB.hutangPendek||0)+(+DB.hutangPanjang||0), modal=DB.modalAwal+laba, totalPasiva=hutang+modal;
+  const p=state.period;
+  const n=KEU.neraca(DB,p);
   const ln=(l,v)=>`<tr><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
   const grp=l=>`<tr class="grp"><td colspan="2">${esc(l)}</td></tr>`;
   const tot=(l,v)=>`<tr class="tot"><td>${esc(l)}</td><td class="n">${fmt0(v)}</td></tr>`;
   const aktiva=ptbl(`<tr><th>Aktiva</th><th class="n">Rp</th></tr>`,
-    grp("Aktiva Lancar")+ln("Kas",kas)+ln("Bank Mandiri",bankM)+ln("Bank Mandiri Deposito",depo)+ln("Piutang",DB.saldoAwal.piutang)+ln("Stock Obat",stock)+tot("Jumlah Aktiva Lancar",aktivaLancar)
-    +grp("Aktiva Tetap")+ln("Inventaris",inven)+ln("Penyusutan",-peny)+tot("Jumlah Aktiva Tetap",invBuku)+tot("TOTAL AKTIVA",totalAktiva));
+    grp("Aktiva Lancar")+ln("Kas",n.kas)+ln("Bank Mandiri",n.bank)+ln("Bank Mandiri Deposito",n.depo)+ln("Piutang",n.piutang)+ln("Stock Obat",n.stock)+tot("Jumlah Aktiva Lancar",n.aktivaLancar)
+    +grp("Aktiva Tetap")+ln("Inventaris",n.inventaris)+ln("Penyusutan",-n.penyusutan)+tot("Jumlah Aktiva Tetap",n.inventarisBuku)+tot("TOTAL AKTIVA",n.totalAktiva));
   const pasiva=ptbl(`<tr><th>Pasiva</th><th class="n">Rp</th></tr>`,
-    grp("Hutang")+ln("Hutang Jangka Pendek",DB.hutangPendek||0)+ln("Hutang Jangka Panjang",DB.hutangPanjang||0)
-    +grp("Modal")+ln("Modal Awal "+DB.meta.tahun,DB.modalAwal)+ln((laba>=0?"Laba":"Rugi")+" s.d. "+BULAN_PANJANG[p],laba)+tot("Jumlah Modal",modal)+tot("TOTAL PASIVA",totalPasiva));
-  printDoc("Neraca", `Per akhir ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, `<div class="p-flex"><div>${aktiva}</div><div>${pasiva}</div></div>`);
+    grp("Hutang")+ln("Hutang Jangka Pendek",n.hutangPendek)+ln("Hutang Jangka Panjang",n.hutangPanjang)
+    +grp("Modal")+ln("Modal Awal "+DB.meta.tahun,n.modalAwal)+ln((n.labaYtd>=0?"Laba":"Rugi")+" s.d. "+BULAN_PANJANG[p],n.labaYtd)+tot("Jumlah Modal",n.modal)+tot("TOTAL PASIVA",n.totalPasiva));
+  const cek=ptbl(`<tr><th>Pemeriksaan</th><th class="n">Rp</th></tr>`, tot("SELISIH (Aktiva − Pasiva)",n.selisih));
+  printDoc("Neraca", `Per akhir ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, `<div class="p-flex"><div>${aktiva}</div><div>${pasiva}</div></div>${cek}`);
 }
 function cetakInventaris(){
-  const items=DB.inventaris;
-  const head=`<tr><th>No</th><th>Jenis</th><th class="n">Jml</th><th>Tahun</th><th class="n">Nilai Beli</th><th class="n">Peny./Thn</th><th class="n">Akumulasi</th><th class="n">Nilai Buku</th></tr>`;
-  const body=items.map((it,n)=>{ const c=invCalc(it); return `<tr><td>${n+1}</td><td>${esc(it.jenis)}</td><td class="n">${it.jumlah}</td><td>${esc(it.tahun)}</td><td class="n">${fmt0(it.nilaiBeli)}</td><td class="n">${fmt0(c.perTahun)}</td><td class="n">${fmt0(c.akum)}</td><td class="n">${fmt0(c.buku)}</td></tr>`; }).join("");
-  const tBeli=items.reduce((a,it)=>a+(+it.nilaiBeli||0),0), tAkum=items.reduce((a,it)=>a+invCalc(it).akum,0), tBuku=items.reduce((a,it)=>a+invCalc(it).buku,0);
-  const foot=`<tr class="tot"><td colspan="4">JUMLAH (${items.length} item)</td><td class="n">${fmt0(tBeli)}</td><td class="n"></td><td class="n">${fmt0(tAkum)}</td><td class="n">${fmt0(tBuku)}</td></tr>`;
-  printDoc("Daftar Inventaris & Penyusutan", `Per ${BULAN_PANJANG[state.period]} ${DB.meta.tahun}`, ptbl(head,body,foot));
+  const p=state.period, items=DB.inventaris;
+  const head=`<tr><th>No</th><th>Jenis</th><th class="n">Jml</th><th>Perolehan</th><th class="n">Nilai Beli</th><th class="n">Peny./Bln</th><th class="n">Akumulasi</th><th class="n">Nilai Buku</th></tr>`;
+  const body=items.map((it,n)=>{ const c=invCalc(it,p); return `<tr><td>${n+1}</td><td>${esc(it.jenis)}</td><td class="n">${it.jumlah}</td><td>${esc(KEU.tglPerolehanOf(it)||it.tahun)}</td><td class="n">${fmt0(it.nilaiBeli)}</td><td class="n">${fmt0(c.perBulan)}</td><td class="n">${fmt0(c.akum)}</td><td class="n">${fmt0(c.buku)}</td></tr>`; }).join("");
+  const inv=KEU.inventarisPer(DB,p);
+  const foot=`<tr class="tot"><td colspan="4">JUMLAH (${items.length} item)</td><td class="n">${fmt0(inv.nilai)}</td><td class="n">${fmt0(inv.susutBulanIni)}</td><td class="n">${fmt0(inv.akum)}</td><td class="n">${fmt0(inv.buku)}</td></tr>`;
+  printDoc("Daftar Inventaris & Penyusutan", `Per ${BULAN_PANJANG[p]} ${DB.meta.tahun}`, ptbl(head,body,foot));
 }
 
 /* =================================================================
