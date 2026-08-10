@@ -256,7 +256,7 @@
             <div class="report-header">
                 <div>
                     <h2><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Transaksi</h2>
-                    <p>Semua pergerakan obat masuk &amp; keluar.</p>
+                    <p>Semua pergerakan obat masuk &amp; keluar. Transaksi yang salah input bisa dibatalkan lewat tombol <i class="fa-solid fa-rotate-left"></i> selama belum lewat 7 hari.</p>
                 </div>
                 <div class="filter-inline">
                     <select id="riwayatFilterJenis" class="form-control">
@@ -281,10 +281,11 @@
                             <th class="text-right">Total Nilai</th>
                             <th>Faktur / PBF</th>
                             <th>Keterangan</th>
+                            <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="tabelRiwayatBody">
-                        <tr><td colspan="9" class="text-center">Memuat data...</td></tr>
+                        <tr><td colspan="10" class="text-center">Memuat data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -557,6 +558,7 @@
                 <div class="confirm-icon" id="konfirmIcon"><i class="fa-solid fa-circle-question"></i></div>
                 <h3 id="konfirmJudul">Apakah Anda yakin?</h3>
                 <p id="konfirmPesan"></p>
+                <div id="konfirmRincian" class="confirm-rincian" style="display:none;"></div>
                 <div class="confirm-actions">
                     <button type="button" id="konfirmTidak" class="btn btn-outline">Tidak, Batalkan</button>
                     <button type="button" id="konfirmYa" class="btn btn-danger">Ya, Lanjutkan</button>

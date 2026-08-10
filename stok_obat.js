@@ -16,6 +16,12 @@ let openGroups = new Set();
 let importRows = [];      // hasil parse file import
 
 const KATEGORI_KELUAR = ['Resep Dokter', 'Obat Expired', 'Obat Rusak', 'Lainnya'];
+
+/* Batas usia transaksi yang masih boleh dibatalkan. Angka ini juga
+   ditegakkan di fungsi Postgres batalkan_transaksi_apotek(); yang di
+   sini hanya untuk menonaktifkan tombol lebih awal supaya pemakai tidak
+   menekan sesuatu yang sudah pasti ditolak. Server tetap penentunya. */
+const BATAS_BATAL_HARI = 7;
 const KATEGORI_WARNA = { 'Resep Dokter': '#3b82f6', 'Obat Expired': '#f59e0b', 'Obat Rusak': '#ef4444', 'Lainnya': '#64748b' };
 const BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
@@ -27,7 +33,15 @@ function formatTgl(str) {
     if (!str) return '-';
     return new Date(str + (str.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-function todayStr() { return new Date().toISOString().split('T')[0]; }
+/* Tanggal lokal. toISOString() menghasilkan UTC, jadi di WITA (UTC+8)
+   sebelum pukul 08.00 ia mengembalikan tanggal KEMARIN: form Obat
+   Masuk/Keluar terisi tanggal salah untuk input pagi. Perbaikan yang
+   sama sudah dipakai di dashboard.html lewat tglLokal(). */
+function tglLokal(d) {
+    const x = d || new Date();
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+function todayStr() { return tglLokal(); }
 function monthStr(d) { const x = d || new Date(); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`; }
 function labelBulan(ym) { const [y, m] = ym.split('-'); return `${BULAN_ID[parseInt(m) - 1]} ${y}`; }
 function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -145,7 +159,7 @@ function initApp() {
     document.getElementById('out_tanggal').value = todayStr();
     document.getElementById('laporanBulan').value = monthStr();
     const firstDay = new Date(); firstDay.setDate(1);
-    document.getElementById('exportMulai').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('exportMulai').value = tglLokal(firstDay);
     document.getElementById('exportSelesai').value = todayStr();
 
     setupTabs();
@@ -345,20 +359,31 @@ function renderTabelStok() {
 /* ============================================================
    DIALOG KONFIRMASI "APAKAH ANDA YAKIN?" (Ya / Tidak)
    ============================================================ */
-function konfirmasi(judul, pesan, tipe = 'danger') {
+function konfirmasi(judul, pesan, tipe = 'danger', rincianHtml = '', labelYa = 'Ya, Lanjutkan') {
     return new Promise(resolve => {
         const modal = document.getElementById('modalKonfirm');
         const icon = document.getElementById('konfirmIcon');
         const btnYa = document.getElementById('konfirmYa');
         const btnTidak = document.getElementById('konfirmTidak');
+        const kotak = modal.querySelector('.confirm-content');
+        const rincian = document.getElementById('konfirmRincian');
 
         document.getElementById('konfirmJudul').innerText = judul;
         document.getElementById('konfirmPesan').innerText = pesan;
+
+        /* Blok rincian dibersihkan setiap kali dipanggil — modal ini dipakai
+           bergantian oleh beberapa alur, dan sisa isi dari pemanggilan
+           sebelumnya akan tampil sebagai ringkasan yang salah. */
+        rincian.innerHTML = rincianHtml || '';
+        rincian.style.display = rincianHtml ? 'block' : 'none';
+        kotak.classList.toggle('lebar', !!rincianHtml);
+
         icon.className = 'confirm-icon' + (tipe === 'danger' ? ' danger' : '');
         icon.innerHTML = tipe === 'danger'
             ? '<i class="fa-solid fa-triangle-exclamation"></i>'
             : '<i class="fa-solid fa-circle-question"></i>';
         btnYa.className = tipe === 'danger' ? 'btn btn-danger' : 'btn btn-primary';
+        btnYa.innerText = labelYa;
 
         modal.classList.add('show');
 
@@ -375,6 +400,32 @@ function konfirmasi(judul, pesan, tipe = 'danger') {
     });
 }
 
+/* Susun tabel dua kolom untuk blok rincian konfirmasi.
+   Menerima array [label, nilaiHtml]; nilai sudah harus aman-HTML. */
+function tabelRincian(pasangan) {
+    return '<table class="rincian-tabel"><tbody>' + pasangan.map(([k, v]) =>
+        `<tr><th>${esc(k)}</th><td>${v}</td></tr>`).join('') + '</tbody></table>';
+}
+
+/* Simulasi FEFO tanpa menyentuh database.
+   Dipakai bersama oleh pratinjau di form DAN oleh dialog konfirmasi,
+   supaya angka yang dilihat pemakai sebelum menekan Simpan berasal dari
+   perhitungan yang sama persis — bukan dua salinan logika yang bisa
+   berbeda diam-diam. */
+function simulasiFefo(batches, jumlah) {
+    let sisa = jumlah, totalNilai = 0;
+    const potongan = [];
+    for (const b of batches) {
+        if (sisa <= 0) break;
+        const ambil = Math.min(b.stok_sisa, sisa);
+        const nilai = ambil * parseFloat(b.harga_satuan || 0);
+        potongan.push({ batch: b, ambil, nilai });
+        totalNilai += nilai;
+        sisa -= ambil;
+    }
+    return { potongan, totalNilai, kurang: sisa };
+}
+
 /* ============================================================
    HAPUS BATCH (koreksi salah input) — dengan konfirmasi Ya/Tidak
    ============================================================ */
@@ -388,10 +439,20 @@ async function hapusBatch(id, nama) {
     );
     if (!ok) return;
 
-    // Hapus transaksi terkait dulu, lalu batch-nya
+    /* Hapus transaksi dulu, lalu batch-nya. Urutan ini disengaja: kalau
+       langkah kedua gagal, yang tersisa adalah batch tanpa riwayat —
+       terlihat di tabel stok dan bisa diperbaiki. Kebalikannya (batch
+       hilang, transaksi tinggal) menyisakan baris yatim yang tidak muncul
+       di mana pun tapi tetap ikut menghitung laporan.
+       Galat langkah pertama WAJIB dicek sebelum lanjut; versi sebelumnya
+       menjalankan keduanya lalu baru melapor, sehingga batch tetap terhapus
+       walau riwayatnya gagal dibuang. */
     const { error: e1 } = await db.from('apotek_transaksi').delete().eq('batch_id', id);
+    if (e1) { alert('Gagal menghapus riwayat transaksi batch ini, jadi batch-nya tidak ikut dihapus.\n\n' + e1.message); return; }
+
     const { error: e2 } = await db.from('apotek_batch').delete().eq('id', id);
-    if (e1 || e2) { alert('Gagal menghapus: ' + (e1?.message || e2?.message)); return; }
+    if (e2) { alert('Riwayat transaksi sudah terhapus, tetapi batch gagal dihapus. Silakan hapus ulang batch ini.\n\n' + e2.message); await muatSemuaData(); return; }
+
     await muatSemuaData();
 }
 window.hapusBatch = hapusBatch;
@@ -562,6 +623,20 @@ function setupForms() {
             pbf: document.getElementById('in_pbf').value.trim(),
             keterangan: document.getElementById('in_keterangan').value.trim() || null,
         };
+        if (!row.nama_obat || !row.jumlah || isNaN(row.harga) || !row.expired) {
+            alert('Nama obat, jumlah, harga, dan tanggal expired wajib diisi.');
+            return;
+        }
+
+        const ok = await konfirmasi(
+            'Periksa dulu sebelum disimpan',
+            'Data berikut akan dicatat sebagai obat masuk. Pastikan semuanya benar.',
+            'primary',
+            rincianObatMasuk(row),
+            'Ya, Simpan'
+        );
+        if (!ok) return;
+
         const btn = this.querySelector('button[type=submit]');
         btn.disabled = true;
         try {
@@ -581,6 +656,59 @@ function setupForms() {
 
     setupFormKeluar();
     setupFormEdit();
+}
+
+/* Ringkasan yang tampil di dialog konfirmasi Obat Masuk. Selain
+   mengulang isi form, blok ini menyorot dua hal yang paling sering
+   luput saat input cepat: tanggal expired yang sudah lewat, dan batch
+   yang akan MENYATU dengan batch lama alih-alih jadi batch baru. */
+function rincianObatMasuk(row) {
+    const total = row.jumlah * row.harga;
+    const gabung = batchData.find(b =>
+        b.nama_obat.toLowerCase() === row.nama_obat.toLowerCase() &&
+        parseFloat(b.harga_satuan) === row.harga &&
+        b.tgl_expired === row.expired &&
+        (b.no_faktur || '') === (row.faktur || '') &&
+        (b.pbf || '').toLowerCase() === (row.pbf || '').toLowerCase()
+    );
+
+    const hariKeExp = Math.round((new Date(row.expired) - awalHariIni()) / 864e5);
+    let expHtml = esc(formatTgl(row.expired));
+    if (hariKeExp <= 0) {
+        expHtml += ' <span class="tanda-bahaya">sudah lewat</span>';
+    } else if (hariKeExp <= 90) {
+        expHtml += ` <span class="tanda-awas">${hariKeExp} hari lagi</span>`;
+    }
+
+    const baris = [
+        ['Nama obat', `<strong>${esc(row.nama_obat)}</strong>`],
+        ['Jumlah', `<strong>${row.jumlah}</strong> ${esc(row.satuan || '')}`],
+        ['Harga satuan', esc(formatRp(row.harga))],
+        ['Total nilai', `<strong>${esc(formatRp(total))}</strong>`],
+        ['Tgl expired', expHtml],
+        ['Tgl masuk', esc(formatTgl(row.tgl_masuk))],
+        ['No. faktur', esc(row.faktur || '-')],
+        ['PBF', esc(row.pbf || '-')],
+    ];
+    if (row.keterangan) baris.push(['Keterangan', esc(row.keterangan)]);
+
+    let html = tabelRincian(baris);
+    if (gabung) {
+        html += `<p class="catatan-konfirm"><i class="fa-solid fa-circle-info"></i> Sudah ada batch identik (sisa ${gabung.stok_sisa}). Stoknya akan <strong>ditambah menjadi ${gabung.stok_sisa + row.jumlah}</strong>, bukan dibuat batch baru.</p>`;
+    }
+    return html;
+}
+
+/* Penanda satu kali input. Mesin FEFO bisa memecah satu input jadi
+   beberapa baris transaksi; tanpa penanda ini, membatalkan satu baris
+   berarti pembatalan setengah jalan dan stok langsung melenceng. */
+function grupBaru() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    // Cadangan untuk peramban lama / konteks non-secure.
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
 }
 
 // Insert batch + transaksi MASUK. Jika batch identik (nama+harga+expired+faktur+pbf) sudah ada, stoknya ditambah.
@@ -617,7 +745,8 @@ async function prosesObatMasuk(row, kategori) {
         batch_id: batchId, nama_obat: row.nama_obat, satuan: row.satuan,
         jenis: 'MASUK', kategori: kategori,
         jumlah: row.jumlah, harga_satuan: row.harga, total_nilai: row.jumlah * row.harga,
-        no_faktur: row.faktur, pbf: row.pbf, tanggal: row.tgl_masuk, keterangan: row.keterangan
+        no_faktur: row.faktur, pbf: row.pbf, tanggal: row.tgl_masuk, keterangan: row.keterangan,
+        grup_id: grupBaru()
     }]);
     if (errTrx) throw errTrx;
 }
@@ -699,19 +828,11 @@ function updateInfoKeluar() {
     }
 
     if (jumlah > 0) {
-        // Simulasi FEFO untuk preview nilai
-        let sisa = jumlah, nilai = 0, potongan = [];
-        for (const b of batches) {
-            if (sisa <= 0) break;
-            const ambil = Math.min(b.stok_sisa, sisa);
-            nilai += ambil * parseFloat(b.harga_satuan || 0);
-            potongan.push(`${ambil} dari batch exp ${formatTgl(b.tgl_expired)}`);
-            sisa -= ambil;
-        }
+        const sim = simulasiFefo(batches, jumlah);
         preview.style.display = 'block';
-        preview.innerHTML = sisa > 0
-            ? `<span style="color:var(--danger)">Stok tidak cukup! Kurang ${sisa}.</span>`
-            : `Nilai keluar (harga beli FEFO): <strong>${formatRp(nilai)}</strong><br><small style="font-weight:400;color:var(--text-muted)">${potongan.join(' + ')}</small>`;
+        preview.innerHTML = sim.kurang > 0
+            ? `<span style="color:var(--danger)">Stok tidak cukup! Kurang ${sim.kurang}.</span>`
+            : `Nilai keluar (harga beli FEFO): <strong>${formatRp(sim.totalNilai)}</strong><br><small style="font-weight:400;color:var(--text-muted)">${sim.potongan.map(p => `${p.ambil} dari batch exp ${formatTgl(p.batch.tgl_expired)}`).join(' + ')}</small>`;
     } else {
         preview.style.display = 'none';
     }
@@ -748,6 +869,19 @@ function setupFormKeluar() {
         const batchIdManual = metode === 'manual' ? document.getElementById('out_batch').value : null;
 
         if (!nama) { alert('Pilih obat terlebih dahulu.'); return; }
+        if (!jumlah || jumlah < 1) { alert('Jumlah keluar harus diisi.'); return; }
+
+        const rincian = rincianObatKeluar(nama, jumlah, kategori, tanggal, keterangan, batchIdManual);
+        if (rincian.galat) { alert(rincian.galat); return; }
+
+        const ok = await konfirmasi(
+            'Periksa dulu sebelum disimpan',
+            'Stok berikut akan dipotong. Periksa batch mana saja yang terkena.',
+            'primary',
+            rincian.html,
+            'Ya, Simpan'
+        );
+        if (!ok) return;
 
         const btn = this.querySelector('button[type=submit]');
         btn.disabled = true;
@@ -766,6 +900,62 @@ function setupFormKeluar() {
             btn.disabled = false;
         }
     });
+}
+
+/* Ringkasan konfirmasi Obat Keluar. Bagian paling berguna di sini bukan
+   pengulangan isi form, melainkan RINCIAN BATCH: pemakai bisa melihat
+   persis batch mana yang akan terpotong dan berapa, sebelum menekan
+   Simpan. Perhitungannya memakai simulasiFefo() yang sama dengan
+   pratinjau di form, jadi tidak mungkin berbeda. */
+function rincianObatKeluar(nama, jumlah, kategori, tanggal, keterangan, batchIdManual) {
+    let batches;
+    if (batchIdManual) {
+        const b = batchData.find(x => x.id === batchIdManual && x.stok_sisa > 0);
+        if (!b) return { galat: 'Batch terpilih tidak ditemukan atau stoknya sudah habis.' };
+        batches = batchBolehKeluar([b], kategori);
+        if (batches.length === 0) {
+            return { galat: `Batch ini sudah kadaluwarsa (exp ${formatTgl(b.tgl_expired)}), jadi tidak boleh keluar sebagai "${kategori}".\n\nKalau memang mau dibuang, ubah Kategori menjadi "Obat Expired".` };
+        }
+    } else {
+        batches = batchBolehKeluar(sortFefo(batchData.filter(b => b.nama_obat === nama && b.stok_sisa > 0)), kategori);
+    }
+
+    const sim = simulasiFefo(batches, jumlah);
+    if (sim.kurang > 0) {
+        return { galat: `Stok tidak cukup. Diminta ${jumlah}, tersedia ${jumlah - sim.kurang}.` };
+    }
+
+    const satuan = sim.potongan.length ? (sim.potongan[0].batch.satuan || '') : '';
+    const baris = [
+        ['Kategori', `<strong>${esc(kategori)}</strong>`],
+        ['Nama obat', `<strong>${esc(nama)}</strong>`],
+        ['Jumlah keluar', `<strong>${jumlah}</strong> ${esc(satuan)}`],
+        ['Tanggal', esc(formatTgl(tanggal))],
+    ];
+    if (keterangan) baris.push(['Keterangan', esc(keterangan)]);
+    baris.push(['Nilai keluar', `<strong>${esc(formatRp(sim.totalNilai))}</strong>`]);
+
+    let html = tabelRincian(baris);
+
+    html += '<p class="judul-rincian">Batch yang akan terpotong</p>';
+    html += '<table class="rincian-tabel rincian-batch"><thead><tr>' +
+            '<th>Batch (exp / faktur)</th><th class="text-right">Ambil</th>' +
+            '<th class="text-right">Sisa jadi</th><th class="text-right">Nilai</th>' +
+            '</tr></thead><tbody>';
+    sim.potongan.forEach(p => {
+        html += `<tr>
+            <td>${esc(formatTgl(p.batch.tgl_expired))}<br><small>${esc(p.batch.no_faktur) || '-'} · ${esc(p.batch.pbf) || '-'}</small></td>
+            <td class="text-right"><strong>${p.ambil}</strong></td>
+            <td class="text-right">${p.batch.stok_sisa} &rarr; ${p.batch.stok_sisa - p.ambil}</td>
+            <td class="text-right">${esc(formatRp(p.nilai))}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+
+    if (sim.potongan.length > 1) {
+        html += `<p class="catatan-konfirm"><i class="fa-solid fa-circle-info"></i> Jumlah ini melewati <strong>${sim.potongan.length} batch</strong> karena batch terdepan tidak mencukupi. Semuanya tercatat sebagai satu transaksi dan bisa dibatalkan sekaligus.</p>`;
+    }
+    return { html };
 }
 
 /* MESIN FEFO: mengurangi stok mulai dari batch yang paling dekat expired,
@@ -813,6 +1003,7 @@ async function prosesObatKeluar(nama, jumlah, kategori, tanggal, keterangan, bat
     let sisa = jumlah;
     let totalNilai = 0;
     const trxRows = [];
+    const grupId = grupBaru();   // satu input = satu grup, walau terpecah lintas batch
 
     for (const b of batches) {
         if (sisa <= 0) break;
@@ -830,7 +1021,8 @@ async function prosesObatKeluar(nama, jumlah, kategori, tanggal, keterangan, bat
             batch_id: b.id, nama_obat: b.nama_obat, satuan: b.satuan,
             jenis: 'KELUAR', kategori: kategori,
             jumlah: ambil, harga_satuan: b.harga_satuan, total_nilai: nilai,
-            no_faktur: b.no_faktur, pbf: b.pbf, tanggal: tanggal, keterangan: keterangan
+            no_faktur: b.no_faktur, pbf: b.pbf, tanggal: tanggal, keterangan: keterangan,
+            grup_id: grupId
         });
     }
 
@@ -1009,6 +1201,28 @@ function renderRekapBulanan() {
 /* ============================================================
    TAB 3: RIWAYAT TRANSAKSI
    ============================================================ */
+/* Usia transaksi dalam hari, dihitung dari created_at — waktu barisnya
+   BENAR-BENAR ditulis, bukan kolom `tanggal` yang diisi manual. Kalau
+   memakai `tanggal`, transaksi yang keliru diberi tanggal dua bulan lalu
+   lalu disadari lima menit kemudian justru tidak bisa dibatalkan, padahal
+   itu persis skenario yang fitur ini layani. */
+function umurHariTransaksi(t) {
+    if (!t || !t.created_at) return Infinity;
+    return (Date.now() - new Date(t.created_at).getTime()) / 864e5;
+}
+
+// Kelompokkan seluruh transaksi per grup_id sekali saja, lalu dipakai
+// ulang tiap baris — supaya tidak memindai transaksiData berkali-kali.
+function petaGrup() {
+    const peta = new Map();
+    transaksiData.forEach(t => {
+        if (!t.grup_id) return;
+        if (!peta.has(t.grup_id)) peta.set(t.grup_id, []);
+        peta.get(t.grup_id).push(t);
+    });
+    return peta;
+}
+
 function renderRiwayat() {
     const tbody = document.getElementById('tabelRiwayatBody');
     const jenis = document.getElementById('riwayatFilterJenis').value;
@@ -1020,14 +1234,42 @@ function renderRiwayat() {
     list = list.slice(0, 300); // batasi tampilan
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center">Tidak ada transaksi.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center">Tidak ada transaksi.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = list.map(t => `
+    /* Ukuran grup dihitung dari SELURUH transaksiData, bukan dari list
+       yang sudah dipotong .slice(0, 300). Kalau dihitung dari list,
+       grup yang kebetulan terpotong di batas 300 akan terlihat lebih
+       kecil dari yang sebenarnya dan pemakai dibohongi soal berapa
+       baris yang akan ikut terhapus. */
+    const grup = petaGrup();
+
+    tbody.innerHTML = list.map(t => {
+        const anggota = t.grup_id ? (grup.get(t.grup_id) || [t]) : [t];
+        const umur = umurHariTransaksi(t);
+        const bisaBatal = t.grup_id && umur <= BATAS_BATAL_HARI;
+
+        let aksi;
+        if (!t.grup_id) {
+            aksi = '<span class="aksi-mati" title="Kolom grup_id belum ada. Jalankan migrasi sql/012_pembatalan_transaksi_apotek.sql lebih dulu."><i class="fa-solid fa-circle-exclamation"></i></span>';
+        } else if (bisaBatal) {
+            const judul = anggota.length > 1
+                ? `Batalkan transaksi ini (${anggota.length} baris sekaligus)`
+                : 'Batalkan transaksi ini';
+            aksi = `<button type="button" class="btn-batal-row" onclick="batalkanTransaksi('${t.grup_id}')" title="${judul}"><i class="fa-solid fa-rotate-left"></i></button>`;
+        } else {
+            aksi = `<span class="aksi-mati" title="Sudah ${Math.floor(umur)} hari, melewati batas ${BATAS_BATAL_HARI} hari. Gunakan Edit Batch untuk koreksi."><i class="fa-solid fa-lock"></i></span>`;
+        }
+
+        const tandaGrup = anggota.length > 1
+            ? ` <span class="grup-tag" title="Satu input terpecah ke ${anggota.length} batch oleh FEFO">${anggota.indexOf(t) + 1}/${anggota.length}</span>`
+            : '';
+
+        return `
         <tr>
             <td style="font-family:monospace">${formatTgl(t.tanggal)}</td>
-            <td><span class="badge ${t.jenis === 'MASUK' ? 'badge-masuk' : 'badge-keluar'}">${t.jenis}</span></td>
+            <td><span class="badge ${t.jenis === 'MASUK' ? 'badge-masuk' : 'badge-keluar'}">${t.jenis}</span>${tandaGrup}</td>
             <td>${esc(t.kategori)}</td>
             <td><strong>${esc(t.nama_obat)}</strong></td>
             <td class="text-right">${t.jumlah} <small>${esc(t.satuan || '')}</small></td>
@@ -1035,8 +1277,94 @@ function renderRiwayat() {
             <td class="text-right" style="font-weight:600;color:${t.jenis === 'MASUK' ? 'var(--success)' : 'var(--danger)'}">${formatRp(t.total_nilai)}</td>
             <td><small>${esc(t.no_faktur) || '-'}<br>${esc(t.pbf) || '-'}</small></td>
             <td><small>${esc(t.keterangan) || '-'}</small></td>
-        </tr>`).join('');
+            <td class="text-center">${aksi}</td>
+        </tr>`;
+    }).join('');
 }
+
+/* ============================================================
+   PEMBATALAN TRANSAKSI (koreksi salah input)
+
+   Hanya uuid grup yang dikirim ke handler; nama obat sengaja TIDAK
+   ikut sebagai argumen onclick. Nama pasien/obat bisa mengandung
+   apostrof yang memutus atribut onclick="..." — jebakan yang sudah
+   pernah menggigit di modul lain. Datanya diambil ulang dari
+   transaksiData di dalam fungsi.
+   ============================================================ */
+async function batalkanTransaksi(grupId) {
+    const baris = transaksiData.filter(t => t.grup_id === grupId);
+    if (baris.length === 0) {
+        alert('Transaksi tidak ditemukan. Halaman mungkin sudah usang — muat ulang dulu.');
+        await muatSemuaData();
+        return;
+    }
+
+    const contoh = baris[0];
+    const totalQty = baris.reduce((s, t) => s + (t.jumlah || 0), 0);
+    const totalNilai = baris.reduce((s, t) => s + parseFloat(t.total_nilai || 0), 0);
+    const arah = contoh.jenis === 'MASUK'
+        ? 'Stok akan DIKURANGI kembali sebanyak ' + totalQty + '.'
+        : 'Stok akan DIKEMBALIKAN sebanyak ' + totalQty + '.';
+
+    const info = [
+        ['Jenis', `<strong>${esc(contoh.jenis)}</strong> · ${esc(contoh.kategori)}`],
+        ['Nama obat', `<strong>${esc(contoh.nama_obat)}</strong>`],
+        ['Tanggal', esc(formatTgl(contoh.tanggal))],
+        ['Total jumlah', `<strong>${totalQty}</strong> ${esc(contoh.satuan || '')}`],
+        ['Total nilai', esc(formatRp(totalNilai))],
+        ['Baris terhapus', `${baris.length} baris`],
+    ];
+    if (contoh.keterangan) info.push(['Keterangan', esc(contoh.keterangan)]);
+
+    let html = tabelRincian(info);
+    if (baris.length > 1) {
+        html += '<p class="judul-rincian">Semua baris dalam transaksi ini</p>';
+        html += '<table class="rincian-tabel rincian-batch"><thead><tr><th>Batch (exp / faktur)</th><th class="text-right">Jumlah</th><th class="text-right">Nilai</th></tr></thead><tbody>';
+        baris.forEach(t => {
+            const b = batchData.find(x => x.id === t.batch_id);
+            const label = b ? `${formatTgl(b.tgl_expired)}<br><small>${esc(b.no_faktur) || '-'} · ${esc(b.pbf) || '-'}</small>` : '<small>batch sudah dihapus</small>';
+            html += `<tr><td>${label}</td><td class="text-right">${t.jumlah}</td><td class="text-right">${esc(formatRp(t.total_nilai))}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    html += `<p class="catatan-konfirm"><i class="fa-solid fa-triangle-exclamation"></i> ${arah} Baris riwayat dihapus <strong>permanen</strong> dan tidak bisa dipulihkan. Laporan bulanan ikut terkoreksi.</p>`;
+
+    const ok = await konfirmasi(
+        'Batalkan transaksi ini?',
+        'Periksa rincian di bawah. Pastikan ini benar-benar transaksi yang salah input.',
+        'danger',
+        html,
+        'Ya, Batalkan'
+    );
+    if (!ok) return;
+
+    try {
+        const { data, error } = await db.rpc('batalkan_transaksi_apotek', {
+            p_grup_id: grupId,
+            p_batas_hari: BATAS_BATAL_HARI
+        });
+        if (error) throw error;
+
+        const hasil = data || {};
+        let pesan = `Transaksi dibatalkan. ${hasil.baris_dihapus || baris.length} baris riwayat dihapus dan stok sudah dipulihkan.`;
+        if (hasil.batch_dihapus > 0) {
+            pesan += `\n\n${hasil.batch_dihapus} batch ikut terhapus karena seluruh isinya berasal dari transaksi ini.`;
+        }
+        alert(pesan);
+        await muatSemuaData();
+    } catch (err) {
+        const m = String(err.message || err);
+        /* PGRST202 = fungsi tidak ada di skema. Penyebab paling mungkin
+           adalah migrasi SQL belum dijalankan, dan pesan mentahnya sama
+           sekali tidak menjelaskan itu. */
+        if (m.includes('PGRST202') || m.includes('batalkan_transaksi_apotek') && m.includes('does not exist')) {
+            alert('Fungsi pembatalan belum ada di database.\n\nJalankan sql/012_pembatalan_transaksi_apotek.sql di SQL Editor Supabase lebih dulu, lalu muat ulang halaman ini.');
+        } else {
+            alert('Pembatalan dibatalkan oleh database — tidak ada data yang berubah:\n\n' + m);
+        }
+    }
+}
+window.batalkanTransaksi = batalkanTransaksi;
 
 /* ============================================================
    DATALIST FORM (auto-complete)
@@ -1187,7 +1515,36 @@ function renderImportPreview() {
 async function prosesImport() {
     const validRows = importRows.filter(r => !r.err);
     if (validRows.length === 0) { alert('Tidak ada baris valid untuk di-import.'); return; }
-    if (!confirm(`Import ${validRows.length} baris data stok? Setiap baris akan menjadi batch baru dan tercatat sebagai transaksi masuk.`)) return;
+
+    const dilewati = importRows.length - validRows.length;
+    const totalNilai = validRows.reduce((s, r) => s + r.jumlah * r.harga, 0);
+    const totalQty = validRows.reduce((s, r) => s + r.jumlah, 0);
+    const sudahLewat = validRows.filter(r => new Date(r.expired) <= awalHariIni());
+
+    const ringkas = [
+        ['Baris di-import', `<strong>${validRows.length}</strong> baris`],
+        ['Total item', `${totalQty}`],
+        ['Total nilai', `<strong>${esc(formatRp(totalNilai))}</strong>`],
+    ];
+    if (dilewati > 0) ringkas.push(['Dilewati', `<span class="tanda-awas">${dilewati} baris bermasalah</span>`]);
+
+    let rincianHtml = tabelRincian(ringkas);
+    if (sudahLewat.length > 0) {
+        rincianHtml += `<p class="catatan-konfirm"><i class="fa-solid fa-triangle-exclamation"></i> <strong>${sudahLewat.length} baris</strong> punya tanggal expired yang sudah lewat: ${esc(sudahLewat.slice(0, 3).map(r => r.nama).join(', '))}${sudahLewat.length > 3 ? ', dan lainnya' : ''}.</p>`;
+    }
+    rincianHtml += '<p class="judul-rincian">5 baris pertama</p>';
+    rincianHtml += '<table class="rincian-tabel rincian-batch"><thead><tr><th>Nama Obat</th><th class="text-right">Jumlah</th><th class="text-right">Harga</th><th>Expired</th></tr></thead><tbody>' +
+        validRows.slice(0, 5).map(r => `<tr><td>${esc(r.nama)}</td><td class="text-right">${r.jumlah}</td><td class="text-right">${esc(formatRp(r.harga))}</td><td>${esc(formatTgl(r.expired))}</td></tr>`).join('') +
+        '</tbody></table>';
+
+    const ok = await konfirmasi(
+        'Periksa dulu sebelum di-import',
+        'Setiap baris akan menjadi batch stok baru dan tercatat sebagai transaksi masuk.',
+        'primary',
+        rincianHtml,
+        'Ya, Import'
+    );
+    if (!ok) return;
 
     const btn = document.getElementById('btnProsesImport');
     btn.disabled = true;
@@ -1205,12 +1562,16 @@ async function prosesImport() {
         if (e1) throw e1;
 
         // Insert transaksi MASUK untuk tiap batch
+        /* Tiap baris Excel = satu jenis obat = satu grup sendiri, jadi
+           kesalahan pada satu baris bisa dibatalkan tanpa menyeret
+           seluruh isi berkas import. */
         const trxRows = inserted.map(b => ({
             batch_id: b.id, nama_obat: b.nama_obat, satuan: b.satuan,
             jenis: 'MASUK', kategori: 'Import Stok Awal',
             jumlah: b.stok_awal, harga_satuan: b.harga_satuan,
             total_nilai: b.stok_awal * parseFloat(b.harga_satuan || 0),
-            no_faktur: b.no_faktur, pbf: b.pbf, tanggal: b.tgl_masuk, keterangan: b.keterangan
+            no_faktur: b.no_faktur, pbf: b.pbf, tanggal: b.tgl_masuk, keterangan: b.keterangan,
+            grup_id: grupBaru()
         }));
         const { error: e2 } = await db.from('apotek_transaksi').insert(trxRows);
         if (e2) throw e2;
